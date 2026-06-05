@@ -189,7 +189,7 @@
     <p><span class="key">B</span> — Loja</p>
     <p><span class="key">1 2 3</span> — Trocar arma</p>
   </div>
-  <button id="start-btn" onclick="startGame()">INICIAR MISSÃO</button>
+  <button id="start-btn">INICIAR MISSÃO</button>
 </div>
 
 <!-- Game Over -->
@@ -255,6 +255,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// Global error catcher — shows JS errors on screen
+window.addEventListener('error', e=>{
+  const d = document.getElementById('debug');
+  if(d) d.innerHTML = '<span style="color:#ff6b6b">ERRO: '+e.message+' @ linha '+e.lineno+'</span>';
+  console.error(e);
+});
 // ============================================================
 //  PLANET CONQUEROR — FPS 3D com Three.js
 // ============================================================
@@ -990,6 +996,23 @@ window.addEventListener('resize',()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// Hook up start button (robust)
+const startBtn = document.getElementById('start-btn');
+if(startBtn) {
+  startBtn.addEventListener('click', ()=>{
+    try {
+      startGame();
+    } catch(err) {
+      const d = document.getElementById('debug');
+      if(d) d.innerHTML = '<span style="color:#ff6b6b">ERRO startGame: '+err.message+'</span>';
+      console.error(err);
+    }
+  });
+  document.getElementById('debug').textContent = 'Pronto! Clique INICIAR MISSÃO';
+} else {
+  document.getElementById('debug').textContent = 'ERRO: botão não encontrado';
+}
 </script>
 </body>
 </html>
