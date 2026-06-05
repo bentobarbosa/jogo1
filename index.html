@@ -297,10 +297,14 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x000010, 0.04);
+scene.background = new THREE.Color(0x1a1a3e);
+scene.fog = new THREE.FogExp2(0x1a1a3e, 0.015);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 300);
 camera.position.set(0, 1.7, 0);
+camera.rotation.order = 'YXZ';
+
+renderer.setClearColor(0x1a1a3e);
 
 // Clock
 const clock = new THREE.Clock();
@@ -308,15 +312,17 @@ const clock = new THREE.Clock();
 // ---------- LIGHTING ----------
 function setupLighting(color) {
   scene.children.filter(c=>c.isLight).forEach(l=>scene.remove(l));
-  const ambient = new THREE.AmbientLight(0x111122, 0.8);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambient);
-  const dir = new THREE.DirectionalLight(color, 1.2);
-  dir.position.set(5, 10, 5);
+  const dir = new THREE.DirectionalLight(0xffffff, 1.5);
+  dir.position.set(5, 20, 5);
   dir.castShadow = true;
   scene.add(dir);
-  const point = new THREE.PointLight(color, 2, 50);
-  point.position.set(0, 5, 0);
+  const point = new THREE.PointLight(color, 3, 80);
+  point.position.set(0, 10, 0);
   scene.add(point);
+  const hemi = new THREE.HemisphereLight(color, 0x080820, 0.8);
+  scene.add(hemi);
 }
 setupLighting(0x6c5ce7);
 
@@ -332,12 +338,14 @@ function buildEnvironment(planetIdx) {
 
   const col = PLANET_COLORS[planetIdx % PLANET_COLORS.length];
   setupLighting(col);
-  scene.fog = new THREE.FogExp2(0x000010, 0.04);
-  renderer.setClearColor(0x000010);
+  const skyCol = new THREE.Color(col).multiplyScalar(0.15);
+  scene.background = skyCol;
+  scene.fog = new THREE.FogExp2(skyCol.getHex(), 0.012);
+  renderer.setClearColor(skyCol);
 
   // Floor
   const fg = new THREE.PlaneGeometry(200, 200, 30, 30);
-  const fm = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.3) });
+  const fm = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.6) });
   floorMesh = new THREE.Mesh(fg, fm);
   floorMesh.rotation.x = -Math.PI/2;
   floorMesh.receiveShadow = true;
@@ -845,9 +853,16 @@ function startGame() {
   state.gameRunning = true;
   spawnWave();
   updateHUD();
-  canvas.requestPointerLock();
+  // Render once immediately so user sees the world
+  renderer.render(scene, camera);
+  // Request pointer lock after small delay (needs user gesture)
+  setTimeout(()=>{ canvas.requestPointerLock(); }, 100);
   animate();
 }
+window.startGame = startGame;
+
+// Render an initial frame so canvas isn't black
+renderer.render(scene, camera);
 
 const moveDir = new THREE.Vector3();
 const front   = new THREE.Vector3();
