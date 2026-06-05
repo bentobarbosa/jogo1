@@ -826,7 +826,13 @@ function buildEnvironment(planetIdx) {
 
   // ===== Alien City — theme varies by planet =====
   const themeIdx = planetIdx % 8;
-  buildAlienCity(planetIdx, themeIdx, col);
+  try {
+    buildAlienCity(planetIdx, themeIdx, col);
+  } catch(err) {
+    console.error('Erro ao construir cidade:', err);
+    const d = document.getElementById('debug');
+    if(d) d.innerHTML = '<span style="color:#ff6b6b">ERRO cidade: '+err.message+'</span>';
+  }
 
   // Stars (particles in sky)
   const sg = new THREE.BufferGeometry();
@@ -842,7 +848,7 @@ function buildEnvironment(planetIdx) {
   scene.add(skyMesh);
   planetObjects.push(skyMesh);
 }
-buildEnvironment(0);
+try { buildEnvironment(0); } catch(e){ console.error(e); document.getElementById('debug').innerHTML='<span style="color:#ff6b6b">ERRO env: '+e.message+'</span>'; }
 
 // ---------- WEAPON MODEL (detailed) ----------
 let weaponMesh, muzzleMesh;
