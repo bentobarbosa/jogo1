@@ -295,12 +295,26 @@ const PLANET_COLORS = [
 ];
 
 const WEAPONS = [
-  { id:'pistol',  name:'PISTOLA',   damage:15, rate:600,  ammo:12,  maxAmmo:12,  price:0,   owned:true,  color:0xb2bec3 },
-  { id:'ak47',    name:'AK-47',     damage:25, rate:150,  ammo:30,  maxAmmo:30,  price:500, owned:false, color:0x636e72 },
-  { id:'sniper',  name:'SNIPER',    damage:80, rate:1500, ammo:5,   maxAmmo:5,   price:800, owned:false, color:0x0984e3 },
-  { id:'shotgun', name:'ESCOPETA',  damage:60, rate:800,  ammo:8,   maxAmmo:8,   price:600, owned:false, color:0xe17055 },
-  { id:'smg',     name:'SMG',       damage:18, rate:100,  ammo:40,  maxAmmo:40,  price:700, owned:false, color:0x00cec9 },
-  { id:'bazooka', name:'BAZUCA',    damage:200,rate:3000, ammo:3,   maxAmmo:3,   price:2000,owned:false, color:0xd63031 },
+  { id:'pistol',    name:'PISTOLA',         damage:15,  rate:500,  ammo:12, maxAmmo:12, price:0,     owned:true,  color:0xb2bec3, aoe:0 },
+  { id:'ak47',      name:'AK-47',           damage:25,  rate:130,  ammo:30, maxAmmo:30, price:500,   owned:false, color:0x636e72, aoe:0 },
+  { id:'sniper',    name:'SNIPER',          damage:80,  rate:1400, ammo:5,  maxAmmo:5,  price:800,   owned:false, color:0x0984e3, aoe:0 },
+  { id:'shotgun',   name:'ESCOPETA',        damage:60,  rate:700,  ammo:8,  maxAmmo:8,  price:600,   owned:false, color:0xe17055, aoe:0 },
+  { id:'smg',       name:'SMG',             damage:18,  rate:90,   ammo:40, maxAmmo:40, price:700,   owned:false, color:0x00cec9, aoe:0 },
+  { id:'bazooka',   name:'BAZUCA',          damage:180, rate:2500, ammo:3,  maxAmmo:3,  price:2000,  owned:false, color:0xd63031, aoe:6 },
+  { id:'laser',     name:'RIFLE LASER',     damage:35,  rate:200,  ammo:50, maxAmmo:50, price:3000,  owned:false, color:0xff0099, aoe:0 },
+  { id:'plasma',    name:'CANHÃO PLASMA',   damage:90,  rate:600,  ammo:20, maxAmmo:20, price:4500,  owned:false, color:0x00ff99, aoe:2 },
+  { id:'railgun',   name:'RAILGUN',         damage:250, rate:2000, ammo:4,  maxAmmo:4,  price:6000,  owned:false, color:0xffeb3b, aoe:0 },
+  { id:'minigun',   name:'MINIGUN',         damage:22,  rate:50,   ammo:200,maxAmmo:200,price:7500,  owned:false, color:0x444444, aoe:0 },
+  { id:'flame',     name:'LANÇA-CHAMAS',    damage:12,  rate:60,   ammo:150,maxAmmo:150,price:5000,  owned:false, color:0xff5500, aoe:1.5 },
+  { id:'ice',       name:'CANHÃO DE GELO',  damage:45,  rate:300,  ammo:30, maxAmmo:30, price:5500,  owned:false, color:0x66ccff, aoe:1 },
+  { id:'lightning', name:'ARMA DE RAIO',    damage:100, rate:400,  ammo:20, maxAmmo:20, price:8500,  owned:false, color:0xffff00, aoe:3 },
+  { id:'gauss',     name:'RIFLE GAUSS',     damage:400, rate:2500, ammo:3,  maxAmmo:3,  price:11000, owned:false, color:0x9966ff, aoe:0 },
+  { id:'grenade',   name:'LANÇA-GRANADAS',  damage:150, rate:1200, ammo:6,  maxAmmo:6,  price:9000,  owned:false, color:0x556b2f, aoe:5 },
+  { id:'gravity',   name:'CANHÃO GRAVID.',  damage:120, rate:800,  ammo:15, maxAmmo:15, price:13000, owned:false, color:0x6c5ce7, aoe:4 },
+  { id:'blackhole', name:'BURACO NEGRO',    damage:300, rate:4000, ammo:2,  maxAmmo:2,  price:18000, owned:false, color:0x111122, aoe:8 },
+  { id:'nuke',      name:'LANÇA NUKE',      damage:800, rate:6000, ammo:1,  maxAmmo:1,  price:25000, owned:false, color:0xff3300, aoe:15 },
+  { id:'dual',      name:'PISTOLAS DUPLAS', damage:30,  rate:80,   ammo:24, maxAmmo:24, price:3500,  owned:false, color:0xffcc00, aoe:0 },
+  { id:'voidcannon',name:'CANHÃO DO VAZIO', damage:1500,rate:8000, ammo:1,  maxAmmo:1,  price:50000, owned:false, color:0xff00ff, aoe:20 },
 ];
 
 const SHOP_ITEMS = [
@@ -314,7 +328,7 @@ let state = {
   hp:100, shield:100, coins:0,
   planetIdx:0, wave:1, phase:1,
   lives:3, planetStartWave:1,
-  enemies:[], bullets:[], particles:[],
+  enemies:[], bullets:[], enemyBullets:[], particles:[],
   weaponIdx:0,
   weapons: WEAPONS.map(w=>({...w})),
   lastShot:0, reloading:false, reloadStart:0,
@@ -963,50 +977,208 @@ buildWeaponModel();
 
 // ---------- ENEMY SPAWN ----------
 const ENEMY_TYPES = [
-  { type:'small',  hp:30,  speed:3,   scale:0.5, color:0x00b894, reward:10,  dmg:5  },
-  { type:'medium', hp:70,  speed:2,   scale:0.9, color:0xfdcb6e, reward:20,  dmg:10 },
-  { type:'large',  hp:140, speed:1.5, scale:1.4, color:0xe17055, reward:30,  dmg:15 },
-  { type:'special',hp:200, speed:2.5, scale:1.1, color:0xd63031, reward:100, dmg:20 },
+  { type:'small',  hp:30,  speed:3.5, scale:0.5, color:0x00b894, reward:10,  dmg:8  },
+  { type:'medium', hp:70,  speed:2.5, scale:0.9, color:0xfdcb6e, reward:20,  dmg:14 },
+  { type:'large',  hp:140, speed:1.8, scale:1.4, color:0xe17055, reward:30,  dmg:22 },
+  { type:'special',hp:220, speed:3,   scale:1.1, color:0xd63031, reward:100, dmg:30 },
 ];
 
+// Alien variant builders — each returns a Group with a different look
+const ALIEN_BUILDERS = [
+  // 0: Worm + Octopus (original)
+  function(td){
+    const g = new THREE.Group();
+    const bg = THREE.CapsuleGeometry
+      ? new THREE.CapsuleGeometry(td.scale*0.4, td.scale*0.6, 4, 8)
+      : new THREE.SphereGeometry(td.scale*0.5, 8, 8);
+    const body = new THREE.Mesh(bg, new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.3, shininess:60}));
+    g.add(body);
+    for(let i=0;i<6;i++){
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.04*td.scale, 0.01*td.scale, td.scale*0.8, 4),
+        new THREE.MeshLambertMaterial({color: new THREE.Color(td.color).multiplyScalar(0.7)}));
+      const a = (i/6)*Math.PI*2;
+      t.position.set(Math.cos(a)*td.scale*0.35, -td.scale*0.5, Math.sin(a)*td.scale*0.35);
+      t.rotation.z = Math.cos(a)*0.4; t.rotation.x = Math.sin(a)*0.4;
+      g.add(t);
+    }
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.12, 6, 6),
+      new THREE.MeshLambertMaterial({color:0xff0000, emissive:0xff0000, emissiveIntensity:1}));
+    eye.position.set(0, td.scale*0.3, td.scale*0.4);
+    g.add(eye);
+    return g;
+  },
+  // 1: Floating Jellyfish (flies!)
+  function(td){
+    const g = new THREE.Group();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.6, 12, 8, 0, Math.PI*2, 0, Math.PI/2),
+      new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.5, transparent:true, opacity:0.7}));
+    g.add(dome);
+    for(let i=0;i<8;i++){
+      const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.01, td.scale*1.2, 4),
+        new THREE.MeshLambertMaterial({color: new THREE.Color(td.color).multiplyScalar(0.6)}));
+      const a = (i/8)*Math.PI*2;
+      tent.position.set(Math.cos(a)*td.scale*0.45, -td.scale*0.6, Math.sin(a)*td.scale*0.45);
+      g.add(tent);
+    }
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.1, 8, 8),
+      new THREE.MeshBasicMaterial({color:0xffff00}));
+    eye.position.y = td.scale*0.2;
+    g.add(eye);
+    return g;
+  },
+  // 2: Spider with legs
+  function(td){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.5, 10, 10),
+      new THREE.MeshPhongMaterial({color:0x222222, emissive:td.color, emissiveIntensity:0.3}));
+    body.scale.set(1, 0.7, 1.3);
+    g.add(body);
+    for(let i=0;i<8;i++){
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, td.scale*0.9, 4),
+        new THREE.MeshLambertMaterial({color: new THREE.Color(td.color).multiplyScalar(0.5)}));
+      const a = (i/8)*Math.PI*2;
+      leg.position.set(Math.cos(a)*td.scale*0.45, -td.scale*0.2, Math.sin(a)*td.scale*0.45);
+      leg.rotation.z = Math.cos(a)*1.0; leg.rotation.x = Math.sin(a)*1.0;
+      g.add(leg);
+    }
+    for(let i=-1;i<=1;i+=2){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.08, 6, 6),
+        new THREE.MeshBasicMaterial({color:0xff0000}));
+      eye.position.set(i*td.scale*0.15, td.scale*0.15, td.scale*0.4);
+      g.add(eye);
+    }
+    return g;
+  },
+  // 3: Crystalline shards (flies)
+  function(td){
+    const g = new THREE.Group();
+    for(let i=0;i<5;i++){
+      const sh = new THREE.Mesh(new THREE.OctahedronGeometry(td.scale*0.3),
+        new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.6, transparent:true, opacity:0.85}));
+      const a = (i/5)*Math.PI*2;
+      sh.position.set(Math.cos(a)*td.scale*0.3, Math.sin(i)*0.2, Math.sin(a)*td.scale*0.3);
+      sh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      g.add(sh);
+    }
+    const core = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.2, 8, 8),
+      new THREE.MeshBasicMaterial({color:0xffffff}));
+    g.add(core);
+    return g;
+  },
+  // 4: Robot drone (flies)
+  function(td){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(td.scale*0.6, td.scale*0.4, td.scale*0.6),
+      new THREE.MeshPhongMaterial({color:0x888899, shininess:80}));
+    g.add(body);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.15, 8, 8),
+      new THREE.MeshBasicMaterial({color:0xff0000}));
+    eye.position.set(0, 0, td.scale*0.3);
+    g.add(eye);
+    // Propellers (4 corners)
+    for(let i=0;i<4;i++){
+      const a = (i/4)*Math.PI*2;
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(td.scale*0.5, 0.05, 0.05),
+        new THREE.MeshPhongMaterial({color:0x444455}));
+      arm.position.set(Math.cos(a)*td.scale*0.4, td.scale*0.2, Math.sin(a)*td.scale*0.4);
+      arm.rotation.y = a;
+      g.add(arm);
+    }
+    return g;
+  },
+  // 5: Ghost (flies, semi-transparent)
+  function(td){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.5, 12, 12),
+      new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.5, transparent:true, opacity:0.5}));
+    body.scale.y = 1.3;
+    g.add(body);
+    // Wisps below
+    for(let i=0;i<5;i++){
+      const w = new THREE.Mesh(new THREE.ConeGeometry(td.scale*0.1, td.scale*0.4, 4),
+        new THREE.MeshPhongMaterial({color:td.color, transparent:true, opacity:0.4}));
+      w.position.set((i-2)*td.scale*0.15, -td.scale*0.6, 0);
+      w.rotation.x = Math.PI;
+      g.add(w);
+    }
+    for(let i=-1;i<=1;i+=2){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.06, 6, 6),
+        new THREE.MeshBasicMaterial({color:0xffffff}));
+      eye.position.set(i*td.scale*0.15, td.scale*0.1, td.scale*0.35);
+      g.add(eye);
+    }
+    return g;
+  },
+  // 6: Insect swarm with wings
+  function(td){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.4, 10, 10),
+      new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.3}));
+    body.scale.set(1, 0.6, 1.6);
+    g.add(body);
+    // Wings
+    for(let i=-1;i<=1;i+=2){
+      const wing = new THREE.Mesh(new THREE.PlaneGeometry(td.scale*0.7, td.scale*0.4),
+        new THREE.MeshPhongMaterial({color:0xffffff, transparent:true, opacity:0.4, side:THREE.DoubleSide}));
+      wing.position.set(i*td.scale*0.4, td.scale*0.1, 0);
+      wing.rotation.z = i*0.3;
+      g.add(wing);
+      const w2 = wing.clone(); w2.position.z = -td.scale*0.2; w2.scale.set(0.7,0.7,0.7);
+      g.add(w2);
+    }
+    // Stinger
+    const stinger = new THREE.Mesh(new THREE.ConeGeometry(td.scale*0.08, td.scale*0.3, 6),
+      new THREE.MeshBasicMaterial({color:0x000000}));
+    stinger.position.set(0, 0, -td.scale*0.5);
+    stinger.rotation.x = -Math.PI/2;
+    g.add(stinger);
+    return g;
+  },
+  // 7: Multi-eyed blob
+  function(td){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.6, 10, 10),
+      new THREE.MeshPhongMaterial({color:td.color, emissive:td.color, emissiveIntensity:0.4}));
+    g.add(body);
+    for(let i=0;i<7;i++){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.12, 8, 8),
+        new THREE.MeshBasicMaterial({color:0xffff00}));
+      const a = (i/7)*Math.PI*2;
+      eye.position.set(Math.cos(a)*td.scale*0.55, Math.sin(i*1.7)*td.scale*0.3, Math.sin(a)*td.scale*0.55);
+      g.add(eye);
+      const pup = new THREE.Mesh(new THREE.SphereGeometry(td.scale*0.05, 4, 4),
+        new THREE.MeshBasicMaterial({color:0x000000}));
+      pup.position.copy(eye.position).multiplyScalar(1.1);
+      g.add(pup);
+    }
+    return g;
+  },
+];
+
+// Which alien variants fly per builder index
+const ALIEN_FLIES = [false, true, false, true, true, true, true, false];
+
 function makeAlien(type, pos) {
-  const td = ENEMY_TYPES[type];
-  // Body: elongated (minhoca+polvo)
-  const group = new THREE.Group();
-  // body
-  const bg = THREE.CapsuleGeometry
-    ? new THREE.CapsuleGeometry(td.scale*0.4, td.scale*0.6, 4, 8)
-    : new THREE.SphereGeometry(td.scale*0.5, 8, 8);
-  const bm = new THREE.MeshPhongMaterial({
-    color: td.color,
-    emissive: td.color,
-    emissiveIntensity: 0.2,
-    shininess: 60
-  });
-  const body = new THREE.Mesh(bg, bm);
-  body.castShadow = true;
-  group.add(body);
-  // tentacles
-  for(let i=0;i<6;i++){
-    const tg = new THREE.CylinderGeometry(0.04*td.scale, 0.01*td.scale, td.scale*0.8, 4);
-    const tm = new THREE.MeshLambertMaterial({ color: new THREE.Color(td.color).multiplyScalar(0.7) });
-    const tent = new THREE.Mesh(tg, tm);
-    const a = (i/6)*Math.PI*2;
-    tent.position.set(Math.cos(a)*td.scale*0.35, -td.scale*0.5, Math.sin(a)*td.scale*0.35);
-    tent.rotation.z = Math.cos(a)*0.4;
-    tent.rotation.x = Math.sin(a)*0.4;
-    group.add(tent);
-  }
-  // eye
-  const eg = new THREE.SphereGeometry(td.scale*0.12, 6, 6);
-  const em = new THREE.MeshLambertMaterial({ color:0xff0000, emissive:0xff0000, emissiveIntensity:0.8 });
-  const eye = new THREE.Mesh(eg, em);
-  eye.position.set(0, td.scale*0.3, td.scale*0.4);
-  group.add(eye);
+  const td = {...ENEMY_TYPES[type]};
+  // Scale HP by wave + planet
+  const hpMult = 1 + state.wave * 0.18 + state.planetIdx * 0.35;
+  td.hp = Math.floor(td.hp * hpMult);
+  td.dmg = Math.floor(td.dmg * (1 + state.planetIdx * 0.15));
+  td.speed = td.speed * (1 + state.planetIdx * 0.04);
+
+  const builderIdx = state.planetIdx % ALIEN_BUILDERS.length;
+  const group = ALIEN_BUILDERS[builderIdx](td);
+  group.castShadow = true;
+
+  const flies = ALIEN_FLIES[builderIdx];
+  const baseY = flies ? 2 + Math.random()*2.5 : td.scale*0.6;
 
   group.position.copy(pos);
-  group.position.y = td.scale*0.6;
+  group.position.y = baseY;
   scene.add(group);
+
+  // Some aliens can shoot — small/medium can sometimes, large/special always after planet 1
+  const canShoot = (state.planetIdx >= 1 && Math.random() < 0.4) || type >= 2 || flies;
 
   return {
     mesh: group,
@@ -1017,57 +1189,80 @@ function makeAlien(type, pos) {
     dmg: td.dmg,
     scale: td.scale,
     dead: false,
-    attackCooldown: 0,
+    attackCooldown: Math.random()*2,
+    shootCooldown: 1 + Math.random()*2,
     isBoss: false,
+    flying: flies,
+    baseY: baseY,
+    canShoot: canShoot,
     wobble: Math.random()*Math.PI*2,
+    builderIdx: builderIdx,
   };
 }
 
+// Boss power types
+const BOSS_POWERS = ['minions','teleport','barrage','shockwave','rapidfire','heal','split','homing'];
+
 function makeBoss(planetIdx) {
   const col = PLANET_COLORS[planetIdx % PLANET_COLORS.length];
+  const powerIdx = planetIdx % BOSS_POWERS.length;
+  const power = BOSS_POWERS[powerIdx];
   const group = new THREE.Group();
-  // Large body
-  const bg = new THREE.SphereGeometry(2, 12, 12);
-  const bm = new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.3 });
+
+  // Big floating body
+  const bg = new THREE.SphereGeometry(2.2, 16, 16);
+  const bm = new THREE.MeshPhongMaterial({ color: col, emissive: col, emissiveIntensity: 0.5, shininess:80 });
   const body = new THREE.Mesh(bg, bm);
   body.castShadow = true;
   group.add(body);
-  // Many tentacles
-  for(let i=0;i<10;i++){
-    const tg = new THREE.CylinderGeometry(0.15, 0.03, 3, 5);
-    const tm = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.6) });
-    const tent = new THREE.Mesh(tg, tm);
-    const a = (i/10)*Math.PI*2;
-    tent.position.set(Math.cos(a)*1.8, -1.5, Math.sin(a)*1.8);
-    tent.rotation.z = Math.cos(a)*0.5;
-    tent.rotation.x = Math.sin(a)*0.5;
+
+  // Tentacles
+  for(let i=0;i<12;i++){
+    const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.04, 3.5, 6),
+      new THREE.MeshPhongMaterial({color: new THREE.Color(col).multiplyScalar(0.6), emissive: col, emissiveIntensity:0.2}));
+    const a = (i/12)*Math.PI*2;
+    tent.position.set(Math.cos(a)*1.9, -1.5, Math.sin(a)*1.9);
+    tent.rotation.z = Math.cos(a)*0.5; tent.rotation.x = Math.sin(a)*0.5;
     group.add(tent);
   }
-  // glowing eyes
+  // Eyes
   for(let i=-1;i<=1;i+=2){
-    const eg = new THREE.SphereGeometry(0.3, 8, 8);
-    const em = new THREE.MeshLambertMaterial({ color:0xff0000, emissive:0xff3300, emissiveIntensity:1 });
-    const eye = new THREE.Mesh(eg, em);
-    eye.position.set(i*0.7, 0.5, 1.8);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10),
+      new THREE.MeshBasicMaterial({color:0xff0000}));
+    eye.position.set(i*0.8, 0.6, 1.9);
     group.add(eye);
   }
+  // Crown (visual indicator of power)
+  const crown = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.2, 8, 16),
+    new THREE.MeshBasicMaterial({color: 0xffeb3b}));
+  crown.position.y = 2.3; crown.rotation.x = Math.PI/2;
+  group.add(crown);
 
   const angle = Math.random()*Math.PI*2;
-  group.position.set(Math.cos(angle)*20, 2.5, Math.sin(angle)*20);
+  // Bosses always FLY high
+  group.position.set(Math.cos(angle)*18, 5, Math.sin(angle)*18);
   scene.add(group);
 
+  const hpScale = 1 + planetIdx * 0.5;
   return {
     mesh: group,
-    hp: 800, maxHp: 800,
-    speed: 1.2,
+    hp: Math.floor(800 * hpScale), maxHp: Math.floor(800 * hpScale),
+    speed: 2.2 + planetIdx * 0.1,
     type: 3,
-    reward: 500,
-    dmg: 30,
-    scale: 2,
+    reward: 500 + planetIdx*100,
+    dmg: 34, // kills player in 3 hits (100hp / 34 = ~3)
+    scale: 2.2,
     dead: false,
     attackCooldown: 0,
+    powerCooldown: 3 + Math.random()*2,
+    shootCooldown: 1,
     isBoss: true,
+    flying: true,
+    baseY: 5,
+    canShoot: true,
     wobble: 0,
+    power: power,
+    powerIdx: powerIdx,
   };
 }
 
@@ -1075,6 +1270,8 @@ function spawnWave() {
   // clear old
   state.enemies.forEach(e=>{ if(!e.dead) scene.remove(e.mesh); });
   state.enemies = [];
+  state.enemyBullets.forEach(b=>scene.remove(b.mesh));
+  state.enemyBullets = [];
   state.bossAlive = false;
   state.bossEnemy = null;
   document.getElementById('boss-bar').style.display='none';
@@ -1093,8 +1290,8 @@ function spawnWave() {
     state.waveEnemies = 1;
     document.getElementById('boss-bar').style.display='block';
   } else {
-    // Normal wave: scale enemies with wave
-    const count = 5 + state.wave*2 + state.planetIdx*2;
+    // Normal wave: scale enemies with wave (harder)
+    const count = 6 + state.wave*3 + state.planetIdx*3;
     state.waveEnemies = count;
     for(let i=0;i<count;i++){
       const angle = Math.random()*Math.PI*2;
@@ -1151,8 +1348,35 @@ function shoot() {
   if(hitEnemy) {
     hitEnemy.hp -= w.damage;
     spawnHitParticles(hitEnemy.mesh.position.clone());
+    // AoE explosion damage to nearby enemies
+    if(w.aoe > 0) {
+      const center = hitEnemy.mesh.position.clone();
+      spawnExplosion(center, w.aoe, w.color);
+      state.enemies.forEach(e2=>{
+        if(e2.dead || e2 === hitEnemy) return;
+        const d2 = center.distanceTo(e2.mesh.position);
+        if(d2 < w.aoe) {
+          const falloff = 1 - d2/w.aoe;
+          e2.hp -= w.damage * 0.7 * falloff;
+          if(e2.hp <= 0) killEnemy(e2);
+        }
+      });
+    }
     if(hitEnemy.hp <= 0) killEnemy(hitEnemy);
     updateBossBar();
+  } else if(w.aoe > 0) {
+    // AoE weapon missed direct hit but still explodes at max range
+    const explodePos = camera.position.clone().add(dir.clone().multiplyScalar(30));
+    explodePos.y = Math.max(0.5, explodePos.y);
+    spawnExplosion(explodePos, w.aoe, w.color);
+    state.enemies.forEach(e2=>{
+      if(e2.dead) return;
+      const d2 = explodePos.distanceTo(e2.mesh.position);
+      if(d2 < w.aoe) {
+        e2.hp -= w.damage * 0.6 * (1 - d2/w.aoe);
+        if(e2.hp <= 0) killEnemy(e2);
+      }
+    });
   }
 
   // Muzzle flash
@@ -1215,6 +1439,52 @@ function killEnemy(e) {
 }
 
 // ---------- PARTICLES ----------
+function spawnExplosion(pos, radius, color) {
+  // Big colored flash
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 12, 12),
+    new THREE.MeshBasicMaterial({color: color || 0xff6600, transparent:true, opacity:0.9})
+  );
+  flash.position.copy(pos);
+  scene.add(flash);
+  state.particles.push({ mesh:flash, vel:new THREE.Vector3(0,0,0), life:0.5, maxLife:0.5, expand:true, expandTo: radius*2 });
+  // Debris
+  const n = 30 + Math.floor(radius*3);
+  for(let i=0;i<n;i++){
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4),
+      new THREE.MeshBasicMaterial({color: Math.random()>0.5?0xff6600:0xffeb3b, transparent:true, opacity:1}));
+    p.position.copy(pos);
+    scene.add(p);
+    const vel = new THREE.Vector3((Math.random()-0.5)*radius*5, Math.random()*radius*3, (Math.random()-0.5)*radius*5);
+    state.particles.push({ mesh:p, vel, life:0.8, maxLife:0.8 });
+  }
+  // Audio
+  try {
+    const ctx = getAudio();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(30, t+0.4);
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t+0.5);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t+0.5);
+  } catch(e){}
+}
+
+function spawnEnemyBullet(from, target, color, dmg, speed) {
+  const dir = new THREE.Vector3().subVectors(target, from).normalize();
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 6, 6),
+    new THREE.MeshBasicMaterial({color: color || 0xff00ff})
+  );
+  mesh.position.copy(from);
+  scene.add(mesh);
+  state.enemyBullets.push({ mesh, dir, speed: speed||15, dmg: dmg||10, dist:0, maxDist:60 });
+}
+
 function spawnHitParticles(pos) {
   for(let i=0;i<10;i++){
     const pg = new THREE.SphereGeometry(0.05,4,4);
@@ -1438,6 +1708,16 @@ document.addEventListener('keydown', e=>{
   if(e.code==='Digit4') switchWeapon(3);
   if(e.code==='Digit5') switchWeapon(4);
   if(e.code==='Digit6') switchWeapon(5);
+  if(e.code==='Digit7') switchWeapon(6);
+  if(e.code==='Digit8') switchWeapon(7);
+  if(e.code==='Digit9') switchWeapon(8);
+  if(e.code==='KeyQ') { // cycle weapons
+    let i = state.weaponIdx;
+    for(let n=0;n<state.weapons.length;n++){
+      i = (i+1) % state.weapons.length;
+      if(state.weapons[i].owned){ switchWeapon(i); break; }
+    }
+  }
 });
 document.addEventListener('keyup', e=>{ keys[e.code]=false; });
 
@@ -1547,28 +1827,150 @@ function animate() {
   state.enemies.forEach(e=>{
     if(e.dead) return;
     const toPlayer = new THREE.Vector3().subVectors(camera.position, e.mesh.position);
-    toPlayer.y=0;
-    const dist = toPlayer.length();
-    toPlayer.normalize();
+    const dist3D = toPlayer.length();
+    const flat = toPlayer.clone(); flat.y=0;
+    const distFlat = flat.length();
+    flat.normalize();
 
-    // Move toward player
-    if(dist > 1.5) {
-      e.mesh.position.addScaledVector(toPlayer, e.speed * delta);
-    } else {
-      // Attack
+    e.wobble += delta*3;
+
+    // BOSS unique powers
+    if(e.isBoss) {
+      e.powerCooldown -= delta;
+      // Hover and circle player
+      const targetDist = 12 + Math.sin(e.wobble*0.5)*4;
+      if(distFlat > targetDist+2) {
+        e.mesh.position.addScaledVector(flat, e.speed*delta);
+      } else if(distFlat < targetDist-2) {
+        e.mesh.position.addScaledVector(flat, -e.speed*delta);
+      } else {
+        // Strafe sideways
+        const side = new THREE.Vector3(-flat.z, 0, flat.x);
+        e.mesh.position.addScaledVector(side, e.speed*0.7*delta);
+      }
+      e.mesh.position.y = e.baseY + Math.sin(e.wobble)*1.5;
+
+      // Boss power activation
+      if(e.powerCooldown <= 0) {
+        e.powerCooldown = 4 + Math.random()*2;
+        const p = e.power;
+        if(p==='minions') {
+          // Spawn 3 small minions
+          for(let i=0;i<3;i++){
+            const off = new THREE.Vector3((Math.random()-0.5)*4, 0, (Math.random()-0.5)*4);
+            const m = makeAlien(0, e.mesh.position.clone().add(off));
+            m.mesh.position.y = 0.5;
+            state.enemies.push(m);
+          }
+          showMsg('🌀 O CHEFE INVOCOU MINIONS!', 1500);
+        } else if(p==='teleport') {
+          const a = Math.random()*Math.PI*2;
+          const d2 = 10+Math.random()*10;
+          spawnExplosion(e.mesh.position.clone(), 2, 0x6c5ce7);
+          e.mesh.position.x = camera.position.x + Math.cos(a)*d2;
+          e.mesh.position.z = camera.position.z + Math.sin(a)*d2;
+          spawnExplosion(e.mesh.position.clone(), 2, 0x6c5ce7);
+        } else if(p==='barrage') {
+          // 8-direction bullets
+          for(let i=0;i<8;i++){
+            const ang = (i/8)*Math.PI*2;
+            const tgt = e.mesh.position.clone().add(new THREE.Vector3(Math.cos(ang)*10, 0, Math.sin(ang)*10));
+            spawnEnemyBullet(e.mesh.position.clone(), tgt, 0xff0099, 20, 18);
+          }
+        } else if(p==='shockwave') {
+          spawnExplosion(e.mesh.position.clone(), 8, 0xffaa00);
+          if(distFlat < 12) playerTakeDamage(25);
+          showMsg('💥 ONDA DE CHOQUE!', 1200);
+        } else if(p==='rapidfire') {
+          for(let i=0;i<5;i++){
+            setTimeout(()=>{
+              if(e.dead) return;
+              spawnEnemyBullet(e.mesh.position.clone(), camera.position.clone(), 0xff0000, 15, 30);
+            }, i*100);
+          }
+        } else if(p==='heal') {
+          e.hp = Math.min(e.maxHp, e.hp + e.maxHp*0.15);
+          spawnExplosion(e.mesh.position.clone(), 3, 0x00ff00);
+          showMsg('💚 O CHEFE SE CUROU!', 1500);
+        } else if(p==='split') {
+          // Spawn a copy with less HP
+          const copy = makeAlien(3, e.mesh.position.clone().add(new THREE.Vector3(3,0,0)));
+          copy.hp = e.hp * 0.3;
+          copy.maxHp = copy.hp;
+          state.enemies.push(copy);
+        } else if(p==='homing') {
+          // 3 homing missiles
+          for(let i=0;i<3;i++){
+            const offset = new THREE.Vector3((i-1)*2, 0.5, 0);
+            const tgt = camera.position.clone();
+            spawnEnemyBullet(e.mesh.position.clone().add(offset), tgt, 0xff3300, 30, 14);
+          }
+        }
+      }
+
+      // Normal boss shooting
+      e.shootCooldown -= delta;
+      if(e.shootCooldown <= 0 && distFlat < 35) {
+        e.shootCooldown = 1.0;
+        spawnEnemyBullet(
+          e.mesh.position.clone(),
+          camera.position.clone(),
+          0xff00ff, 20, 22
+        );
+      }
+      e.mesh.rotation.y += delta*0.5;
+      updateBossBar();
+      return;
+    }
+
+    // Regular enemies — flying or walking
+    const targetY = e.flying ? e.baseY + Math.sin(e.wobble*1.5)*0.4 : e.scale*0.6 + Math.sin(e.wobble*1.5)*0.08;
+    const minRange = e.canShoot ? 6 : 1.5;
+
+    if(distFlat > minRange) {
+      e.mesh.position.addScaledVector(flat, e.speed * delta);
+    } else if(!e.canShoot) {
+      // Melee attack
       e.attackCooldown -= delta;
       if(e.attackCooldown <= 0) {
         playerTakeDamage(e.dmg);
-        e.attackCooldown = 1.5;
+        e.attackCooldown = 1.3;
       }
     }
-    // Wobble animation
-    e.wobble += delta*3;
-    e.mesh.rotation.y = Math.sin(e.wobble)*0.3;
-    e.mesh.position.y = e.scale*0.6 + Math.sin(e.wobble*1.5)*0.1;
+    e.mesh.position.y = targetY;
 
-    // Face player
+    // Shooting enemies
+    if(e.canShoot) {
+      e.shootCooldown -= delta;
+      if(e.shootCooldown <= 0 && distFlat < 30) {
+        e.shootCooldown = 1.5 + Math.random()*1.5;
+        spawnEnemyBullet(
+          e.mesh.position.clone(),
+          camera.position.clone(),
+          0xff5500,
+          Math.floor(e.dmg*0.6),
+          18
+        );
+      }
+    }
+
+    e.mesh.rotation.y = Math.sin(e.wobble)*0.3;
     e.mesh.lookAt(camera.position.x, e.mesh.position.y, camera.position.z);
+  });
+
+  // Update enemy bullets
+  state.enemyBullets = state.enemyBullets.filter(b=>{
+    b.mesh.position.addScaledVector(b.dir, b.speed*delta);
+    b.dist += b.speed*delta;
+    // Hit player
+    const d = b.mesh.position.distanceTo(camera.position);
+    if(d < 0.8) {
+      playerTakeDamage(b.dmg);
+      scene.remove(b.mesh);
+      return false;
+    }
+    if(b.dist > b.maxDist){ scene.remove(b.mesh); return false; }
+    return true;
   });
 
   // Update bullets
@@ -1583,7 +1985,8 @@ function animate() {
   state.particles = state.particles.filter(p=>{
     p.life -= delta;
     if(p.expand) {
-      p.mesh.scale.setScalar(1 + (1 - p.life/p.maxLife)*3);
+      const f = 1 - p.life/p.maxLife;
+      p.mesh.scale.setScalar(1 + f * (p.expandTo||3));
     } else {
       p.vel.y -= 9.8*delta;
       p.mesh.position.addScaledVector(p.vel, delta);
