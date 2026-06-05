@@ -294,33 +294,39 @@ const PLANET_COLORS = [
   0xa29bfe,0xff7675,0x74b9ff,0xfab1a0,0x81ecec,0xdfe6e9,0xfd79a8,0x636e72,0xb2bec3,0x2d3436,
 ];
 
+// Mags maiores. reserve = munição extra a comprar.
 const WEAPONS = [
-  { id:'pistol',    name:'PISTOLA',         damage:15,  rate:500,  ammo:12, maxAmmo:12, price:0,     owned:true,  color:0xb2bec3, aoe:0 },
-  { id:'ak47',      name:'AK-47',           damage:25,  rate:130,  ammo:30, maxAmmo:30, price:500,   owned:false, color:0x636e72, aoe:0 },
-  { id:'sniper',    name:'SNIPER',          damage:80,  rate:1400, ammo:5,  maxAmmo:5,  price:800,   owned:false, color:0x0984e3, aoe:0 },
-  { id:'shotgun',   name:'ESCOPETA',        damage:60,  rate:700,  ammo:8,  maxAmmo:8,  price:600,   owned:false, color:0xe17055, aoe:0 },
-  { id:'smg',       name:'SMG',             damage:18,  rate:90,   ammo:40, maxAmmo:40, price:700,   owned:false, color:0x00cec9, aoe:0 },
-  { id:'bazooka',   name:'BAZUCA',          damage:180, rate:2500, ammo:3,  maxAmmo:3,  price:2000,  owned:false, color:0xd63031, aoe:6 },
-  { id:'laser',     name:'RIFLE LASER',     damage:35,  rate:200,  ammo:50, maxAmmo:50, price:3000,  owned:false, color:0xff0099, aoe:0 },
-  { id:'plasma',    name:'CANHÃO PLASMA',   damage:90,  rate:600,  ammo:20, maxAmmo:20, price:4500,  owned:false, color:0x00ff99, aoe:2 },
-  { id:'railgun',   name:'RAILGUN',         damage:250, rate:2000, ammo:4,  maxAmmo:4,  price:6000,  owned:false, color:0xffeb3b, aoe:0 },
-  { id:'minigun',   name:'MINIGUN',         damage:22,  rate:50,   ammo:200,maxAmmo:200,price:7500,  owned:false, color:0x444444, aoe:0 },
-  { id:'flame',     name:'LANÇA-CHAMAS',    damage:12,  rate:60,   ammo:150,maxAmmo:150,price:5000,  owned:false, color:0xff5500, aoe:1.5 },
-  { id:'ice',       name:'CANHÃO DE GELO',  damage:45,  rate:300,  ammo:30, maxAmmo:30, price:5500,  owned:false, color:0x66ccff, aoe:1 },
-  { id:'lightning', name:'ARMA DE RAIO',    damage:100, rate:400,  ammo:20, maxAmmo:20, price:8500,  owned:false, color:0xffff00, aoe:3 },
-  { id:'gauss',     name:'RIFLE GAUSS',     damage:400, rate:2500, ammo:3,  maxAmmo:3,  price:11000, owned:false, color:0x9966ff, aoe:0 },
-  { id:'grenade',   name:'LANÇA-GRANADAS',  damage:150, rate:1200, ammo:6,  maxAmmo:6,  price:9000,  owned:false, color:0x556b2f, aoe:5 },
-  { id:'gravity',   name:'CANHÃO GRAVID.',  damage:120, rate:800,  ammo:15, maxAmmo:15, price:13000, owned:false, color:0x6c5ce7, aoe:4 },
-  { id:'blackhole', name:'BURACO NEGRO',    damage:300, rate:4000, ammo:2,  maxAmmo:2,  price:18000, owned:false, color:0x111122, aoe:8 },
-  { id:'nuke',      name:'LANÇA NUKE',      damage:800, rate:6000, ammo:1,  maxAmmo:1,  price:25000, owned:false, color:0xff3300, aoe:15 },
-  { id:'dual',      name:'PISTOLAS DUPLAS', damage:30,  rate:80,   ammo:24, maxAmmo:24, price:3500,  owned:false, color:0xffcc00, aoe:0 },
-  { id:'voidcannon',name:'CANHÃO DO VAZIO', damage:1500,rate:8000, ammo:1,  maxAmmo:1,  price:50000, owned:false, color:0xff00ff, aoe:20 },
+  { id:'pistol',    name:'PISTOLA',         damage:15,  rate:500,  maxAmmo:24,  reserve:60,  price:0,     owned:true,  color:0xb2bec3, aoe:0 },
+  { id:'ak47',      name:'AK-47',           damage:25,  rate:130,  maxAmmo:60,  reserve:120, price:500,   owned:false, color:0x636e72, aoe:0 },
+  { id:'sniper',    name:'SNIPER',          damage:80,  rate:1400, maxAmmo:10,  reserve:30,  price:800,   owned:false, color:0x0984e3, aoe:0 },
+  { id:'shotgun',   name:'ESCOPETA',        damage:60,  rate:700,  maxAmmo:16,  reserve:48,  price:600,   owned:false, color:0xe17055, aoe:0 },
+  { id:'smg',       name:'SMG',             damage:18,  rate:90,   maxAmmo:80,  reserve:160, price:700,   owned:false, color:0x00cec9, aoe:0 },
+  { id:'bazooka',   name:'BAZUCA',          damage:180, rate:2500, maxAmmo:6,   reserve:18,  price:2000,  owned:false, color:0xd63031, aoe:6 },
+  { id:'laser',     name:'RIFLE LASER',     damage:35,  rate:200,  maxAmmo:100, reserve:200, price:3000,  owned:false, color:0xff0099, aoe:0 },
+  { id:'plasma',    name:'CANHÃO PLASMA',   damage:90,  rate:600,  maxAmmo:40,  reserve:80,  price:4500,  owned:false, color:0x00ff99, aoe:2 },
+  { id:'railgun',   name:'RAILGUN',         damage:250, rate:2000, maxAmmo:8,   reserve:24,  price:6000,  owned:false, color:0xffeb3b, aoe:0 },
+  { id:'minigun',   name:'MINIGUN',         damage:22,  rate:50,   maxAmmo:400, reserve:800, price:7500,  owned:false, color:0x444444, aoe:0 },
+  { id:'flame',     name:'LANÇA-CHAMAS',    damage:12,  rate:60,   maxAmmo:300, reserve:600, price:5000,  owned:false, color:0xff5500, aoe:1.5 },
+  { id:'ice',       name:'CANHÃO DE GELO',  damage:45,  rate:300,  maxAmmo:60,  reserve:120, price:5500,  owned:false, color:0x66ccff, aoe:1 },
+  { id:'lightning', name:'ARMA DE RAIO',    damage:100, rate:400,  maxAmmo:40,  reserve:80,  price:8500,  owned:false, color:0xffff00, aoe:3 },
+  { id:'gauss',     name:'RIFLE GAUSS',     damage:400, rate:2500, maxAmmo:6,   reserve:18,  price:11000, owned:false, color:0x9966ff, aoe:0 },
+  { id:'grenade',   name:'LANÇA-GRANADAS',  damage:150, rate:1200, maxAmmo:12,  reserve:36,  price:9000,  owned:false, color:0x556b2f, aoe:5 },
+  { id:'gravity',   name:'CANHÃO GRAVID.',  damage:120, rate:800,  maxAmmo:30,  reserve:60,  price:13000, owned:false, color:0x6c5ce7, aoe:4 },
+  { id:'blackhole', name:'BURACO NEGRO',    damage:300, rate:4000, maxAmmo:4,   reserve:12,  price:18000, owned:false, color:0x111122, aoe:8 },
+  { id:'nuke',      name:'LANÇA NUKE',      damage:800, rate:6000, maxAmmo:2,   reserve:6,   price:25000, owned:false, color:0xff3300, aoe:15 },
+  { id:'dual',      name:'PISTOLAS DUPLAS', damage:30,  rate:80,   maxAmmo:48,  reserve:96,  price:3500,  owned:false, color:0xffcc00, aoe:0 },
+  { id:'voidcannon',name:'CANHÃO DO VAZIO', damage:1500,rate:8000, maxAmmo:2,   reserve:6,   price:50000, owned:false, color:0xff00ff, aoe:20 },
 ];
+// Init ammo (current in mag)
+WEAPONS.forEach(w=>{ w.ammo = w.maxAmmo; });
 
 const SHOP_ITEMS = [
-  { id:'kit_hp',    name:'Kit de Cura',   desc:'Restaura 10% de vida',   price:10,  type:'consumable' },
-  { id:'kit_sh',    name:'Kit de Escudo', desc:'Restaura 10% de escudo', price:10,  type:'consumable' },
-  ...WEAPONS.slice(1).map(w=>({id:w.id, name:w.name, desc:`Dano:${w.damage} | Cadência:${Math.round(60000/w.rate)}rpm`, price:w.price, type:'weapon'})),
+  { id:'kit_hp',    name:'Kit de Cura',     desc:'Restaura 10% de vida',          price:10,  type:'consumable' },
+  { id:'kit_sh',    name:'Kit de Escudo',   desc:'Restaura 10% de escudo',        price:10,  type:'consumable' },
+  { id:'ammo_10',   name:'Munição x10',     desc:'10 munições da arma atual',     price:5,   type:'ammo' },
+  { id:'ammo_50',   name:'Munição x50',     desc:'50 munições (desconto!)',       price:20,  type:'ammo', amount:50 },
+  { id:'ammo_100',  name:'Munição x100',    desc:'100 munições (super desconto)', price:35,  type:'ammo', amount:100 },
+  ...WEAPONS.slice(1).map(w=>({id:w.id, name:w.name, desc:`Dano:${w.damage} | Pente:${w.maxAmmo} | Cadência:${Math.round(60000/w.rate)}rpm`, price:w.price, type:'weapon'})),
 ];
 
 // ---------- STATE ----------
@@ -501,12 +507,81 @@ function makeWindowMat(baseCol, lit) {
   });
 }
 
+function addAmbientDecorations(col) {
+  // Common items added to all themes
+  // Floating debris/asteroids
+  for(let i=0;i<25;i++){
+    const r = 0.3+srand()*0.8;
+    const a = new THREE.Mesh(new THREE.DodecahedronGeometry(r),
+      new THREE.MeshPhongMaterial({color: new THREE.Color(col).multiplyScalar(0.4+srand()*0.5)}));
+    a.position.y = 8+srand()*20;
+    const angle = srand()*Math.PI*2;
+    const dist  = 15+srand()*45;
+    a.position.x = Math.cos(angle)*dist;
+    a.position.z = Math.sin(angle)*dist;
+    a.rotation.set(srand()*Math.PI, srand()*Math.PI, srand()*Math.PI);
+    scene.add(a);
+    planetObjects.push(a);
+  }
+  // Glowing orbs floating
+  for(let i=0;i<30;i++){
+    const o = new THREE.Mesh(new THREE.SphereGeometry(0.15+srand()*0.2, 8, 8),
+      new THREE.MeshBasicMaterial({color: new THREE.Color().setHSL(srand(),1,0.7)}));
+    o.position.y = 3+srand()*15;
+    const angle = srand()*Math.PI*2;
+    const dist  = 10+srand()*45;
+    o.position.x = Math.cos(angle)*dist;
+    o.position.z = Math.sin(angle)*dist;
+    scene.add(o);
+    planetObjects.push(o);
+  }
+  // Ground crystals/stones
+  for(let i=0;i<40;i++){
+    const r = 0.3+srand()*0.6;
+    const s = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0),
+      new THREE.MeshPhongMaterial({color: new THREE.Color(col).multiplyScalar(0.5), emissive: col, emissiveIntensity:0.15}));
+    s.position.y = r*0.5;
+    const angle = srand()*Math.PI*2;
+    const dist  = 5+srand()*55;
+    s.position.x = Math.cos(angle)*dist;
+    s.position.z = Math.sin(angle)*dist;
+    scene.add(s);
+    planetObjects.push(s);
+  }
+  // Floor decals (glowing rings)
+  for(let i=0;i<15;i++){
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.8+srand()*1, 1+srand()*1.2, 16),
+      new THREE.MeshBasicMaterial({color: new THREE.Color().setHSL(srand(),1,0.6), transparent:true, opacity:0.5, side:THREE.DoubleSide}));
+    ring.rotation.x = -Math.PI/2;
+    ring.position.y = 0.05;
+    const angle = srand()*Math.PI*2;
+    const dist  = 8+srand()*40;
+    ring.position.x = Math.cos(angle)*dist;
+    ring.position.z = Math.sin(angle)*dist;
+    scene.add(ring);
+    planetObjects.push(ring);
+  }
+  // Vertical light pillars
+  for(let i=0;i<10;i++){
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 20, 6),
+      new THREE.MeshBasicMaterial({color: new THREE.Color().setHSL(srand(),1,0.6), transparent:true, opacity:0.4}));
+    pillar.position.y = 10;
+    const angle = srand()*Math.PI*2;
+    const dist  = 12+srand()*40;
+    pillar.position.x = Math.cos(angle)*dist;
+    pillar.position.z = Math.sin(angle)*dist;
+    scene.add(pillar);
+    planetObjects.push(pillar);
+  }
+}
+
 function buildAlienCity(planetIdx, themeIdx, col) {
   seed(planetIdx + 1);
   const baseCol = new THREE.Color(col);
   const wallMat = new THREE.MeshPhongMaterial({ color: baseCol.clone().multiplyScalar(0.7), shininess: 20 });
   const roofMat = new THREE.MeshPhongMaterial({ color: baseCol.clone().multiplyScalar(0.4), shininess: 40 });
   const neonMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(srand(), 1, 0.5) });
+  addAmbientDecorations(col);
 
   // Generic helper to place an object away from center
   function placeFar(obj, minDist=10, maxDist=60) {
@@ -1061,10 +1136,10 @@ buildWeaponModel();
 
 // ---------- ENEMY SPAWN ----------
 const ENEMY_TYPES = [
-  { type:'small',  hp:30,  speed:3.5, scale:0.5, color:0x00b894, reward:10,  dmg:8  },
-  { type:'medium', hp:70,  speed:2.5, scale:0.9, color:0xfdcb6e, reward:20,  dmg:14 },
-  { type:'large',  hp:140, speed:1.8, scale:1.4, color:0xe17055, reward:30,  dmg:22 },
-  { type:'special',hp:220, speed:3,   scale:1.1, color:0xd63031, reward:100, dmg:30 },
+  { type:'small',  hp:30,  speed:3.2, scale:0.5, color:0x00b894, reward:10,  dmg:4  },
+  { type:'medium', hp:70,  speed:2.3, scale:0.9, color:0xfdcb6e, reward:20,  dmg:7  },
+  { type:'large',  hp:140, speed:1.7, scale:1.4, color:0xe17055, reward:30,  dmg:12 },
+  { type:'special',hp:220, speed:2.7, scale:1.1, color:0xd63031, reward:100, dmg:18 },
 ];
 
 // Alien variant builders — each returns a Group with a different look
@@ -1247,8 +1322,8 @@ function makeAlien(type, pos) {
   // Scale HP by wave + planet
   const hpMult = 1 + state.wave * 0.18 + state.planetIdx * 0.35;
   td.hp = Math.floor(td.hp * hpMult);
-  td.dmg = Math.floor(td.dmg * (1 + state.planetIdx * 0.15));
-  td.speed = td.speed * (1 + state.planetIdx * 0.04);
+  td.dmg = Math.floor(td.dmg * (1 + state.planetIdx * 0.08));
+  td.speed = td.speed * (1 + state.planetIdx * 0.03);
 
   const builderIdx = state.planetIdx % ALIEN_BUILDERS.length;
   const group = ALIEN_BUILDERS[builderIdx](td);
@@ -1334,7 +1409,7 @@ function makeBoss(planetIdx) {
     speed: 2.2 + planetIdx * 0.1,
     type: 3,
     reward: 500 + planetIdx*100,
-    dmg: 34, // kills player in 3 hits (100hp / 34 = ~3)
+    dmg: 25, // ~4 hits to kill (mais justo)
     scale: 2.2,
     dead: false,
     attackCooldown: 0,
@@ -1502,15 +1577,20 @@ function startReload() {
   if(state.reloading) return;
   const w = state.weapons[state.weaponIdx];
   if(w.ammo === w.maxAmmo) return;
+  if(w.reserve <= 0) { showMsg('❌ Sem munição! Compre na loja (B)', 1500); return; }
   state.reloading = true;
   state.reloadStart = Date.now();
   showMsg('Recarregando...');
   setTimeout(()=>{
     state.reloading = false;
-    state.weapons[state.weaponIdx].ammo = state.weapons[state.weaponIdx].maxAmmo;
+    const w2 = state.weapons[state.weaponIdx];
+    const need = w2.maxAmmo - w2.ammo;
+    const give = Math.min(need, w2.reserve);
+    w2.ammo += give;
+    w2.reserve -= give;
     showMsg('');
     updateHUD();
-  }, 2000);
+  }, 1500);
 }
 
 // ---------- ENEMY DEATH ----------
@@ -1672,7 +1752,7 @@ function updateHUD() {
   document.getElementById('coins-display').textContent = '🪙 '+state.coins;
   const w = state.weapons[state.weaponIdx];
   document.getElementById('weapon-name').textContent = w.name;
-  document.getElementById('ammo-info').textContent   = w.ammo+' / '+w.maxAmmo;
+  document.getElementById('ammo-info').textContent   = w.ammo+' / '+w.maxAmmo+'  [Reserva: '+w.reserve+']';
   document.getElementById('planet-name').textContent =
     `PLANETA ${state.planetIdx+1} — ${PLANETS[state.planetIdx % PLANETS.length]}`;
   document.getElementById('wave-info').textContent = `FASE ${state.wave} / 10`;
@@ -1724,6 +1804,12 @@ function buyItem(item) {
     if(item.id==='kit_sh')   state.shield= Math.min(100, state.shield+10);
     playPickup();
     showMsg('✅ Item usado!', 1200);
+  } else if(item.type==='ammo') {
+    state.coins -= item.price;
+    const amt = item.amount || 10;
+    state.weapons[state.weaponIdx].reserve += amt;
+    playPickup();
+    showMsg(`✅ +${amt} munições da ${state.weapons[state.weaponIdx].name}!`, 1500);
   } else if(item.type==='weapon') {
     const wIdx = state.weapons.findIndex(w=>w.id===item.id);
     if(state.weapons[wIdx].owned) {
@@ -1983,7 +2069,7 @@ function animate() {
           }
         } else if(p==='shockwave') {
           spawnExplosion(e.mesh.position.clone(), 8, 0xffaa00);
-          if(distFlat < 12) playerTakeDamage(25);
+          if(distFlat < 12) playerTakeDamage(15);
           showMsg('💥 ONDA DE CHOQUE!', 1200);
         } else if(p==='rapidfire') {
           for(let i=0;i<5;i++){
