@@ -423,8 +423,9 @@ function makeAlien(type, pos) {
   // Body: elongated (minhoca+polvo)
   const group = new THREE.Group();
   // body
-  const bg = new THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(td.scale*0.4, td.scale*0.6, 4, 8)
-           : new THREE.SphereGeometry(td.scale*0.5, 8, 8);
+  const bg = THREE.CapsuleGeometry
+    ? new THREE.CapsuleGeometry(td.scale*0.4, td.scale*0.6, 4, 8)
+    : new THREE.SphereGeometry(td.scale*0.5, 8, 8);
   const bm = new THREE.MeshLambertMaterial({ color: td.color });
   const body = new THREE.Mesh(bg, bm);
   body.castShadow = true;
