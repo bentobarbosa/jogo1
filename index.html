@@ -147,8 +147,14 @@
     /* Hit flash */
     #hit-flash {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(231,76,60,0); pointer-events: none; z-index: 50;
+      background: rgba(231,76,60,0); pointer-events: none !important; z-index: 5;
       transition: background 0.1s;
+    }
+    #hud, #hud * { pointer-events: none; }
+    #debug {
+      position: fixed; bottom: 10px; left: 10px; color: #0f0;
+      font-family: monospace; font-size: 11px; background: rgba(0,0,0,0.5);
+      padding: 6px; border-radius: 4px; z-index: 99; pointer-events: none;
     }
 
     /* Boss warning */
@@ -235,6 +241,9 @@
 
 <!-- Hit Flash -->
 <div id="hit-flash"></div>
+
+<!-- Debug -->
+<div id="debug">Aguardando início...</div>
 
 <!-- Shop -->
 <div id="shop">
@@ -832,7 +841,6 @@ canvas.addEventListener('click', ()=>{
   if(document.getElementById('shop').style.display==='block') return;
   if(document.pointerLockElement !== canvas) {
     canvas.requestPointerLock();
-    return;
   }
   shoot();
 });
@@ -888,6 +896,14 @@ function animate() {
   requestAnimationFrame(animate);
   let delta = clock.getDelta();
   if(delta > 0.1) delta = 0.1; // clamp delta to prevent huge jumps
+
+  // Debug overlay
+  const dbg = document.getElementById('debug');
+  if(dbg) {
+    const pl = document.pointerLockElement===canvas ? 'TRAVADO' : 'LIVRE';
+    const pressed = Object.keys(keys).filter(k=>keys[k]).join(',') || 'nenhuma';
+    dbg.textContent = `Mouse:${pl} | Teclas:${pressed} | Pos:(${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)}) | Inimigos:${state.enemies.filter(e=>!e.dead).length}`;
+  }
 
   // Player movement
   const speed = 6;
