@@ -211,8 +211,8 @@ const state = {
   plotsUnlocked:1,
   fuel:100, maxFuel:100,
   headlights:false,
-  time:0.3,         // 0 = midnight, 0.5 = noon, 1 = midnight again
-  daySpeed:1/240,   // 240 seconds = 1 full day
+  time:0.42,        // start mid-morning (clearly daytime)
+  daySpeed:1/600,   // 10 minutes per full day (slower)
   weather:'sun',    // sun, cloudy, rain
   weatherTimer:80,
   qualityTotals:{wheat:0,corn:0,potato:0,tomato:0,soy:0,melon:0,sunflower:0},
@@ -697,29 +697,27 @@ rain.visible=false; scene.add(rain);
 
 // ---------- DAY/NIGHT ----------
 function updateDayNight(){
-  const t=state.time; // 0..1
-  // Sun angle: at t=0.25 (6am) sun rises east, t=0.5 noon overhead, t=0.75 (6pm) sets west
-  const ang=(t-0.25)*Math.PI*2; // 0 at sunrise
-  const sx=Math.cos(ang)*100, sy=Math.sin(ang)*100, sz=30;
-  sun.position.set(sx,Math.max(-30,sy),sz);
-  // Daylight strength
-  const day=Math.max(0,Math.sin(t*Math.PI*2-Math.PI/2)*0.5+0.5); // 0 night, 1 noon
-  sun.intensity=0.2+day*1.3;
-  // Sky color
-  const top=new THREE.Color(0x0a1428).lerp(new THREE.Color(0x2c6fd6),day);
-  const bot=new THREE.Color(0x1a1a3a).lerp(new THREE.Color(0xcdeeff),day);
-  if(day<0.2){ // dawn/dusk orange tint
-    const dusk=1-day*5;
-    top.lerp(new THREE.Color(0xff7043),dusk*0.4);
-    bot.lerp(new THREE.Color(0xffab91),dusk*0.5);
-  }
-  skyMat.uniforms.top.value=top; skyMat.uniforms.bottom.value=bot;
-  scene.fog.color=bot;
-  // HUD time
-  const hours=Math.floor(t*24), mins=Math.floor((t*24-hours)*60);
-  document.getElementById('time-text').textContent=String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
-  // Auto headlights at night
-  if(day<0.15 && !state.headlights){ state.headlights=true; headLight1.intensity=2.5; headLight2.intensity=2.5; }
+  try {
+    const t=state.time;
+    const ang=(t-0.25)*Math.PI*2;
+    const sx=Math.cos(ang)*100, sy=Math.sin(ang)*100;
+    sun.position.set(sx, Math.max(20, sy), 30);   // keep sun above horizon for lighting
+    const day=Math.max(0, Math.sin(t*Math.PI*2-Math.PI/2)*0.5+0.5);
+    // KEEP IT BRIGHT — even at night still see
+    sun.intensity = 0.8 + day*0.7;
+    // Sky never gets pitch dark
+    const top = new THREE.Color(0x2a3960).lerp(new THREE.Color(0x2c6fd6), day);
+    const bot = new THREE.Color(0x4a5680).lerp(new THREE.Color(0xcdeeff), day);
+    if(day < 0.3 && day > 0.05){
+      const dusk = 1 - day*3.3;
+      top.lerp(new THREE.Color(0xff7043), dusk*0.3);
+      bot.lerp(new THREE.Color(0xffab91), dusk*0.4);
+    }
+    if(skyMat && skyMat.uniforms){ skyMat.uniforms.top.value = top; skyMat.uniforms.bottom.value = bot; }
+    if(scene.fog) scene.fog.color = bot;
+    const hours=Math.floor(t*24), mins=Math.floor((t*24-hours)*60);
+    const el=document.getElementById('time-text'); if(el) el.textContent = String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+  } catch(err){ console.error('updateDayNight error:', err); }
 }
 
 // ---------- WEATHER ----------
@@ -777,6 +775,7 @@ function collides(x,z){const R=1.6;for(const c of colliders){if(Math.hypot(x-c.x
 const clock=new THREE.Clock();
 const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
 function animate(){if(!state.running)return;requestAnimationFrame(animate);
+  try {
   let dt=clock.getDelta();if(dt>0.05)dt=0.05;const now=performance.now()/1000;
   if(!state.shopOpen){
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
@@ -814,6 +813,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   if(windmill)windmill.userData.hub.rotation.z+=dt*0.6;
   updateCrops(now);updateFloaters(dt);updateObjective();
   renderer.render(scene,camera);
+  } catch(err){ console.error('animate error:', err); try { renderer.render(scene,camera); } catch(e){} }
 }
 function startGame(){document.getElementById('start').style.display='none';state.running=true;
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
