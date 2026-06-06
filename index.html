@@ -213,10 +213,8 @@ function grassTex(){
     const x=Math.random()*256,y=Math.random()*256,s=1+Math.random()*2.5; g.fillRect(x,y,s,s); }
   const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(50,50); return t;
 }
-const groundGeo=new THREE.PlaneGeometry(700,700,60,60);
-const gp=groundGeo.attributes.position;
-for(let i=0;i<gp.count;i++) gp.setZ(i,Math.sin(gp.getX(i)*0.025)*0.6+Math.cos(gp.getY(i)*0.025)*0.6);
-groundGeo.computeVertexNormals();
+// Flat ground — bumpy terrain was hiding plowed tiles and making tractor look sunk
+const groundGeo=new THREE.PlaneGeometry(700,700,1,1);
 const ground=new THREE.Mesh(groundGeo,new THREE.MeshLambertMaterial({map:grassTex()}));
 ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 
@@ -246,7 +244,7 @@ const grownDirtMat=()=>new THREE.MeshLambertMaterial({map:dirtTex(false)});
 function makeTile(c,r){
   const x=fOX+c*TILE, z=fOZ+r*TILE;
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.98,TILE*0.98),grassTileMat());
-  mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.1,z); mesh.receiveShadow=true; scene.add(mesh);
+  mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.05,z); mesh.receiveShadow=true; scene.add(mesh);
   return {state:'grass',mesh,plant:null,plantedAt:0,crop:null,c,r,x,z};
 }
 for(let r=0;r<ROWS;r++){const row=[];for(let c=0;c<COLS;c++)row.push(makeTile(c,r));tiles.push(row);}
