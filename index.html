@@ -403,13 +403,15 @@ function workTile(t){ if(!t)return;
       floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { floatText(t.x,t.z,'sem semente!',0xff5252);} } }
   else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='tilled'; t.mesh.material=tilledMat(); t.crop=null; } }
 }
-let lastWorked=null;
-const implWorld=new THREE.Vector3();
+const _swath=new THREE.Vector3();
 function autoFarm(){ if(state.tool===0)return;
-  const impl = state.tool===1?plow:state.tool===2?seeder:harvester;
-  impl.getWorldPosition(implWorld);
-  const t=tileUnder(implWorld.x,implWorld.z);
-  if(t&&t!==lastWorked){ workTile(t); lastWorked=t; } else if(!t) lastWorked=null;
+  // Sample the full width of the implement (3 points across) so it works a wide swath, not one row
+  for(const lx of [-1.2, 0, 1.2]){
+    _swath.set(lx, 0, 3); // local position relative to tractor (z=3 is behind, where implement is)
+    tractor.localToWorld(_swath);
+    const t=tileUnder(_swath.x, _swath.z);
+    if(t) workTile(t); // workTile only acts when the tile state matches, so no repeat spam
+  }
 }
 
 function buildCrop(crop,t){const g=new THREE.Group();
