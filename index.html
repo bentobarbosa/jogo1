@@ -198,11 +198,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // Global error catcher — shows JS errors visibly on screen
+// Stack ALL errors visibly so first error (root cause) appears too
+let __errBox = null;
 window.addEventListener('error', e => {
-  const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#c62828;color:#fff;padding:20px;border-radius:10px;font-family:monospace;font-size:14px;z-index:9999;max-width:80%;white-space:pre-wrap;box-shadow:0 8px 30px rgba(0,0,0,0.5);';
-  div.textContent = '❌ ERRO:\n' + e.message + '\n\nLinha ' + e.lineno + ' • ' + (e.filename || '');
-  document.body.appendChild(div);
+  if(!__errBox){
+    __errBox = document.createElement('div');
+    __errBox.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#c62828;color:#fff;padding:14px;border-radius:8px;font-family:monospace;font-size:12px;z-index:99999;max-height:80vh;overflow:auto;white-space:pre-wrap;box-shadow:0 8px 30px rgba(0,0,0,0.5);';
+    document.body.appendChild(__errBox);
+  }
+  __errBox.textContent += '❌ ' + e.message + '  (linha ' + e.lineno + ')\n';
+});
+window.addEventListener('unhandledrejection', e => {
+  if(!__errBox){
+    __errBox = document.createElement('div');
+    __errBox.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#c62828;color:#fff;padding:14px;border-radius:8px;font-family:monospace;font-size:12px;z-index:99999;';
+    document.body.appendChild(__errBox);
+  }
+  __errBox.textContent += '❌ Promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '\n';
 });
 </script>
 <script>
@@ -211,8 +223,9 @@ window.addEventListener('error', e => {
 // =====================================================
 
 // EARLY GLOBALS (must be initialized first so functions that reference them work even if later code errors)
-const cam = { yaw:0, pitch:0.5, dist:16, dragging:false };
-const T   = { speed:0, maxF:9, maxR:4, accel:8, brake:16, turn:1.7, heading:0 };
+var cam = { yaw:0, pitch:0.5, dist:16, dragging:false };
+var T   = { speed:0, maxF:9, maxR:4, accel:8, brake:16, turn:1.7, heading:0 };
+// Use var so even if there's a syntax issue these still hoist properly
 
 const state = {
   money:500,
