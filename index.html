@@ -399,7 +399,7 @@ function workTile(t){ if(!t)return;
   else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--; updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { floatText(t.x,t.z,'sem semente!',0xff5252);} } }
-  else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='tilled'; t.mesh.material=tilledMat(); t.crop=null; } }
+  else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; } }
 }
 // Geometric autoFarm: test which tiles actually overlap the implement rectangle
 // (works regardless of tractor heading, frame rate, or speed)
