@@ -403,17 +403,40 @@ function workTile(t){ if(!t)return;
       floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { floatText(t.x,t.z,'sem semente!',0xff5252);} } }
   else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='tilled'; t.mesh.material=tilledMat(); t.crop=null; } }
 }
-const _swath=new THREE.Vector3();
-const _workedThisFrame=new Set();
-function autoFarm(){ if(state.tool===0)return;
-  _workedThisFrame.clear();
-  // Sample many points across a wide swath (~7m) so 3 tile rows are always hit
-  for(const lz of [2.5, 3.2, 3.9]){             // 3 depths front-to-back of implement
-    for(const lx of [-3.6,-2.4,-1.2,0,1.2,2.4,3.6]){  // 7 points across 7.2m width
-      _swath.set(lx, 0, lz);
-      tractor.localToWorld(_swath);
-      const t=tileUnder(_swath.x, _swath.z);
-      if(t && !_workedThisFrame.has(t)){ workTile(t); _workedThisFrame.add(t); }
+// Geometric autoFarm: test which tiles actually overlap the implement rectangle
+// (works regardless of tractor heading, frame rate, or speed)
+const IMPL_HALF_W = 3.6;   // half the 7.2m width
+const IMPL_HALF_D = 0.7;   // half the 1.4m depth
+const IMPL_CENTER_OFFSET = 3.2; // distance behind tractor center
+function autoFarm(){
+  if(state.tool===0) return;
+  // World-space basis vectors rotated by tractor heading
+  const sinH = Math.sin(T.heading), cosH = Math.cos(T.heading);
+  // "back" direction (where implement sits) in world space:
+  const backX = sinH,  backZ = cosH;
+  // "right" direction in world space:
+  const rightX = cosH, rightZ = -sinH;
+  // Implement center
+  const icx = tractor.position.x + backX * IMPL_CENTER_OFFSET;
+  const icz = tractor.position.z + backZ * IMPL_CENTER_OFFSET;
+  // Find tiles in a coarse box around the implement center, then test exact overlap
+  const TH = TILE/2;
+  const searchCol = Math.round((icx - fOX) / TILE);
+  const searchRow = Math.round((icz - fOZ) / TILE);
+  for(let dr=-3; dr<=3; dr++){
+    for(let dc=-3; dc<=3; dc++){
+      const c = searchCol + dc, r = searchRow + dr;
+      if(c<0 || c>=COLS || r<0 || r>=ROWS) continue;
+      const t = tiles[r][c];
+      // Offset from implement center to tile center
+      const dx = t.x - icx, dz = t.z - icz;
+      // Project onto implement local axes
+      const localX = dx * rightX + dz * rightZ;
+      const localZ = dx * backX  + dz * backZ;
+      // Overlap test: tile (3.2 wide) overlaps implement if |proj| < halfImpl + halfTile
+      if(Math.abs(localX) <= IMPL_HALF_W + TH && Math.abs(localZ) <= IMPL_HALF_D + TH){
+        workTile(t);
+      }
     }
   }
 }
