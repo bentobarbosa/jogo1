@@ -507,6 +507,508 @@ function makeWindowMat(baseCol, lit) {
   });
 }
 
+function addRealLifeItems(col) {
+  // Realistic city props: cars, trees, benches, lamps, hydrants, dumpsters, mailboxes, signs, etc.
+
+  // ===== CARS (parked on ground) =====
+  for(let i=0;i<25;i++){
+    const car = new THREE.Group();
+    const carColor = new THREE.Color().setHSL(srand(), 0.7, 0.5);
+    // Body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 4),
+      new THREE.MeshPhongMaterial({color: carColor, shininess: 90}));
+    body.position.y = 0.5;
+    car.add(body);
+    // Roof/Cabin
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2),
+      new THREE.MeshPhongMaterial({color: carColor.clone().multiplyScalar(0.9), shininess: 100}));
+    cabin.position.set(0, 1.0, -0.2);
+    car.add(cabin);
+    // Windows
+    const win = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.4, 1.9),
+      new THREE.MeshPhongMaterial({color: 0x1a3a5c, transparent:true, opacity:0.7, shininess:100}));
+    win.position.set(0, 1.05, -0.2);
+    car.add(win);
+    // Wheels (4)
+    for(let wi=0; wi<4; wi++){
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.25, 12),
+        new THREE.MeshPhongMaterial({color: 0x111111}));
+      wheel.rotation.z = Math.PI/2;
+      wheel.position.set(wi%2===0 ? -0.85 : 0.85, 0.35, wi<2 ? 1.2 : -1.2);
+      car.add(wheel);
+    }
+    // Headlights
+    for(let hi=-1;hi<=1;hi+=2){
+      const hl = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8),
+        new THREE.MeshBasicMaterial({color: 0xffffaa}));
+      hl.position.set(hi*0.6, 0.55, 2);
+      car.add(hl);
+    }
+    // Taillights
+    for(let hi=-1;hi<=1;hi+=2){
+      const tl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6),
+        new THREE.MeshBasicMaterial({color: 0xff2222}));
+      tl.position.set(hi*0.6, 0.55, -2);
+      car.add(tl);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 10+srand()*45;
+    car.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    car.rotation.y = srand()*Math.PI*2;
+    scene.add(car);
+    planetObjects.push(car);
+  }
+
+  // ===== TREES (alien-style) =====
+  for(let i=0;i<35;i++){
+    const tree = new THREE.Group();
+    const trunkH = 2+srand()*3;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, trunkH, 6),
+      new THREE.MeshPhongMaterial({color: 0x4a2c17}));
+    trunk.position.y = trunkH/2;
+    tree.add(trunk);
+    // Leaves (multiple layers)
+    const leafColor = srand()>0.5 ? 0x2d7a2d : new THREE.Color().setHSL(srand(),0.7,0.4).getHex();
+    for(let l=0;l<3;l++){
+      const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.2-l*0.2, 10, 8),
+        new THREE.MeshPhongMaterial({color: leafColor, emissive: leafColor, emissiveIntensity: 0.15}));
+      leaves.position.y = trunkH + l*0.6;
+      leaves.scale.y = 0.9;
+      tree.add(leaves);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 8+srand()*50;
+    tree.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    scene.add(tree);
+    planetObjects.push(tree);
+  }
+
+  // ===== STREET LAMPS =====
+  for(let i=0;i<25;i++){
+    const lamp = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 5, 6),
+      new THREE.MeshPhongMaterial({color: 0x222233}));
+    post.position.y = 2.5;
+    lamp.add(post);
+    // Arm
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4),
+      new THREE.MeshPhongMaterial({color: 0x222233}));
+    arm.position.set(0.5, 5, 0);
+    arm.rotation.z = Math.PI/2;
+    lamp.add(arm);
+    // Light bulb (glowing)
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10),
+      new THREE.MeshBasicMaterial({color: 0xffeb3b}));
+    bulb.position.set(1.1, 5, 0);
+    lamp.add(bulb);
+    // Light cone (visual)
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(2, 5, 16, 1, true),
+      new THREE.MeshBasicMaterial({color: 0xffeb3b, transparent:true, opacity:0.08, side:THREE.DoubleSide}));
+    cone.position.set(1.1, 2.5, 0);
+    lamp.add(cone);
+    const angle = srand()*Math.PI*2;
+    const dist  = 6+srand()*45;
+    lamp.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    lamp.rotation.y = srand()*Math.PI*2;
+    scene.add(lamp);
+    planetObjects.push(lamp);
+  }
+
+  // ===== BENCHES =====
+  for(let i=0;i<20;i++){
+    const bench = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.6),
+      new THREE.MeshPhongMaterial({color: 0x8b4513}));
+    seat.position.y = 0.5;
+    bench.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 0.1),
+      new THREE.MeshPhongMaterial({color: 0x8b4513}));
+    back.position.set(0, 0.85, -0.25);
+    bench.add(back);
+    // Legs
+    for(let li=-1;li<=1;li+=2){
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5),
+        new THREE.MeshPhongMaterial({color: 0x333333}));
+      leg.position.set(li*0.85, 0.25, 0);
+      bench.add(leg);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 8+srand()*40;
+    bench.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    bench.rotation.y = srand()*Math.PI*2;
+    scene.add(bench);
+    planetObjects.push(bench);
+  }
+
+  // ===== FIRE HYDRANTS =====
+  for(let i=0;i<15;i++){
+    const hyd = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8),
+      new THREE.MeshPhongMaterial({color: 0xcc0000, shininess: 60}));
+    body.position.y = 0.4;
+    hyd.add(body);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8),
+      new THREE.MeshPhongMaterial({color: 0xcc0000}));
+    top.position.y = 0.85;
+    hyd.add(top);
+    // Side outlets
+    for(let si=-1;si<=1;si+=2){
+      const out = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 8),
+        new THREE.MeshPhongMaterial({color: 0x880000}));
+      out.rotation.z = Math.PI/2;
+      out.position.set(si*0.3, 0.55, 0);
+      hyd.add(out);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 6+srand()*40;
+    hyd.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    scene.add(hyd);
+    planetObjects.push(hyd);
+  }
+
+  // ===== DUMPSTERS / TRASH BINS =====
+  for(let i=0;i<18;i++){
+    const trash = new THREE.Group();
+    const isDumpster = srand() > 0.5;
+    if(isDumpster) {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 1.3),
+        new THREE.MeshPhongMaterial({color: 0x2d5e2d}));
+      body.position.y = 0.6;
+      trash.add(body);
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.1, 1.4),
+        new THREE.MeshPhongMaterial({color: 0x1a3d1a}));
+      lid.position.y = 1.25;
+      trash.add(lid);
+    } else {
+      const can = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.3, 0.9, 12),
+        new THREE.MeshPhongMaterial({color: 0x444444}));
+      can.position.y = 0.45;
+      trash.add(can);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 8+srand()*45;
+    trash.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    trash.rotation.y = srand()*Math.PI*2;
+    scene.add(trash);
+    planetObjects.push(trash);
+  }
+
+  // ===== TRAFFIC / STOP SIGNS =====
+  for(let i=0;i<20;i++){
+    const sign = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 6),
+      new THREE.MeshPhongMaterial({color: 0x888888}));
+    pole.position.y = 1.25;
+    sign.add(pole);
+    const isOctagon = srand() > 0.5;
+    let plate;
+    if(isOctagon) {
+      plate = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 8),
+        new THREE.MeshPhongMaterial({color: 0xcc0000}));
+      plate.rotation.x = Math.PI/2;
+    } else {
+      plate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.04),
+        new THREE.MeshPhongMaterial({color: srand()>0.5?0xffeb3b:0x2d7a2d}));
+    }
+    plate.position.y = 2.3;
+    sign.add(plate);
+    const angle = srand()*Math.PI*2;
+    const dist  = 7+srand()*45;
+    sign.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    sign.rotation.y = srand()*Math.PI*2;
+    scene.add(sign);
+    planetObjects.push(sign);
+  }
+
+  // ===== TRAFFIC LIGHTS =====
+  for(let i=0;i<8;i++){
+    const tl = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 6),
+      new THREE.MeshPhongMaterial({color: 0x333333}));
+    pole.position.y = 2.5;
+    tl.add(pole);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4),
+      new THREE.MeshPhongMaterial({color: 0x222222}));
+    box.position.y = 5.5;
+    tl.add(box);
+    // 3 lights (red, yellow, green)
+    const colors = [0xff0000, 0xffeb3b, 0x00ff00];
+    for(let li=0; li<3; li++){
+      const light = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8),
+        new THREE.MeshBasicMaterial({color: colors[li]}));
+      light.position.set(0, 5.85 - li*0.35, 0.22);
+      tl.add(light);
+    }
+    const angle = srand()*Math.PI*2;
+    const dist  = 12+srand()*38;
+    tl.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    tl.rotation.y = srand()*Math.PI*2;
+    scene.add(tl);
+    planetObjects.push(tl);
+  }
+
+  // ===== MAILBOXES =====
+  for(let i=0;i<12;i++){
+    const mb = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1, 4),
+      new THREE.MeshPhongMaterial({color: 0x333333}));
+    post.position.y = 0.5;
+    mb.add(post);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.6),
+      new THREE.MeshPhongMaterial({color: 0x0044aa}));
+    box.position.y = 1.15;
+    mb.add(box);
+    const angle = srand()*Math.PI*2;
+    const dist  = 6+srand()*40;
+    mb.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    scene.add(mb);
+    planetObjects.push(mb);
+  }
+
+  // ===== FENCES / BARRIERS =====
+  for(let i=0;i<25;i++){
+    const fenceLen = 2+srand()*4;
+    const fence = new THREE.Mesh(new THREE.BoxGeometry(fenceLen, 0.8, 0.1),
+      new THREE.MeshPhongMaterial({color: 0xc0c0c0}));
+    fence.position.y = 0.4;
+    const angle = srand()*Math.PI*2;
+    const dist  = 7+srand()*45;
+    fence.position.x = Math.cos(angle)*dist;
+    fence.position.z = Math.sin(angle)*dist;
+    fence.rotation.y = srand()*Math.PI*2;
+    scene.add(fence);
+    planetObjects.push(fence);
+  }
+
+  // ===== BILLBOARDS (large) =====
+  for(let i=0;i<10;i++){
+    const bb = new THREE.Group();
+    // Support
+    for(let bi=-1;bi<=1;bi+=2){
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 6),
+        new THREE.MeshPhongMaterial({color: 0x222222}));
+      p.position.set(bi*1.5, 2.5, 0);
+      bb.add(p);
+    }
+    // Panel
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 0.15),
+      new THREE.MeshPhongMaterial({color: new THREE.Color().setHSL(srand(),0.8,0.5), emissive: new THREE.Color().setHSL(srand(),0.8,0.4), emissiveIntensity:0.4}));
+    panel.position.y = 5.5;
+    bb.add(panel);
+    const angle = srand()*Math.PI*2;
+    const dist  = 15+srand()*40;
+    bb.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    bb.rotation.y = srand()*Math.PI*2;
+    scene.add(bb);
+    planetObjects.push(bb);
+  }
+
+  // ===== BUSHES =====
+  for(let i=0;i<40;i++){
+    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.4+srand()*0.4, 8, 6),
+      new THREE.MeshPhongMaterial({color: new THREE.Color().setHSL(0.25+srand()*0.1, 0.6, 0.3+srand()*0.2)}));
+    bush.position.y = 0.3;
+    bush.scale.y = 0.7;
+    const angle = srand()*Math.PI*2;
+    const dist  = 5+srand()*50;
+    bush.position.x = Math.cos(angle)*dist;
+    bush.position.z = Math.sin(angle)*dist;
+    scene.add(bush);
+    planetObjects.push(bush);
+  }
+
+  // ===== BARRELS =====
+  for(let i=0;i<15;i++){
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1, 12),
+      new THREE.MeshPhongMaterial({color: srand()>0.5 ? 0x8b4513 : 0xff5500, shininess: 30}));
+    barrel.position.y = 0.5;
+    const angle = srand()*Math.PI*2;
+    const dist  = 7+srand()*45;
+    barrel.position.x = Math.cos(angle)*dist;
+    barrel.position.z = Math.sin(angle)*dist;
+    barrel.rotation.y = srand()*Math.PI*2;
+    if(srand()>0.7) barrel.rotation.z = Math.PI/2;
+    scene.add(barrel);
+    planetObjects.push(barrel);
+  }
+
+  // ===== CRATES / BOXES =====
+  for(let i=0;i<25;i++){
+    const sz = 0.6+srand()*0.5;
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(sz, sz, sz),
+      new THREE.MeshPhongMaterial({color: 0x8b6f47}));
+    crate.position.y = sz/2;
+    const angle = srand()*Math.PI*2;
+    const dist  = 6+srand()*45;
+    crate.position.x = Math.cos(angle)*dist;
+    crate.position.z = Math.sin(angle)*dist;
+    crate.rotation.y = srand()*Math.PI*2;
+    scene.add(crate);
+    planetObjects.push(crate);
+    // Sometimes stack
+    if(srand()>0.5) {
+      const c2 = crate.clone();
+      c2.position.y = sz*1.5;
+      c2.position.x += (srand()-0.5)*0.2;
+      c2.position.z += (srand()-0.5)*0.2;
+      scene.add(c2);
+      planetObjects.push(c2);
+    }
+  }
+
+  // ===== PHONE BOOTHS / KIOSKS =====
+  for(let i=0;i<8;i++){
+    const booth = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2),
+      new THREE.MeshPhongMaterial({color: 0xcc0000}));
+    body.position.y = 1.25;
+    booth.add(body);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 1.05),
+      new THREE.MeshPhongMaterial({color: 0x88aacc, transparent:true, opacity:0.5}));
+    win.position.y = 1.5;
+    booth.add(win);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 1.4),
+      new THREE.MeshPhongMaterial({color: 0x880000}));
+    roof.position.y = 2.6;
+    booth.add(roof);
+    const angle = srand()*Math.PI*2;
+    const dist  = 10+srand()*40;
+    booth.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    booth.rotation.y = srand()*Math.PI*2;
+    scene.add(booth);
+    planetObjects.push(booth);
+  }
+
+  // ===== PIPES (industrial) =====
+  for(let i=0;i<15;i++){
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4+srand()*4, 8),
+      new THREE.MeshPhongMaterial({color: 0x666666, shininess: 50}));
+    pipe.position.y = 2;
+    const angle = srand()*Math.PI*2;
+    const dist  = 15+srand()*40;
+    pipe.position.x = Math.cos(angle)*dist;
+    pipe.position.z = Math.sin(angle)*dist;
+    pipe.rotation.z = srand()>0.5 ? Math.PI/2 : 0;
+    scene.add(pipe);
+    planetObjects.push(pipe);
+  }
+
+  // ===== VENDING MACHINES =====
+  for(let i=0;i<10;i++){
+    const vm = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.7),
+      new THREE.MeshPhongMaterial({color: 0xff3366, emissive: 0xff3366, emissiveIntensity:0.2}));
+    body.position.y = 1;
+    vm.add(body);
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.72),
+      new THREE.MeshBasicMaterial({color: 0xffffff}));
+    screen.position.y = 1.5;
+    vm.add(screen);
+    const angle = srand()*Math.PI*2;
+    const dist  = 8+srand()*40;
+    vm.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+    vm.rotation.y = srand()*Math.PI*2;
+    scene.add(vm);
+    planetObjects.push(vm);
+  }
+}
+
+function addSkyPlanets(currentIdx) {
+  // Show next 5 planets floating in the sky as visible orbs
+  for(let i=1; i<=5; i++){
+    const nextIdx = (currentIdx + i) % PLANET_COLORS.length;
+    const pcol = PLANET_COLORS[nextIdx];
+    const planet = new THREE.Group();
+    // Planet body
+    const radius = 3 + Math.random()*2;
+    const body = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 24),
+      new THREE.MeshPhongMaterial({
+        color: pcol,
+        emissive: pcol,
+        emissiveIntensity: 0.4,
+        shininess: 30
+      }));
+    planet.add(body);
+    // Ring (some planets)
+    if(i % 2 === 0){
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(radius*1.4, radius*1.9, 32),
+        new THREE.MeshBasicMaterial({color: pcol, transparent:true, opacity:0.5, side:THREE.DoubleSide})
+      );
+      ring.rotation.x = Math.PI/2 + 0.3;
+      planet.add(ring);
+    }
+    // Atmosphere glow
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(radius*1.15, 16, 16),
+      new THREE.MeshBasicMaterial({color: pcol, transparent:true, opacity:0.15})
+    );
+    planet.add(glow);
+    // Moon (sometimes)
+    if(Math.random() > 0.5){
+      const moon = new THREE.Mesh(new THREE.SphereGeometry(radius*0.25, 12, 12),
+        new THREE.MeshPhongMaterial({color: 0xcccccc, emissive: 0x444444}));
+      moon.position.set(radius*2.2, radius*0.5, 0);
+      planet.add(moon);
+    }
+    // Position in sky around player
+    const angle = (i / 5) * Math.PI*2 + Math.random()*0.5;
+    const skyDist = 80;
+    planet.position.set(
+      Math.cos(angle) * skyDist,
+      30 + Math.random()*25,
+      Math.sin(angle) * skyDist
+    );
+    scene.add(planet);
+    planetObjects.push(planet);
+
+    // Floating label showing planet number
+    const canvas2 = document.createElement('canvas');
+    canvas2.width = 256; canvas2.height = 64;
+    const ctx = canvas2.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0,0,256,64);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`PLANETA ${currentIdx+1+i}`, 128, 30);
+    ctx.font = '18px monospace';
+    ctx.fillStyle = '#'+pcol.toString(16).padStart(6,'0');
+    ctx.fillText(PLANETS[(currentIdx+i) % PLANETS.length], 128, 55);
+    const tex = new THREE.CanvasTexture(canvas2);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true}));
+    sprite.scale.set(8, 2, 1);
+    sprite.position.copy(planet.position);
+    sprite.position.y -= radius*1.6;
+    scene.add(sprite);
+    planetObjects.push(sprite);
+  }
+
+  // ===== Big sun/star =====
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(6, 24, 24),
+    new THREE.MeshBasicMaterial({color: 0xfff5cc}));
+  sun.position.set(60, 55, -70);
+  scene.add(sun);
+  planetObjects.push(sun);
+  const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 24),
+    new THREE.MeshBasicMaterial({color: 0xffeebb, transparent:true, opacity:0.3}));
+  sunGlow.position.copy(sun.position);
+  scene.add(sunGlow);
+  planetObjects.push(sunGlow);
+
+  // ===== Distant galaxies / nebulae =====
+  for(let i=0;i<4;i++){
+    const neb = new THREE.Mesh(new THREE.SphereGeometry(8+Math.random()*4, 16, 16),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
+        transparent: true, opacity: 0.15
+      }));
+    neb.position.set((Math.random()-0.5)*200, 40+Math.random()*30, (Math.random()-0.5)*200);
+    scene.add(neb);
+    planetObjects.push(neb);
+  }
+}
+
 function addAmbientDecorations(col) {
   // Common items added to all themes
   // Floating debris/asteroids
@@ -582,6 +1084,8 @@ function buildAlienCity(planetIdx, themeIdx, col) {
   const roofMat = new THREE.MeshPhongMaterial({ color: baseCol.clone().multiplyScalar(0.4), shininess: 40 });
   const neonMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(srand(), 1, 0.5) });
   addAmbientDecorations(col);
+  addRealLifeItems(col);
+  addSkyPlanets(planetIdx);
 
   // Generic helper to place an object away from center
   function placeFar(obj, minDist=10, maxDist=60) {
