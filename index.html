@@ -914,8 +914,8 @@ function addRealLifeItems(col) {
 }
 
 function addSkyPlanets(currentIdx) {
-  // Show next 5 planets floating in the sky as visible orbs
-  for(let i=1; i<=5; i++){
+  // Show next 2 planets floating in the sky (less = better quality)
+  for(let i=1; i<=2; i++){
     const nextIdx = (currentIdx + i) % PLANET_COLORS.length;
     const pcol = PLANET_COLORS[nextIdx];
     const planet = new THREE.Group();
@@ -952,7 +952,7 @@ function addSkyPlanets(currentIdx) {
       planet.add(moon);
     }
     // Position in sky around player
-    const angle = (i / 5) * Math.PI*2 + Math.random()*0.5;
+    const angle = (i / 2) * Math.PI*2 + Math.random()*0.5;
     const skyDist = 80;
     planet.position.set(
       Math.cos(angle) * skyDist,
