@@ -16,7 +16,25 @@
       padding:10px 20px; border-radius:30px; font-weight:800; color:#2d5016; font-size:22px;
       box-shadow:0 4px 16px rgba(0,0,0,0.3); border:2px solid #2d5016; }
 
-    #inventory { position:absolute; top:70px; right:16px; background:rgba(255,255,255,0.92);
+    #level-box { position:absolute; top:60px; right:16px; background:rgba(70,40,15,0.92);
+      padding:8px 14px; border-radius:12px; color:#fff; border:2px solid #ffd54f;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3); width:200px; }
+    #level-box .lvl-title { display:flex; justify-content:space-between; font-size:13px; font-weight:800; margin-bottom:4px; }
+    #level-box .lvl-num { color:#ffd54f; }
+    #xp-bar-bg { background:rgba(0,0,0,0.5); border-radius:6px; height:12px; overflow:hidden; }
+    #xp-bar { background:linear-gradient(90deg,#ffd54f,#ffeb3b); height:100%; width:0%; transition:width 0.3s; }
+    #xp-text { text-align:center; font-size:11px; margin-top:2px; opacity:0.85; }
+
+    #level-up { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) scale(0);
+      background:linear-gradient(135deg,#ffd54f,#ff9800); color:#2d5016;
+      padding:30px 50px; border-radius:20px; font-size:36px; font-weight:900; letter-spacing:3px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.5); border:4px solid #fff;
+      text-shadow:2px 2px 0 rgba(255,255,255,0.5); text-align:center;
+      transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+    #level-up.show { transform:translate(-50%,-50%) scale(1); }
+    #level-up .lu-sub { font-size:18px; margin-top:8px; letter-spacing:1px; }
+
+    #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
       padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
     #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
     .inv-row { display:flex; justify-content:space-between; padding:2px 0; font-size:12px; }
@@ -105,6 +123,12 @@
 
 <div id="hud">
   <div id="money">💰 $500</div>
+  <div id="level-box">
+    <div class="lvl-title"><span>🎖️ NÍVEL</span><span class="lvl-num" id="lvl-num">1</span></div>
+    <div id="xp-bar-bg"><div id="xp-bar"></div></div>
+    <div id="xp-text"><span id="xp-cur">0</span>/<span id="xp-need">50</span> XP</div>
+  </div>
+  <div id="level-up"><div>🎉 NÍVEL <span id="lu-num">2</span>!</div><div class="lu-sub">+ NOVO CAMPO LIBERADO</div></div>
   <div id="inventory">
     <h3>📦 INVENTÁRIO</h3>
     <div class="inv-row"><span class="inv-label">🌾 Sem. Trigo</span><span class="inv-val" id="inv-wheat-seed">10</span></div>
@@ -119,7 +143,7 @@
     <div class="help-line"><span class="key">W</span><span class="key">S</span> Acelerar / Ré &nbsp; <span class="key">A</span><span class="key">D</span> Virar</div>
     <div class="help-line"><span class="key">⇧</span> Turbo &nbsp; 🖱️ Arrastar = girar câmera</div>
     <div class="divider"></div>
-    <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher &nbsp;<span class="key">0</span> Guardar</div>
+    <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher &nbsp;<span class="key">4</span> 💧 Irrigar &nbsp;<span class="key">0</span> Guardar</div>
     <div class="help-line"><span class="key">Q</span> Trocar semente &nbsp; <span class="key">B</span> Loja</div>
     <div class="divider"></div>
     <div class="help-line">💡 Ligue a ferramenta e <b>dirija por cima do campo!</b></div>
@@ -130,6 +154,7 @@
     <div class="tool" data-tool="1"><div class="tool-icon">🚜</div><div class="tool-name">Arado</div><div class="tool-key">1</div></div>
     <div class="tool" data-tool="2"><div class="tool-icon">🌱</div><div class="tool-name">Plantadeira</div><div class="tool-sub" id="tool-crop">🌾 Trigo</div><div class="tool-key">2</div></div>
     <div class="tool" data-tool="3"><div class="tool-icon">🌾</div><div class="tool-name">Colheitadeira</div><div class="tool-key">3</div></div>
+    <div class="tool" data-tool="4"><div class="tool-icon">💧</div><div class="tool-name">Irrigador</div><div class="tool-sub">Cresce 2× mais rápido</div><div class="tool-key">4</div></div>
   </div>
   <div id="speedometer"><div class="speed-val" id="speed-val">0</div><div class="speed-unit">km/h</div></div>
   <div id="message"></div>
@@ -157,7 +182,10 @@ const state = {
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
   tool:0, objective:0,
+  level:1, xp:0, xpToNext:50,
+  plotsUnlocked:1,
 };
+const XP_PER_HARVEST = { wheat:5, corn:10, potato:18 };
 const CROPS = {
   wheat:  { emoji:'🌾', name:'Trigo',  growTime:22, sell:25, seed:5,  top:0xe6b80b },
   corn:   { emoji:'🌽', name:'Milho',  growTime:38, sell:50, seed:10, top:0xf1c40f },
@@ -226,11 +254,9 @@ pond.rotation.x=-Math.PI/2; pond.position.set(48,0.1,28); scene.add(pond);
 const colliders=[];
 const addCol=(x,z,r)=>colliders.push({x,z,r});
 
-// ---------- FIELD ----------
-const COLS=14, ROWS=14, TILE=3.2;
-const fOX=-COLS*TILE/2 + TILE/2;
-const fOZ=-46;
-const tiles=[];
+// ---------- FIELDS (multiple plots) ----------
+const TILE=3.2;
+const allPlots=[];   // each: { tiles: [[]], fOX, fOZ, cols, rows, level }
 function dirtTex(plowed){
   const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
   g.fillStyle=plowed?'#5b3a1e':'#6b4a2a'; g.fillRect(0,0,64,64);
@@ -241,21 +267,49 @@ function dirtTex(plowed){
 const grassTileMat=()=>new THREE.MeshLambertMaterial({color:0x5a9a40});
 const tilledMat=()=>new THREE.MeshLambertMaterial({map:dirtTex(true)});
 const grownDirtMat=()=>new THREE.MeshLambertMaterial({map:dirtTex(false)});
-function makeTile(c,r){
-  const x=fOX+c*TILE, z=fOZ+r*TILE;
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.98,TILE*0.98),grassTileMat());
-  mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.05,z); mesh.receiveShadow=true; scene.add(mesh);
-  return {state:'grass',mesh,plant:null,plantedAt:0,crop:null,c,r,x,z};
-}
-for(let r=0;r<ROWS;r++){const row=[];for(let c=0;c<COLS;c++)row.push(makeTile(c,r));tiles.push(row);}
-
 function fencePost(x,z){const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,1.1,0.2),new THREE.MeshLambertMaterial({color:0x6b4226}));p.position.set(x,0.55,z);p.castShadow=true;scene.add(p);}
 function fenceRail(x1,z1,x2,z2){const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);for(const yy of[0.65,0.95]){const r=new THREE.Mesh(new THREE.BoxGeometry(len,0.07,0.07),new THREE.MeshLambertMaterial({color:0x8d6e63}));r.position.set((x1+x2)/2,yy,(z1+z2)/2);r.rotation.y=Math.atan2(dz,dx);scene.add(r);}}
-const fXmin=fOX-TILE/2,fXmax=fOX+(COLS-0.5)*TILE,fZmin=fOZ-TILE/2,fZmax=fOZ+(ROWS-0.5)*TILE;
-for(let x=fXmin;x<=fXmax;x+=4){fencePost(x,fZmin);fencePost(x,fZmax);}
-for(let z=fZmin;z<=fZmax;z+=4){fencePost(fXmin,z);fencePost(fXmax,z);}
-fenceRail(fXmin,fZmin,fXmax,fZmin);fenceRail(fXmin,fZmax,fXmax,fZmax);
-fenceRail(fXmin,fZmin,fXmin,fZmax);fenceRail(fXmax,fZmin,fXmax,fZmax);
+function makeTileAt(x,z,c,r){
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.98,TILE*0.98),grassTileMat());
+  mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.05,z); mesh.receiveShadow=true; scene.add(mesh);
+  return {state:'grass',mesh,plant:null,plantedAt:0,crop:null,c,r,x,z,water:0,waterUntil:0,waterTint:null,growProgress:0,lastUpdate:0};
+}
+function createPlot(cols, rows, centerX, centerZ){
+  const fOX = centerX - (cols-1)*TILE/2;
+  const fOZ = centerZ - (rows-1)*TILE/2;
+  const grid = [];
+  for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<cols;c++) row.push(makeTileAt(fOX+c*TILE, fOZ+r*TILE, c, r)); grid.push(row); }
+  const fXmin=fOX-TILE/2, fXmax=fOX+(cols-0.5)*TILE, fZmin=fOZ-TILE/2, fZmax=fOZ+(rows-0.5)*TILE;
+  for(let x=fXmin;x<=fXmax;x+=4){fencePost(x,fZmin);fencePost(x,fZmax);}
+  for(let z=fZmin;z<=fZmax;z+=4){fencePost(fXmin,z);fencePost(fXmax,z);}
+  fenceRail(fXmin,fZmin,fXmax,fZmin);fenceRail(fXmin,fZmax,fXmax,fZmax);
+  fenceRail(fXmin,fZmin,fXmin,fZmax);fenceRail(fXmax,fZmin,fXmax,fZmax);
+  const plot = {tiles:grid, fOX, fOZ, cols, rows, centerX, centerZ};
+  allPlots.push(plot);
+  return plot;
+}
+
+// Plot 1 (initial)
+createPlot(12, 12, 0, -30);
+
+// Predefined positions for future plots (unlocked by leveling up)
+const PLOT_LOCATIONS = [
+  {cols:10,rows:10,cx:-44,cz:-50},
+  {cols:10,rows:10,cx:44,cz:-50},
+  {cols:12,rows:8,cx:0,cz:-72},
+  {cols:8,rows:14,cx:-58,cz:-20},
+  {cols:8,rows:14,cx:58,cz:-20},
+  {cols:14,rows:8,cx:0,cz:60},
+  {cols:10,rows:10,cx:-50,cz:30},
+  {cols:10,rows:10,cx:50,cz:30},
+];
+function unlockNewPlot(){
+  const i = state.plotsUnlocked - 1;
+  if(i >= PLOT_LOCATIONS.length) return;
+  const loc = PLOT_LOCATIONS[i];
+  createPlot(loc.cols, loc.rows, loc.cx, loc.cz);
+  state.plotsUnlocked++;
+}
 
 // ---------- BUILDINGS ----------
 function makeBarn(x,z){const g=new THREE.Group();
@@ -356,9 +410,17 @@ for(let i=0;i<5;i++){ const bat=new THREE.Mesh(new THREE.BoxGeometry(7.2,0.08,0.
 harvester.add(reel); harvester.userData.reel=reel;
 const cutbar=new THREE.Mesh(new THREE.BoxGeometry(7.4,0.1,0.6),matGrey); cutbar.position.set(0,0.25,0.5); harvester.add(cutbar);
 harvester.position.set(0,0,3); tractor.add(harvester);
+// Irrigator (sprinkler bar)
+const irrigator=new THREE.Group();
+const watTank=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,2.5,12),new THREE.MeshLambertMaterial({color:0x2196f3})); watTank.rotation.z=Math.PI/2; watTank.position.y=1.2; irrigator.add(watTank);
+const watBar=new THREE.Mesh(new THREE.BoxGeometry(7.2,0.15,0.15),new THREE.MeshLambertMaterial({color:0x1976d2})); watBar.position.set(0,0.6,0.3); irrigator.add(watBar);
+const sprays=[];
+for(let i=-3;i<=3;i++){const noz=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.3,6),new THREE.MeshLambertMaterial({color:0x666})); noz.position.set(i*1.2,0.45,0.3); noz.rotation.x=Math.PI; irrigator.add(noz);
+  const spray=new THREE.Mesh(new THREE.ConeGeometry(0.5,1.5,8,1,true),new THREE.MeshBasicMaterial({color:0x66ccff,transparent:true,opacity:0.45,side:THREE.DoubleSide})); spray.position.set(i*1.2,-0.4,0.3); sprays.push(spray); irrigator.add(spray);}
+irrigator.position.set(0,0,3); tractor.add(irrigator);
 
-function showImplement(){ plow.visible=state.tool===1; seeder.visible=state.tool===2; harvester.visible=state.tool===3; hitch.visible=state.tool!==0; }
-plow.visible=seeder.visible=harvester.visible=hitch.visible=false;
+function showImplement(){ plow.visible=state.tool===1; seeder.visible=state.tool===2; harvester.visible=state.tool===3; irrigator.visible=state.tool===4; hitch.visible=state.tool!==0; }
+plow.visible=seeder.visible=harvester.visible=irrigator.visible=hitch.visible=false;
 
 tractor.position.set(0,0,10); tractor.rotation.y=0;
 scene.add(tractor);
@@ -376,7 +438,7 @@ function updateFloaters(dt){for(let i=floaters.length-1;i>=0;i--){const f=floate
 // ---------- INPUT ----------
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
-  if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3);
+  if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4);
   if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();});
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
@@ -389,51 +451,75 @@ canvas.addEventListener('wheel',e=>{ cam.dist=Math.max(7,Math.min(40,cam.dist+e.
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 function setTool(t){ state.tool=t; document.querySelectorAll('.tool').forEach(el=>el.classList.toggle('active',+el.dataset.tool===t)); showImplement();
-  const n=['Ferramenta guardada','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada']; showMessage(n[t],900); }
+  const n=['Ferramenta guardada','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada','💧 Irrigador ligado']; showMessage(n[t],900); }
 function cycleCrop(){const o=['wheat','corn','potato'];state.selectedCrop=o[(o.indexOf(state.selectedCrop)+1)%o.length];document.getElementById('tool-crop').textContent=`${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;showMessage(`Semente: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`,900);}
 
 // ---------- FARMING ----------
-function tileUnder(x,z){const c=Math.round((x-fOX)/TILE),r=Math.round((z-fOZ)/TILE);if(c<0||c>=COLS||r<0||r>=ROWS)return null;return tiles[r][c];}
+function tileUnder(x,z){
+  for(const plot of allPlots){
+    const c=Math.round((x-plot.fOX)/TILE), r=Math.round((z-plot.fOZ)/TILE);
+    if(c>=0 && c<plot.cols && r>=0 && r<plot.rows) return plot.tiles[r][c];
+  }
+  return null;
+}
+function anyTile(pred){ for(const p of allPlots) for(const row of p.tiles) for(const t of row) if(pred(t)) return true; return false; }
 function workTile(t){ if(!t)return;
   if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; floatText(t.x,t.z,'arado',0x8d6e63); sndPlow(); } }
-  else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--; updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000;
+  else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--; updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { floatText(t.x,t.z,'sem semente!',0xff5252);} } }
-  else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; } }
+  else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop; state.inventory[cropKey]=(state.inventory[cropKey]||0)+1;
+    if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[cropKey].emoji,CROPS[cropKey].top); sndHarvest();
+    t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0;
+    if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
+    gainXP(XP_PER_HARVEST[cropKey]||5); updateHUD();
+  } }
+  else if(state.tool===4){ if(t.state!=='grass'){ t.water=1; t.waterUntil=performance.now()/1000 + 60;
+    if(!t.waterTint){ const wt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97,TILE*0.97), new THREE.MeshBasicMaterial({color:0x4fc3f7,transparent:true,opacity:0.25}));
+      wt.rotation.x=-Math.PI/2; wt.position.set(t.x,0.07,t.z); scene.add(wt); t.waterTint=wt; }
+  } }
 }
-// Geometric autoFarm: test which tiles actually overlap the implement rectangle
-// (works regardless of tractor heading, frame rate, or speed)
-const IMPL_HALF_W = 3.6;   // half the 7.2m width
-const IMPL_HALF_D = 0.7;   // half the 1.4m depth
-const IMPL_CENTER_OFFSET = 3.2; // distance behind tractor center
+
+function gainXP(amount){
+  state.xp += amount;
+  while(state.xp >= state.xpToNext){
+    state.xp -= state.xpToNext; state.level++;
+    state.xpToNext = 50 + (state.level-1)*40;
+    unlockNewPlot();
+    const lu=document.getElementById('level-up');
+    document.getElementById('lu-num').textContent=state.level;
+    lu.classList.add('show'); setTimeout(()=>lu.classList.remove('show'), 2200);
+    beep(700,0.08); setTimeout(()=>beep(1050,0.08),100); setTimeout(()=>beep(1400,0.15),200);
+  }
+}
+// Geometric autoFarm — works across all plots
+const IMPL_HALF_W = 3.6, IMPL_HALF_D = 0.7, IMPL_CENTER_OFFSET = 3.2;
 function autoFarm(){
   if(state.tool===0) return;
-  // World-space basis vectors rotated by tractor heading
   const sinH = Math.sin(T.heading), cosH = Math.cos(T.heading);
-  // "back" direction (where implement sits) in world space:
-  const backX = sinH,  backZ = cosH;
-  // "right" direction in world space:
+  const backX = sinH, backZ = cosH;
   const rightX = cosH, rightZ = -sinH;
-  // Implement center
   const icx = tractor.position.x + backX * IMPL_CENTER_OFFSET;
   const icz = tractor.position.z + backZ * IMPL_CENTER_OFFSET;
-  // Find tiles in a coarse box around the implement center, then test exact overlap
   const TH = TILE/2;
-  const searchCol = Math.round((icx - fOX) / TILE);
-  const searchRow = Math.round((icz - fOZ) / TILE);
-  for(let dr=-3; dr<=3; dr++){
-    for(let dc=-3; dc<=3; dc++){
-      const c = searchCol + dc, r = searchRow + dr;
-      if(c<0 || c>=COLS || r<0 || r>=ROWS) continue;
-      const t = tiles[r][c];
-      // Offset from implement center to tile center
-      const dx = t.x - icx, dz = t.z - icz;
-      // Project onto implement local axes
-      const localX = dx * rightX + dz * rightZ;
-      const localZ = dx * backX  + dz * backZ;
-      // Overlap test: tile (3.2 wide) overlaps implement if |proj| < halfImpl + halfTile
-      if(Math.abs(localX) <= IMPL_HALF_W + TH && Math.abs(localZ) <= IMPL_HALF_D + TH){
-        workTile(t);
+  for(const plot of allPlots){
+    // Quick reject: if implement center is far from this plot, skip
+    const dx0 = icx - plot.centerX, dz0 = icz - plot.centerZ;
+    const plotR = Math.max(plot.cols, plot.rows) * TILE / 2 + 6;
+    if(Math.hypot(dx0, dz0) > plotR) continue;
+    const searchCol = Math.round((icx - plot.fOX) / TILE);
+    const searchRow = Math.round((icz - plot.fOZ) / TILE);
+    for(let dr=-3; dr<=3; dr++){
+      for(let dc=-3; dc<=3; dc++){
+        const c = searchCol + dc, r = searchRow + dr;
+        if(c<0 || c>=plot.cols || r<0 || r>=plot.rows) continue;
+        const t = plot.tiles[r][c];
+        const dx = t.x - icx, dz = t.z - icz;
+        const localX = dx * rightX + dz * rightZ;
+        const localZ = dx * backX  + dz * backZ;
+        if(Math.abs(localX) <= IMPL_HALF_W + TH && Math.abs(localZ) <= IMPL_HALF_D + TH){
+          workTile(t);
+        }
       }
     }
   }
@@ -444,19 +530,39 @@ function buildCrop(crop,t){const g=new THREE.Group();
   else if(crop==='corn'){for(let i=0;i<4;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.8,6),new THREE.MeshLambertMaterial({color:0x2e7d32}));s.position.set((Math.random()-0.5)*1.7,0.9,(Math.random()-0.5)*1.7);g.add(s);const e=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.5,8),new THREE.MeshLambertMaterial({color:0xf1c40f}));e.position.copy(s.position);e.position.y=1.3;e.position.x+=0.12;g.add(e);}}
   else {for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6),new THREE.MeshLambertMaterial({color:0x4caf50}));l.position.set((Math.random()-0.5)*1.5,0.45,(Math.random()-0.5)*1.5);l.scale.y=0.45;g.add(l);}}
   g.position.set(t.x,0.1,t.z);return g;}
-function updateCrops(now){for(const row of tiles)for(const t of row){if(t.state==='planted'){const ratio=(now-t.plantedAt)/CROPS[t.crop].growTime;if(t.plant)t.plant.scale.y=Math.min(2.6,0.5+ratio*2.3);if(ratio>=1){t.state='grown';if(t.plant)scene.remove(t.plant);t.plant=buildCrop(t.crop,t);scene.add(t.plant);t.mesh.material=grownDirtMat();}}}}
+function updateCrops(now){
+  for(const plot of allPlots) for(const row of plot) for(const t of row){
+    // Water tint cleanup
+    if(t.waterUntil && now > t.waterUntil){ t.water=0; t.waterUntil=0; if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;} }
+    if(t.state==='planted'){
+      const speedMult = t.water>0 ? 2 : 1;
+      t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
+      t.lastUpdate = now;
+      const ratio = t.growProgress / CROPS[t.crop].growTime;
+      if(t.plant) t.plant.scale.y = Math.min(2.6, 0.5+ratio*2.3);
+      if(ratio>=1){ t.state='grown'; if(t.plant)scene.remove(t.plant); t.plant=buildCrop(t.crop,t); scene.add(t.plant); t.mesh.material=grownDirtMat(); }
+    }
+  }
+}
 
 // ---------- HUD ----------
-function updateHUD(){document.getElementById('money').textContent='💰 $'+state.money;for(const k of['wheat_seed','corn_seed','potato_seed','wheat','corn','potato']){const el=document.getElementById('inv-'+k.replace('_','-'));if(el)el.textContent=state.inventory[k];}}
+function updateHUD(){
+  document.getElementById('money').textContent='💰 $'+state.money;
+  document.getElementById('lvl-num').textContent=state.level;
+  document.getElementById('xp-cur').textContent=state.xp;
+  document.getElementById('xp-need').textContent=state.xpToNext;
+  document.getElementById('xp-bar').style.width=(state.xp/state.xpToNext*100)+'%';
+  for(const k of['wheat_seed','corn_seed','potato_seed','wheat','corn','potato']){const el=document.getElementById('inv-'+k.replace('_','-'));if(el)el.textContent=state.inventory[k];}
+}
 let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('message');el.textContent=t;el.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>el.style.display='none',ms);}
 function distXZ(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
 
 // ---------- OBJECTIVES ----------
 const OBJ=[
-  {icon:'🚜',text:'Dirija até o campo cercado (W A S D)',done:()=>distXZ(tractor.position,{x:fOX+(COLS-1)/2*TILE,z:fOZ+(ROWS-1)/2*TILE})<26},
-  {icon:'🚜',text:'Aperte 1 (Arado) e dirija sobre o campo',done:()=>tiles.some(r=>r.some(t=>t.state!=='grass'))},
-  {icon:'🌱',text:'Aperte 2 (Plantadeira) e plante dirigindo',done:()=>tiles.some(r=>r.some(t=>t.state==='planted'||t.state==='grown'))},
-  {icon:'⏳',text:'Espere crescer (a planta fica dourada)',done:()=>tiles.some(r=>r.some(t=>t.state==='grown'))},
+  {icon:'🚜',text:'Dirija até o campo cercado (W A S D)',done:()=>distXZ(tractor.position,{x:allPlots[0].centerX,z:allPlots[0].centerZ})<26},
+  {icon:'🚜',text:'Aperte 1 (Arado) e dirija sobre o campo',done:()=>anyTile(t=>t.state!=='grass')},
+  {icon:'🌱',text:'Aperte 2 (Plantadeira) e plante dirigindo',done:()=>anyTile(t=>t.state==='planted'||t.state==='grown')},
+  {icon:'⏳',text:'Espere crescer (a planta fica dourada)',done:()=>anyTile(t=>t.state==='grown')},
   {icon:'🌾',text:'Aperte 3 (Colheitadeira) e colha dirigindo',done:()=>(state.inventory.wheat+state.inventory.corn+state.inventory.potato)>0},
   {icon:'🏪',text:'Vá ao mercado (B) e venda a colheita',done:()=>state.money>500},
   {icon:'🎉',text:'Fazenda funcionando! Continue plantando!',done:()=>false},
