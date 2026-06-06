@@ -339,24 +339,24 @@ for(const s of[-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8)
 const hitch=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.2,1.2),matDark); hitch.position.set(0,0.7,2.4); tractor.add(hitch);
 // Plow
 const plow=new THREE.Group();
-const plowBar=new THREE.Mesh(new THREE.BoxGeometry(3,0.25,0.25),matGrey); plowBar.position.y=0.7; plow.add(plowBar);
-for(let i=-1;i<=1;i++){ const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.08,16),new THREE.MeshLambertMaterial({color:0xb0b0b0})); disc.position.set(i*1.1,0.4,0.2); disc.rotation.x=Math.PI/2; plow.add(disc);
-  const arm=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.5,0.12),matDark); arm.position.set(i*1.1,0.6,0.05); plow.add(arm);}
+const plowBar=new THREE.Mesh(new THREE.BoxGeometry(7.2,0.25,0.25),matGrey); plowBar.position.y=0.7; plow.add(plowBar);
+for(let i=-3;i<=3;i++){ const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.08,16),new THREE.MeshLambertMaterial({color:0xb0b0b0})); disc.position.set(i*1.2,0.4,0.2); disc.rotation.x=Math.PI/2; plow.add(disc);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.5,0.12),matDark); arm.position.set(i*1.2,0.6,0.05); plow.add(arm);}
 plow.position.set(0,0,3); tractor.add(plow);
 // Seeder
 const seeder=new THREE.Group();
-const hopper=new THREE.Mesh(new THREE.BoxGeometry(3,1,0.9),new THREE.MeshLambertMaterial({color:0x2e7d32})); hopper.position.y=1.1; seeder.add(hopper);
-const hopLid=new THREE.Mesh(new THREE.BoxGeometry(3.1,0.15,1),matDark); hopLid.position.y=1.65; seeder.add(hopLid);
-for(let i=-1;i<=1;i++){ const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.8,6),matDark); tube.position.set(i*1.1,0.5,0.3); seeder.add(tube);}
-const seedWheel=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,2.8,16),matDark); seedWheel.rotation.z=Math.PI/2; seedWheel.position.set(0,0.5,-0.4); seeder.add(seedWheel);
+const hopper=new THREE.Mesh(new THREE.BoxGeometry(7.2,1,0.9),new THREE.MeshLambertMaterial({color:0x2e7d32})); hopper.position.y=1.1; seeder.add(hopper);
+const hopLid=new THREE.Mesh(new THREE.BoxGeometry(7.3,0.15,1),matDark); hopLid.position.y=1.65; seeder.add(hopLid);
+for(let i=-3;i<=3;i++){ const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.8,6),matDark); tube.position.set(i*1.2,0.5,0.3); seeder.add(tube);}
+const seedWheel=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,7,16),matDark); seedWheel.rotation.z=Math.PI/2; seedWheel.position.set(0,0.5,-0.4); seeder.add(seedWheel);
 seeder.position.set(0,0,3); tractor.add(seeder);
 // Harvester header
 const harvester=new THREE.Group();
-const reelBar=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.3,0.3),matYellow); reelBar.position.y=0.9; harvester.add(reelBar);
+const reelBar=new THREE.Mesh(new THREE.BoxGeometry(7.4,0.3,0.3),matYellow); reelBar.position.y=0.9; harvester.add(reelBar);
 const reel=new THREE.Group(); reel.position.set(0,0.9,0.5);
-for(let i=0;i<5;i++){ const bat=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.08,0.08),matGrey); const holder=new THREE.Group(); bat.position.z=0.35; holder.add(bat); holder.rotation.x=i*(Math.PI*2/5); reel.add(holder);}
+for(let i=0;i<5;i++){ const bat=new THREE.Mesh(new THREE.BoxGeometry(7.2,0.08,0.08),matGrey); const holder=new THREE.Group(); bat.position.z=0.35; holder.add(bat); holder.rotation.x=i*(Math.PI*2/5); reel.add(holder);}
 harvester.add(reel); harvester.userData.reel=reel;
-const cutbar=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.1,0.6),matGrey); cutbar.position.set(0,0.25,0.5); harvester.add(cutbar);
+const cutbar=new THREE.Mesh(new THREE.BoxGeometry(7.4,0.1,0.6),matGrey); cutbar.position.set(0,0.25,0.5); harvester.add(cutbar);
 harvester.position.set(0,0,3); tractor.add(harvester);
 
 function showImplement(){ plow.visible=state.tool===1; seeder.visible=state.tool===2; harvester.visible=state.tool===3; hitch.visible=state.tool!==0; }
@@ -404,13 +404,17 @@ function workTile(t){ if(!t)return;
   else if(state.tool===3){ if(t.state==='grown'){ state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD(); if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[t.crop].emoji,CROPS[t.crop].top); sndHarvest(); t.state='tilled'; t.mesh.material=tilledMat(); t.crop=null; } }
 }
 const _swath=new THREE.Vector3();
+const _workedThisFrame=new Set();
 function autoFarm(){ if(state.tool===0)return;
-  // Sample the full width of the implement (3 points across) so it works a wide swath, not one row
-  for(const lx of [-1.2, 0, 1.2]){
-    _swath.set(lx, 0, 3); // local position relative to tractor (z=3 is behind, where implement is)
-    tractor.localToWorld(_swath);
-    const t=tileUnder(_swath.x, _swath.z);
-    if(t) workTile(t); // workTile only acts when the tile state matches, so no repeat spam
+  _workedThisFrame.clear();
+  // Sample many points across a wide swath (~7m) so 3 tile rows are always hit
+  for(const lz of [2.5, 3.2, 3.9]){             // 3 depths front-to-back of implement
+    for(const lx of [-3.6,-2.4,-1.2,0,1.2,2.4,3.6]){  // 7 points across 7.2m width
+      _swath.set(lx, 0, lz);
+      tractor.localToWorld(_swath);
+      const t=tileUnder(_swath.x, _swath.z);
+      if(t && !_workedThisFrame.has(t)){ workTile(t); _workedThisFrame.add(t); }
+    }
   }
 }
 
