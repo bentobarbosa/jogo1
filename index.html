@@ -2225,8 +2225,9 @@ function nextWave() {
     state.planetIdx++;
     state.wave = 1;
     state.phase = 1;
-    if(state.planetIdx >= 100) {
-      showMsg('🏆 VOCÊ CONQUISTOU TODOS OS PLANETAS!');
+    if(state.planetIdx >= 10) {
+      showMsg('🏆 VOCÊ CONQUISTOU TODOS OS 10 PLANETAS! VITÓRIA FINAL!');
+      state.gameRunning = false;
       return;
     }
     buildEnvironment(state.planetIdx);
