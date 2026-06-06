@@ -62,6 +62,22 @@
       display:flex; align-items:center; gap:10px; max-width:80%; }
     #objective .obj-icon { font-size:20px; }
 
+    #fuel-box { position:absolute; bottom:18px; right:140px; background:rgba(0,0,0,0.7); color:#fff;
+      padding:8px 14px; border-radius:12px; font-family:monospace; text-align:center; }
+    #fuel-bar-bg { background:rgba(0,0,0,0.5); border-radius:6px; height:14px; overflow:hidden; width:120px; margin-top:2px; }
+    #fuel-bar { background:linear-gradient(90deg,#ff5722,#ffc107); height:100%; width:100%; transition:width 0.3s; }
+    #fuel-box .fuel-label { font-size:11px; opacity:0.8; }
+    #fuel-box.low #fuel-bar { background:#f44336; animation:pulse 0.5s infinite alternate; }
+    @keyframes pulse { from{opacity:1} to{opacity:0.5} }
+
+    #clock-box { position:absolute; top:140px; left:16px; background:rgba(0,0,0,0.7); color:#fff;
+      padding:6px 12px; border-radius:10px; font-family:monospace; display:flex; align-items:center; gap:8px;
+      font-size:14px; }
+    #clock-box .weather-ico { font-size:18px; }
+
+    #rain-overlay { position:fixed; inset:0; pointer-events:none; background:rgba(60,80,120,0); transition:background 1s; z-index:5; }
+    #rain-overlay.on { background:rgba(60,80,120,0.18); }
+
     #speedometer { position:absolute; bottom:18px; right:18px; background:rgba(0,0,0,0.7); color:#fff;
       padding:8px 16px; border-radius:12px; font-family:monospace; text-align:center; }
     #speedometer .speed-val { font-size:26px; font-weight:800; color:#ffd54f; }
@@ -120,6 +136,7 @@
 </div>
 
 <canvas id="canvas"></canvas>
+<div id="rain-overlay"></div>
 
 <div id="hud">
   <div id="money">💰 $500</div>
@@ -144,7 +161,8 @@
     <div class="help-line"><span class="key">⇧</span> Turbo &nbsp; 🖱️ Arrastar = girar câmera</div>
     <div class="divider"></div>
     <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher &nbsp;<span class="key">4</span> 💧 Irrigar &nbsp;<span class="key">0</span> Guardar</div>
-    <div class="help-line"><span class="key">Q</span> Trocar semente &nbsp; <span class="key">B</span> Loja</div>
+    <div class="help-line"><span class="key">Q</span> Semente &nbsp; <span class="key">B</span> Loja &nbsp; <span class="key">H</span> 🔊 Buzina &nbsp; <span class="key">L</span> 💡 Faróis</div>
+    <div class="help-line"><span class="key">R</span> Abastecer (no posto) &nbsp;⏱️ Ciclo dia/noite</div>
     <div class="divider"></div>
     <div class="help-line">💡 Ligue a ferramenta e <b>dirija por cima do campo!</b></div>
   </div>
@@ -156,6 +174,11 @@
     <div class="tool" data-tool="3"><div class="tool-icon">🌾</div><div class="tool-name">Colheitadeira</div><div class="tool-key">3</div></div>
     <div class="tool" data-tool="4"><div class="tool-icon">💧</div><div class="tool-name">Irrigador</div><div class="tool-sub">Cresce 2× mais rápido</div><div class="tool-key">4</div></div>
   </div>
+  <div id="fuel-box">
+    <div class="fuel-label">⛽ COMBUSTÍVEL</div>
+    <div id="fuel-bar-bg"><div id="fuel-bar"></div></div>
+  </div>
+  <div id="clock-box"><span class="weather-ico" id="weather-ico">☀️</span><span id="time-text">12:00</span></div>
   <div id="speedometer"><div class="speed-val" id="speed-val">0</div><div class="speed-unit">km/h</div></div>
   <div id="message"></div>
 </div>
@@ -178,18 +201,31 @@
 // =====================================================
 const state = {
   money:500,
-  inventory:{ wheat_seed:10, corn_seed:5, potato_seed:5, wheat:0, corn:0, potato:0 },
+  inventory:{ wheat_seed:10, corn_seed:5, potato_seed:5, tomato_seed:0, soy_seed:0, melon_seed:0, sunflower_seed:0,
+    wheat:0, corn:0, potato:0, tomato:0, soy:0, melon:0, sunflower:0,
+    fertilizer:0 },
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
   tool:0, objective:0,
   level:1, xp:0, xpToNext:50,
   plotsUnlocked:1,
+  fuel:100, maxFuel:100,
+  headlights:false,
+  time:0.3,         // 0 = midnight, 0.5 = noon, 1 = midnight again
+  daySpeed:1/240,   // 240 seconds = 1 full day
+  weather:'sun',    // sun, cloudy, rain
+  weatherTimer:80,
+  qualityTotals:{wheat:0,corn:0,potato:0,tomato:0,soy:0,melon:0,sunflower:0},
 };
-const XP_PER_HARVEST = { wheat:5, corn:10, potato:18 };
+const XP_PER_HARVEST = { wheat:5, corn:10, potato:18, tomato:14, soy:12, melon:25, sunflower:20 };
 const CROPS = {
-  wheat:  { emoji:'🌾', name:'Trigo',  growTime:22, sell:25, seed:5,  top:0xe6b80b },
-  corn:   { emoji:'🌽', name:'Milho',  growTime:38, sell:50, seed:10, top:0xf1c40f },
-  potato: { emoji:'🥔', name:'Batata', growTime:52, sell:80, seed:15, top:0xa0522d },
+  wheat:    { emoji:'🌾', name:'Trigo',     growTime:22, sell:25, seed:5,  top:0xe6b80b },
+  corn:     { emoji:'🌽', name:'Milho',     growTime:38, sell:50, seed:10, top:0xf1c40f },
+  potato:   { emoji:'🥔', name:'Batata',    growTime:52, sell:80, seed:15, top:0xa0522d },
+  tomato:   { emoji:'🍅', name:'Tomate',    growTime:30, sell:60, seed:12, top:0xe53935 },
+  soy:      { emoji:'🫘', name:'Soja',      growTime:35, sell:55, seed:11, top:0x8bc34a },
+  melon:    { emoji:'🍉', name:'Melancia',  growTime:70, sell:120,seed:25, top:0x66bb6a },
+  sunflower:{ emoji:'🌻', name:'Girassol',  growTime:45, sell:85, seed:18, top:0xfdd835 },
 };
 
 // ---------- AUDIO ----------
@@ -329,6 +365,21 @@ function makeShop(x,z){const g=new THREE.Group();
   g.position.set(x,0,z);scene.add(g);addCol(x,z,6.5);}
 const shopPos=new THREE.Vector3(28,0,8); makeShop(shopPos.x,shopPos.z);
 
+// Gas pump building
+function makePump(x,z){const g=new THREE.Group();
+  // Base
+  const base=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.3,3),new THREE.MeshLambertMaterial({color:0x424242}));base.position.y=0.15;g.add(base);
+  // Roof canopy
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(4,0.4,4),new THREE.MeshLambertMaterial({color:0xc62828}));roof.position.y=4;g.add(roof);
+  for(const cx of [-1.5,1.5])for(const cz of [-1.5,1.5]){const col=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,4,8),new THREE.MeshLambertMaterial({color:0xeeeeee}));col.position.set(cx,2,cz);g.add(col);}
+  // Pump body
+  const pump=new THREE.Mesh(new THREE.BoxGeometry(0.9,1.6,0.6),new THREE.MeshLambertMaterial({color:0xff5252}));pump.position.y=1.1;g.add(pump);
+  const screen=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.4,0.65),new THREE.MeshLambertMaterial({color:0x000000,emissive:0x00ff00,emissiveIntensity:0.5}));screen.position.y=1.5;g.add(screen);
+  // Sign
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
+  g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
+const pumpPos=new THREE.Vector3(40,0,8); makePump(pumpPos.x,pumpPos.z);
+
 function makeHouse(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(8,4.5,9),new THREE.MeshLambertMaterial({color:0xf5deb3}));b.position.y=2.25;b.castShadow=true;g.add(b);
   const roof=new THREE.Mesh(new THREE.ConeGeometry(6.5,3.5,4),new THREE.MeshLambertMaterial({color:0x7a3b2e}));roof.rotation.y=Math.PI/4;roof.position.y=6.2;roof.castShadow=true;g.add(roof);
@@ -386,6 +437,9 @@ const fw2=wheel(0.55);fw2.position.set(1.15,0.55,-1.3);tractor.add(fw2);
 const bw1=wheel(1.05);bw1.position.set(-1.25,1.05,1.2);tractor.add(bw1);
 const bw2=wheel(1.05);bw2.position.set(1.25,1.05,1.2);tractor.add(bw2);
 for(const s of[-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),new THREE.MeshBasicMaterial({color:0xffffcc}));hl.position.set(s*0.5,1.75,-1.95);tractor.add(hl);}
+// Headlight spotlights (toggleable)
+const headLight1=new THREE.SpotLight(0xffeecc,0,30,Math.PI/5,0.5,1.5); headLight1.position.set(-0.5,1.8,-1.95); headLight1.target.position.set(-1,0,-10); tractor.add(headLight1); tractor.add(headLight1.target);
+const headLight2=new THREE.SpotLight(0xffeecc,0,30,Math.PI/5,0.5,1.5); headLight2.position.set(0.5,1.8,-1.95); headLight2.target.position.set(1,0,-10); tractor.add(headLight2); tractor.add(headLight2.target);
 
 // ---------- IMPLEMENTS (visible attachments behind tractor) ----------
 const hitch=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.2,1.2),matDark); hitch.position.set(0,0.7,2.4); tractor.add(hitch);
@@ -439,7 +493,11 @@ function updateFloaters(dt){for(let i=floaters.length-1;i>=0;i--){const f=floate
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
   if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4);
-  if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();});
+  if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();
+  if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
+  if(e.code==='KeyL'){ state.headlights=!state.headlights; const v=state.headlights?2.5:0; headLight1.intensity=v; headLight2.intensity=v; showMessage(state.headlights?'💡 Faróis LIGADOS':'💡 Faróis DESLIGADOS',900); }
+  if(e.code==='KeyR'){ tryRefuel(); }
+});
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 // Mouse camera control
@@ -452,7 +510,7 @@ canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 function setTool(t){ state.tool=t; document.querySelectorAll('.tool').forEach(el=>el.classList.toggle('active',+el.dataset.tool===t)); showImplement();
   const n=['Ferramenta guardada','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada','💧 Irrigador ligado']; showMessage(n[t],900); }
-function cycleCrop(){const o=['wheat','corn','potato'];state.selectedCrop=o[(o.indexOf(state.selectedCrop)+1)%o.length];document.getElementById('tool-crop').textContent=`${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;showMessage(`Semente: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`,900);}
+function cycleCrop(){const o=['wheat','corn','potato','tomato','soy','melon','sunflower'];state.selectedCrop=o[(o.indexOf(state.selectedCrop)+1)%o.length];document.getElementById('tool-crop').textContent=`${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;showMessage(`Semente: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`,900);}
 
 // ---------- FARMING ----------
 function tileUnder(x,z){
@@ -464,14 +522,32 @@ function tileUnder(x,z){
 }
 function anyTile(pred){ for(const p of allPlots) for(const row of p.tiles) for(const t of row) if(pred(t)) return true; return false; }
 function workTile(t){ if(!t)return;
+  // Any active tool also removes weeds (tractor crushes them)
+  if(t.weed){ scene.remove(t.weed); t.weed=null; floatText(t.x,t.z,'-mato',0x4a3d1a); }
   if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; floatText(t.x,t.z,'arado',0x8d6e63); sndPlow(); } }
-  else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--; updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
+  else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--;
+    // Auto-apply fertilizer if available
+    if(state.inventory.fertilizer>0){ state.inventory.fertilizer--; t.fertilized=true;
+      const ft=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96,TILE*0.96),new THREE.MeshBasicMaterial({color:0x9c27b0,transparent:true,opacity:0.18}));
+      ft.rotation.x=-Math.PI/2; ft.position.set(t.x,0.075,t.z); scene.add(ft); t.fertilTint=ft;
+    }
+    updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { floatText(t.x,t.z,'sem semente!',0xff5252);} } }
   else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop; state.inventory[cropKey]=(state.inventory[cropKey]||0)+1;
-    if(t.plant){scene.remove(t.plant);t.plant=null;} floatText(t.x,t.z,'+1 '+CROPS[cropKey].emoji,CROPS[cropKey].top); sndHarvest();
-    t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0;
+    if(t.plant){scene.remove(t.plant);t.plant=null;}
+    // Quality calc: 1-5 stars based on care
+    let q=2;
+    if(t.water>0) q++;
+    if(t.fertilized) q+=2;
+    if(t.weed) q--;
+    q = Math.max(1,Math.min(5,q+(Math.random()<0.3?1:0)));
+    state.qualityTotals[cropKey] = (state.qualityTotals[cropKey]||0) + q;
+    const stars='⭐'.repeat(q);
+    floatText(t.x,t.z,'+1 '+CROPS[cropKey].emoji+' '+stars,CROPS[cropKey].top); sndHarvest();
+    t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0; t.fertilized=false;
     if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
+    if(t.fertilTint){scene.remove(t.fertilTint); t.fertilTint=null;}
     gainXP(XP_PER_HARVEST[cropKey]||5); updateHUD();
   } }
   else if(state.tool===4){ if(t.state!=='grass'){ t.water=1; t.waterUntil=performance.now()/1000 + 60;
@@ -528,14 +604,22 @@ function autoFarm(){
 function buildCrop(crop,t){const g=new THREE.Group();
   if(crop==='wheat'){for(let i=0;i<7;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.4,4),new THREE.MeshLambertMaterial({color:0xd4b300}));s.position.set((Math.random()-0.5)*1.7,0.7,(Math.random()-0.5)*1.7);g.add(s);const h=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.35,5),new THREE.MeshLambertMaterial({color:0xe6b80b}));h.position.copy(s.position);h.position.y=1.5;g.add(h);}}
   else if(crop==='corn'){for(let i=0;i<4;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.8,6),new THREE.MeshLambertMaterial({color:0x2e7d32}));s.position.set((Math.random()-0.5)*1.7,0.9,(Math.random()-0.5)*1.7);g.add(s);const e=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.5,8),new THREE.MeshLambertMaterial({color:0xf1c40f}));e.position.copy(s.position);e.position.y=1.3;e.position.x+=0.12;g.add(e);}}
-  else {for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6),new THREE.MeshLambertMaterial({color:0x4caf50}));l.position.set((Math.random()-0.5)*1.5,0.45,(Math.random()-0.5)*1.5);l.scale.y=0.45;g.add(l);}}
+  else if(crop==='potato'){for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6),new THREE.MeshLambertMaterial({color:0x4caf50}));l.position.set((Math.random()-0.5)*1.5,0.45,(Math.random()-0.5)*1.5);l.scale.y=0.45;g.add(l);}}
+  else if(crop==='tomato'){for(let i=0;i<4;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.0,5),new THREE.MeshLambertMaterial({color:0x2e7d32}));s.position.set((Math.random()-0.5)*1.6,0.5,(Math.random()-0.5)*1.6);g.add(s);for(let j=0;j<3;j++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,6),new THREE.MeshLambertMaterial({color:0xe53935}));f.position.set(s.position.x+(Math.random()-0.5)*0.4,0.5+j*0.25,s.position.z+(Math.random()-0.5)*0.4);g.add(f);}}}
+  else if(crop==='soy'){for(let i=0;i<6;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.7,4),new THREE.MeshLambertMaterial({color:0x558b2f}));s.position.set((Math.random()-0.5)*1.7,0.35,(Math.random()-0.5)*1.7);g.add(s);for(let j=0;j<3;j++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6),new THREE.MeshLambertMaterial({color:0x8bc34a}));f.position.set(s.position.x,0.3+j*0.2,s.position.z);f.scale.set(1,0.6,1);g.add(f);}}}
+  else if(crop==='melon'){for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.6,12,10),new THREE.MeshLambertMaterial({color:0x2e7d32}));f.position.set((Math.random()-0.5)*1.4,0.5,(Math.random()-0.5)*1.4);f.scale.y=0.8;g.add(f);const stripes=new THREE.Mesh(new THREE.SphereGeometry(0.61,12,10),new THREE.MeshBasicMaterial({color:0x66bb6a,wireframe:true,transparent:true,opacity:0.4}));stripes.position.copy(f.position);g.add(stripes);}}
+  else if(crop==='sunflower'){for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,2,6),new THREE.MeshLambertMaterial({color:0x33691e}));s.position.set((Math.random()-0.5)*1.5,1,(Math.random()-0.5)*1.5);g.add(s);const head=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.1,16),new THREE.MeshLambertMaterial({color:0xfdd835}));head.position.set(s.position.x,2,s.position.z);head.rotation.x=Math.PI/2;g.add(head);const center=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.12,12),new THREE.MeshLambertMaterial({color:0x4e342e}));center.position.set(s.position.x,2.02,s.position.z);center.rotation.x=Math.PI/2;g.add(center);}}
   g.position.set(t.x,0.1,t.z);return g;}
 function updateCrops(now){
   for(const plot of allPlots) for(const row of plot) for(const t of row){
     // Water tint cleanup
     if(t.waterUntil && now > t.waterUntil){ t.water=0; t.waterUntil=0; if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;} }
     if(t.state==='planted'){
-      const speedMult = t.water>0 ? 2 : 1;
+      // Weeds halt growth, water 2x, fertilizer 3x (stacks)
+      let speedMult = 1;
+      if(t.water>0) speedMult *= 2;
+      if(t.fertilized) speedMult *= 1.5;
+      if(t.weed) speedMult = 0; // halt
       t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
       t.lastUpdate = now;
       const ratio = t.growProgress / CROPS[t.crop].growTime;
@@ -552,7 +636,20 @@ function updateHUD(){
   document.getElementById('xp-cur').textContent=state.xp;
   document.getElementById('xp-need').textContent=state.xpToNext;
   document.getElementById('xp-bar').style.width=(state.xp/state.xpToNext*100)+'%';
+  const fpct=(state.fuel/state.maxFuel*100);
+  document.getElementById('fuel-bar').style.width=fpct+'%';
+  document.getElementById('fuel-box').classList.toggle('low', fpct<20);
   for(const k of['wheat_seed','corn_seed','potato_seed','wheat','corn','potato']){const el=document.getElementById('inv-'+k.replace('_','-'));if(el)el.textContent=state.inventory[k];}
+}
+
+function tryRefuel(){
+  if(distXZ(tractor.position,pumpPos)>10){ showMessage('⛽ Vá até o posto pra abastecer!',1400); return; }
+  const need=state.maxFuel-state.fuel;
+  if(need<=0){ showMessage('Tanque cheio!',1000); return; }
+  const cost=Math.ceil(need*0.8);
+  if(state.money<cost){ showMessage('❌ Sem dinheiro ($'+cost+')',1400); return; }
+  state.money-=cost; state.fuel=state.maxFuel; sndSell();
+  showMessage(`⛽ Abastecido! -$${cost}`,1500); updateHUD();
 }
 let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('message');el.textContent=t;el.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>el.style.display='none',ms);}
 function distXZ(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
@@ -574,10 +671,104 @@ function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tra
 window.closeShop=()=>{state.shopOpen=false;document.getElementById('shop').style.display='none';};
 window.showTab=(tab)=>{state.shopTab=tab;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell'][i]===tab));renderShop();};
 function renderShop(){const grid=document.getElementById('shop-grid');grid.innerHTML='';
-  if(state.shopTab==='buy'){[['wheat_seed',CROPS.wheat],['corn_seed',CROPS.corn],['potato_seed',CROPS.potato]].forEach(([key,c])=>{const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sell}</p><p>Preço: <b>$${c.seed}</b></p><button onclick="buySeed('${key}',${c.seed})">x1 ($${c.seed})</button><button onclick="buySeed('${key}',${c.seed*10},10)">x10 ($${c.seed*10})</button>`;grid.appendChild(el);});}
-  else {[['wheat',CROPS.wheat.sell,'🌾 Trigo'],['corn',CROPS.corn.sell,'🌽 Milho'],['potato',CROPS.potato.sell,'🥔 Batata']].forEach(([key,price,label])=>{const have=state.inventory[key]||0;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${label}</h4><p>Você tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});}}
+  if(state.shopTab==='buy'){
+    [['wheat_seed',CROPS.wheat],['corn_seed',CROPS.corn],['potato_seed',CROPS.potato],['tomato_seed',CROPS.tomato],['soy_seed',CROPS.soy],['melon_seed',CROPS.melon],['sunflower_seed',CROPS.sunflower]].forEach(([key,c])=>{const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sell}</p><p>Preço: <b>$${c.seed}</b></p><button onclick="buySeed('${key}',${c.seed})">x1 ($${c.seed})</button><button onclick="buySeed('${key}',${c.seed*10},10)">x10 ($${c.seed*10})</button>`;grid.appendChild(el);});
+    // Fertilizer
+    const fEl=document.createElement('div'); fEl.className='shop-item';
+    fEl.innerHTML=`<h4>🧪 Fertilizante</h4><p>Aplicado automático ao plantar</p><p>+50% velocidade · +2⭐ qualidade</p><p>Preço: <b>$15</b></p><button onclick="buyFert(15,1)">x1 ($15)</button><button onclick="buyFert(120,10)">x10 ($120)</button>`;
+    grid.appendChild(fEl);
+  }
+  else {
+    Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const price=Math.round(c.sell*bonus); const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · Qualidade média: <b>${avg}⭐</b></p><p>$${price} cada (com bônus qualidade)</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
+  }
+}
 window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory[k]+=q;sndSell();updateHUD();renderShop();};
-window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];state.inventory[k]-=q;state.money+=q*u;sndSell();updateHUD();renderShop();};
+window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
+window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=q*u;sndSell();updateHUD();renderShop();};
+
+// ---------- RAIN PARTICLES ----------
+const rainGeo=new THREE.BufferGeometry();
+const RAIN_COUNT=2000;
+const rainPos=new Float32Array(RAIN_COUNT*3);
+for(let i=0;i<RAIN_COUNT;i++){rainPos[i*3]=(Math.random()-0.5)*200; rainPos[i*3+1]=Math.random()*60; rainPos[i*3+2]=(Math.random()-0.5)*200;}
+rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
+const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xaaccee,size:0.25,transparent:true,opacity:0.7}));
+rain.visible=false; scene.add(rain);
+
+// ---------- DAY/NIGHT ----------
+function updateDayNight(){
+  const t=state.time; // 0..1
+  // Sun angle: at t=0.25 (6am) sun rises east, t=0.5 noon overhead, t=0.75 (6pm) sets west
+  const ang=(t-0.25)*Math.PI*2; // 0 at sunrise
+  const sx=Math.cos(ang)*100, sy=Math.sin(ang)*100, sz=30;
+  sun.position.set(sx,Math.max(-30,sy),sz);
+  // Daylight strength
+  const day=Math.max(0,Math.sin(t*Math.PI*2-Math.PI/2)*0.5+0.5); // 0 night, 1 noon
+  sun.intensity=0.2+day*1.3;
+  // Sky color
+  const top=new THREE.Color(0x0a1428).lerp(new THREE.Color(0x2c6fd6),day);
+  const bot=new THREE.Color(0x1a1a3a).lerp(new THREE.Color(0xcdeeff),day);
+  if(day<0.2){ // dawn/dusk orange tint
+    const dusk=1-day*5;
+    top.lerp(new THREE.Color(0xff7043),dusk*0.4);
+    bot.lerp(new THREE.Color(0xffab91),dusk*0.5);
+  }
+  skyMat.uniforms.top.value=top; skyMat.uniforms.bottom.value=bot;
+  scene.fog.color=bot;
+  // HUD time
+  const hours=Math.floor(t*24), mins=Math.floor((t*24-hours)*60);
+  document.getElementById('time-text').textContent=String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+  // Auto headlights at night
+  if(day<0.15 && !state.headlights){ state.headlights=true; headLight1.intensity=2.5; headLight2.intensity=2.5; }
+}
+
+// ---------- WEATHER ----------
+function updateWeather(dt){
+  state.weatherTimer-=dt;
+  if(state.weatherTimer<=0){
+    const r=Math.random();
+    state.weather = r<0.6?'sun': r<0.85?'cloudy':'rain';
+    state.weatherTimer = 60+Math.random()*60;
+    document.getElementById('weather-ico').textContent = state.weather==='rain'?'🌧️': state.weather==='cloudy'?'☁️':'☀️';
+    document.getElementById('rain-overlay').classList.toggle('on', state.weather==='rain');
+    rain.visible = state.weather==='rain';
+    showMessage(state.weather==='rain'?'🌧️ Começou a chover!': state.weather==='cloudy'?'☁️ Nublado':'☀️ Sol forte!', 1500);
+  }
+  if(state.weather==='rain'){
+    // Rain follows camera
+    rain.position.x=tractor.position.x; rain.position.z=tractor.position.z;
+    // Animate rain falling
+    const pos=rain.geometry.attributes.position;
+    for(let i=0;i<RAIN_COUNT;i++){
+      let y=pos.getY(i)-30*dt;
+      if(y<0){y=50+Math.random()*10; pos.setX(i,(Math.random()-0.5)*100); pos.setZ(i,(Math.random()-0.5)*100);}
+      pos.setY(i,y);
+    }
+    pos.needsUpdate=true;
+    // Auto-water all planted tiles
+    for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+      if((t.state==='planted'||t.state==='tilled') && !t.water){ t.water=1; t.waterUntil=performance.now()/1000+30; }
+    }
+  }
+}
+
+// ---------- WEEDS ----------
+function spawnWeed(t){
+  if(t.weed) return;
+  const weed=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.7,5),new THREE.MeshLambertMaterial({color:0x4a3d1a}));
+  weed.position.set(t.x+(Math.random()-0.5)*1.5,0.35,t.z+(Math.random()-0.5)*1.5);
+  scene.add(weed); t.weed=weed;
+}
+let weedTimer=0;
+function updateWeeds(dt){
+  weedTimer-=dt;
+  if(weedTimer>0) return;
+  weedTimer=15;
+  // Random chance to spawn a weed on a planted tile
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+    if(t.state==='planted' && !t.weed && Math.random()<0.04) spawnWeed(t);
+  }
+}
 
 // ---------- COLLISION ----------
 function collides(x,z){const R=1.6;for(const c of colliders){if(Math.hypot(x-c.x,z-c.z)<c.r+R)return true;}if(Math.abs(x)>200||Math.abs(z)>200)return true;return false;}
@@ -588,8 +779,10 @@ const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
 function animate(){if(!state.running)return;requestAnimationFrame(animate);
   let dt=clock.getDelta();if(dt>0.05)dt=0.05;const now=performance.now()/1000;
   if(!state.shopOpen){
-    const sprint=keys['ShiftLeft']||keys['ShiftRight'];const maxF=T.maxF*(sprint?1.6:1);
-    if(keys['KeyW'])T.speed+=T.accel*dt; else if(keys['KeyS'])T.speed-=T.accel*dt;
+    const sprint=keys['ShiftLeft']||keys['ShiftRight'];
+    const hasFuel=state.fuel>0;
+    const maxF=hasFuel?T.maxF*(sprint?1.6:1):0;
+    if(hasFuel && keys['KeyW'])T.speed+=T.accel*dt; else if(hasFuel && keys['KeyS'])T.speed-=T.accel*dt;
     else{const f=Math.sign(T.speed)*T.brake*0.4*dt;if(Math.abs(f)>Math.abs(T.speed))T.speed=0;else T.speed-=f;}
     T.speed=Math.max(-T.maxR,Math.min(maxF,T.speed));
     if(Math.abs(T.speed)>0.15){const grip=Math.min(1,Math.abs(T.speed)/4);if(keys['KeyA'])T.heading+=T.turn*dt*grip*Math.sign(T.speed);if(keys['KeyD'])T.heading-=T.turn*dt*grip*Math.sign(T.speed);}
@@ -602,8 +795,17 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     const spin=T.speed*dt*1.4;bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin;
     if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6;
     autoFarm();
+    // Fuel decay
+    if(Math.abs(T.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?1.5:0.8));
+    if(state.tool!==0 && Math.abs(T.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.4);
     document.getElementById('speed-val').textContent=Math.round(Math.abs(T.speed)*3.6);
   }
+  // Always-on systems
+  state.time = (state.time + dt*state.daySpeed) % 1;
+  updateDayNight();
+  updateWeather(dt);
+  updateWeeds(dt);
+  updateHUD();
   // Camera: orbit around tractor (yaw relative to tractor heading)
   const ang=T.heading+cam.yaw;
   const off=new THREE.Vector3(Math.sin(ang)*Math.cos(cam.pitch)*cam.dist, Math.sin(cam.pitch)*cam.dist+2, Math.cos(ang)*Math.cos(cam.pitch)*cam.dist);
