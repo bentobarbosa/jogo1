@@ -209,6 +209,11 @@ window.addEventListener('error', e => {
 // =====================================================
 //  BENTO FARM SIMULATOR v3
 // =====================================================
+
+// EARLY GLOBALS (must be initialized first so functions that reference them work even if later code errors)
+const cam = { yaw:0, pitch:0.5, dist:16, dragging:false };
+const T   = { speed:0, maxF:9, maxR:4, accel:8, brake:16, turn:1.7, heading:0 };
+
 const state = {
   money:500,
   inventory:{ wheat_seed:10, corn_seed:5, potato_seed:5, tomato_seed:0, soy_seed:0, melon_seed:0, sunflower_seed:0, apple_seed:0, orange_seed:0,
@@ -512,7 +517,7 @@ plow.visible=seeder.visible=harvester.visible=irrigator.visible=hitch.visible=fa
 
 tractor.position.set(0,0,10); tractor.rotation.y=0;
 scene.add(tractor);
-const T={speed:0,maxF:9,maxR:4,accel:8,brake:16,turn:1.7,heading:0};
+// T declared above
 
 // ---------- FLOATING TEXT ----------
 const floaters=[];
@@ -534,8 +539,7 @@ addEventListener('keydown',e=>{keys[e.code]=true;
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
-// Mouse camera control
-const cam={yaw:0,pitch:0.5,dist:16,dragging:false};
+// Mouse camera control (cam declared above)
 canvas.addEventListener('mousedown',e=>{cam.dragging=true;});
 addEventListener('mouseup',()=>cam.dragging=false);
 addEventListener('mousemove',e=>{ if(!cam.dragging)return; cam.yaw-=e.movementX*0.005; cam.pitch=Math.max(0.15,Math.min(1.3,cam.pitch-e.movementY*0.004)); });
