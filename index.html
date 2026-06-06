@@ -1843,6 +1843,10 @@ function makeAlien(type, pos) {
   // Some aliens can shoot — small/medium can sometimes, large/special always after planet 1
   const canShoot = (state.planetIdx >= 1 && Math.random() < 0.4) || type >= 2 || flies;
 
+  // Random movement pattern: 0=straight, 1=zigzag, 2=strafe-circle, 3=jump, 4=dodge-burst
+  const moveStyles = ['straight','zigzag','circle','jump','dodge'];
+  const moveStyle = moveStyles[Math.floor(Math.random()*moveStyles.length)];
+
   return {
     mesh: group,
     hp: td.hp, maxHp: td.hp,
@@ -1860,6 +1864,12 @@ function makeAlien(type, pos) {
     canShoot: canShoot,
     wobble: Math.random()*Math.PI*2,
     builderIdx: builderIdx,
+    moveStyle: moveStyle,
+    moveTimer: 0,
+    jumpVel: 0,
+    dodgeDir: 0,
+    dodgeCooldown: 1 + Math.random()*2,
+    zigPhase: Math.random()*Math.PI*2,
   };
 }
 
@@ -1907,9 +1917,10 @@ function makeBoss(planetIdx) {
   scene.add(group);
 
   const hpScale = 1 + planetIdx * 0.5;
+  const baseHP = Math.floor(2400 * hpScale); // 3x HP
   return {
     mesh: group,
-    hp: Math.floor(800 * hpScale), maxHp: Math.floor(800 * hpScale),
+    hp: baseHP, maxHp: baseHP,
     speed: 2.2 + planetIdx * 0.1,
     type: 3,
     reward: 500 + planetIdx*100,
@@ -2617,21 +2628,65 @@ function animate() {
       return;
     }
 
-    // Regular enemies — flying or walking
-    const targetY = e.flying ? e.baseY + Math.sin(e.wobble*1.5)*0.4 : e.scale*0.6 + Math.sin(e.wobble*1.5)*0.08;
+    // Regular enemies — varied movement patterns
+    let targetY = e.flying ? e.baseY + Math.sin(e.wobble*1.5)*0.4 : e.scale*0.6 + Math.sin(e.wobble*1.5)*0.08;
     const minRange = e.canShoot ? 6 : 1.5;
+    e.moveTimer += delta;
+
+    // Side vector (perpendicular to player direction)
+    const sideVec = new THREE.Vector3(-flat.z, 0, flat.x);
 
     if(distFlat > minRange) {
-      e.mesh.position.addScaledVector(flat, e.speed * delta);
+      const style = e.moveStyle;
+      if(style === 'straight'){
+        e.mesh.position.addScaledVector(flat, e.speed * delta);
+      } else if(style === 'zigzag'){
+        // S-curve approach
+        e.zigPhase += delta * 4;
+        const zigOffset = Math.sin(e.zigPhase) * 1.2;
+        e.mesh.position.addScaledVector(flat, e.speed * delta * 0.85);
+        e.mesh.position.addScaledVector(sideVec, zigOffset * delta * 4);
+      } else if(style === 'circle'){
+        // Strafe in a circle when at medium range, approach when far
+        if(distFlat > 10){
+          e.mesh.position.addScaledVector(flat, e.speed * delta * 0.9);
+        }
+        e.mesh.position.addScaledVector(sideVec, e.speed * delta * 0.8);
+      } else if(style === 'jump' && !e.flying){
+        // Hops toward player
+        e.mesh.position.addScaledVector(flat, e.speed * delta * 1.1);
+        if(e.mesh.position.y <= e.scale*0.6 + 0.05 && e.jumpVel <= 0){
+          e.jumpVel = 6 + Math.random()*2;
+        }
+        e.jumpVel -= 18 * delta;
+        targetY = Math.max(e.scale*0.6, e.mesh.position.y + e.jumpVel * delta);
+      } else if(style === 'dodge'){
+        // Bursts sideways then forward
+        e.dodgeCooldown -= delta;
+        if(e.dodgeCooldown <= 0){
+          e.dodgeDir = Math.random()<0.5 ? -1 : 1;
+          e.dodgeCooldown = 0.5 + Math.random()*1.5;
+        }
+        e.mesh.position.addScaledVector(flat, e.speed * delta * 0.85);
+        e.mesh.position.addScaledVector(sideVec, e.dodgeDir * e.speed * delta * 1.1);
+      } else {
+        e.mesh.position.addScaledVector(flat, e.speed * delta);
+      }
     } else if(!e.canShoot) {
-      // Melee attack
       e.attackCooldown -= delta;
       if(e.attackCooldown <= 0) {
         playerTakeDamage(e.dmg);
         e.attackCooldown = 1.3;
       }
+    } else {
+      // In range and shoots — strafe to dodge
+      e.mesh.position.addScaledVector(sideVec, Math.sin(e.wobble*2) * e.speed * delta * 0.7);
     }
-    e.mesh.position.y = targetY;
+    if(e.moveStyle !== 'jump' || e.flying) {
+      e.mesh.position.y = targetY;
+    } else {
+      e.mesh.position.y = targetY;
+    }
 
     // Shooting enemies — só atiram de perto/médio (até 15m)
     if(e.canShoot && distFlat < 15 && distFlat > 3) {
