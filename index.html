@@ -5,135 +5,141 @@
   <title>🚜 Bento Farm Simulator</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #87ceeb; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background: #87ceeb; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; user-select: none; }
     #canvas { display: block; }
 
-    #hud {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none; z-index: 10;
-    }
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
     #hud * { pointer-events: none; }
 
+    /* Money */
     #money {
-      position: absolute; top: 20px; right: 20px;
-      background: rgba(255,255,255,0.92);
-      padding: 12px 22px; border-radius: 30px;
-      font-weight: 700; color: #2d5016; font-size: 22px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,0.95); padding: 10px 20px;
+      border-radius: 30px; font-weight: 800; color: #2d5016; font-size: 22px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); border: 2px solid #2d5016;
     }
 
+    /* Inventory */
     #inventory {
-      position: absolute; top: 20px; left: 20px;
-      background: rgba(255,255,255,0.92); padding: 12px 16px;
-      border-radius: 12px; min-width: 220px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      position: absolute; top: 70px; right: 16px;
+      background: rgba(255,255,255,0.92); padding: 10px 14px;
+      border-radius: 12px; min-width: 180px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     }
-    #inventory h3 { color: #2d5016; margin-bottom: 8px; font-size: 14px; letter-spacing: 1px; }
-    .inv-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 0; border-bottom: 1px dashed #ddd; font-size: 13px;
-    }
-    .inv-row:last-child { border-bottom: none; }
+    #inventory h3 { color: #2d5016; margin-bottom: 6px; font-size: 12px; letter-spacing: 1px; }
+    .inv-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px; }
     .inv-label { color: #555; }
     .inv-val { font-weight: 700; color: #2d5016; }
-    .selected-crop {
-      background: #fff9c4; padding: 6px 10px; border-radius: 6px;
-      margin-top: 8px; text-align: center; font-weight: 700; color: #5d4037;
-      font-size: 13px;
-    }
 
-    #prompt {
-      position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.78); color: #fff; padding: 10px 20px;
-      border-radius: 8px; font-size: 16px; font-weight: 600;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: none;
+    /* Help panel (fixed) */
+    #help {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(40,30,20,0.9); padding: 14px 16px;
+      border-radius: 14px; color: #fff; width: 260px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: 2px solid #6b4226;
     }
+    #help h3 { color: #ffd54f; font-size: 14px; margin-bottom: 8px; text-align:center; letter-spacing:1px; }
+    .help-line { font-size: 12px; margin: 4px 0; color: #e8e0d0; display:flex; align-items:center; gap:6px; }
     .key {
-      display: inline-block; background: #fff; color: #000;
-      padding: 2px 8px; border-radius: 4px; font-family: monospace;
-      font-weight: 700; margin: 0 4px;
+      display: inline-block; background: #fff; color: #222;
+      padding: 1px 7px; border-radius: 4px; font-family: monospace;
+      font-weight: 800; font-size: 11px; min-width: 18px; text-align:center;
     }
+    #help .divider { height:1px; background: rgba(255,255,255,0.15); margin:8px 0; }
 
-    #controls {
-      position: absolute; bottom: 20px; left: 20px;
-      background: rgba(255,255,255,0.88); padding: 12px 16px;
-      border-radius: 12px; font-size: 12px; color: #333;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    /* Tool bar bottom center */
+    #toolbar {
+      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px;
     }
-    #controls p { margin: 3px 0; }
+    .tool {
+      background: rgba(0,0,0,0.55); border: 3px solid rgba(255,255,255,0.2);
+      border-radius: 14px; padding: 8px 14px; text-align: center; color: #fff;
+      min-width: 90px; transition: all 0.15s;
+    }
+    .tool.active { border-color: #ffd54f; background: rgba(255,213,79,0.25); transform: translateY(-6px) scale(1.05); }
+    .tool .tool-icon { font-size: 28px; }
+    .tool .tool-key { font-size: 11px; font-family: monospace; opacity: 0.8; margin-top: 2px; }
+    .tool .tool-name { font-size: 12px; font-weight: 700; }
+    .tool .tool-sub { font-size: 10px; opacity: 0.85; }
 
+    /* Objective banner */
+    #objective {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(46,125,50,0.95); color: #fff; padding: 10px 24px;
+      border-radius: 30px; font-weight: 700; font-size: 15px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); border: 2px solid #fff;
+      display: flex; align-items: center; gap: 10px; max-width: 80%;
+    }
+    #objective .obj-icon { font-size: 20px; }
+
+    /* Speedometer */
     #speedometer {
-      position: absolute; bottom: 20px; right: 20px;
-      background: rgba(0,0,0,0.75); color: #fff; padding: 10px 18px;
-      border-radius: 12px; font-family: monospace; font-size: 16px;
+      position: absolute; bottom: 18px; right: 18px;
+      background: rgba(0,0,0,0.7); color: #fff; padding: 8px 16px;
+      border-radius: 12px; font-family: monospace; text-align:center;
     }
-    #speedometer .speed-val { font-size: 28px; font-weight: 700; color: #ffeb3b; }
+    #speedometer .speed-val { font-size: 26px; font-weight: 800; color: #ffd54f; }
+    #speedometer .speed-unit { font-size: 11px; opacity: 0.7; }
 
+    /* Center message */
     #message {
-      position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.85); color: #fff; padding: 14px 30px;
-      border-radius: 10px; font-size: 18px; font-weight: 700;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5); display: none;
+      position: absolute; top: 28%; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.85); color: #fff; padding: 12px 28px;
+      border-radius: 10px; font-size: 17px; font-weight: 700;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5); display: none; text-align:center;
+    }
+
+    /* Interaction hint */
+    #hint {
+      position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.78); color: #fff; padding: 8px 18px;
+      border-radius: 8px; font-size: 14px; font-weight: 600; display: none;
     }
 
     /* Shop */
     #shop {
-      display: none; position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, #5d4037, #8d6e63);
-      border: 4px solid #4e342e; border-radius: 16px;
-      padding: 24px; width: 640px; max-height: 80vh; overflow-y: auto;
-      z-index: 100; color: #fff;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-      pointer-events: auto;
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      background: linear-gradient(135deg, #5d4037, #8d6e63); border: 4px solid #4e342e;
+      border-radius: 16px; padding: 22px; width: 660px; max-height: 82vh; overflow-y: auto;
+      z-index: 100; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,0.6); pointer-events: auto;
     }
-    #shop h2 { text-align: center; color: #ffeb3b; margin-bottom: 8px; }
-    #shop .subtitle { text-align: center; color: #fff9c4; margin-bottom: 16px; font-size: 13px; }
+    #shop h2 { text-align: center; color: #ffd54f; margin-bottom: 4px; }
+    #shop .subtitle { text-align: center; color: #fff9c4; margin-bottom: 14px; font-size: 12px; }
     .shop-tabs { display: flex; gap: 6px; margin-bottom: 14px; justify-content: center; }
-    .tab-btn {
-      flex: 1; padding: 8px 16px; background: rgba(0,0,0,0.3);
-      border: none; color: #fff; cursor: pointer; border-radius: 8px;
-      font-weight: 700; font-size: 14px;
-    }
-    .tab-btn.active { background: #ffeb3b; color: #2d5016; }
+    .tab-btn { flex: 1; padding: 8px; background: rgba(0,0,0,0.3); border: none; color: #fff;
+      cursor: pointer; border-radius: 8px; font-weight: 700; font-size: 13px; }
+    .tab-btn.active { background: #ffd54f; color: #2d5016; }
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .shop-item {
-      background: rgba(0,0,0,0.25); padding: 12px;
-      border-radius: 10px; border: 2px solid rgba(255,255,255,0.1);
-    }
-    .shop-item h4 { color: #ffeb3b; font-size: 14px; }
-    .shop-item p { font-size: 12px; color: #f5f5dc; margin: 4px 0; }
-    .shop-item button {
-      width: 100%; padding: 6px; margin-top: 6px;
-      background: #2d5016; color: #fff; border: none; border-radius: 6px;
-      cursor: pointer; font-weight: 700; font-size: 13px;
-    }
+    .shop-item { background: rgba(0,0,0,0.25); padding: 12px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.1); }
+    .shop-item h4 { color: #ffd54f; font-size: 14px; }
+    .shop-item p { font-size: 12px; color: #f5f5dc; margin: 3px 0; }
+    .shop-item button { width: 100%; padding: 6px; margin-top: 5px; background: #2d5016; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 13px; }
     .shop-item button:hover { background: #4caf50; }
-    .shop-item button:disabled { background: #555; cursor: not-allowed; opacity: 0.6; }
-    .close-btn {
-      display: block; margin: 16px auto 0; padding: 8px 30px;
-      background: #c62828; color: #fff; border: none;
-      border-radius: 8px; cursor: pointer; font-weight: 700;
-    }
+    .shop-item button:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+    .close-btn { display: block; margin: 16px auto 0; padding: 8px 30px; background: #c62828;
+      color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; }
 
-    /* Start screen */
+    /* Start */
     #start {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(180deg, #87ceeb 0%, #4caf50 100%);
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; z-index: 200; color: #fff;
+      position: fixed; inset: 0; z-index: 200; color: #fff;
+      background: linear-gradient(180deg, #87ceeb 0%, #a8d88a 60%, #4caf50 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    #start h1 {
-      font-size: 60px; text-shadow: 4px 4px 0 #2d5016, 8px 8px 12px rgba(0,0,0,0.4);
-      margin-bottom: 20px; letter-spacing: 2px;
+    #start h1 { font-size: 64px; text-shadow: 4px 4px 0 #2d5016, 8px 8px 12px rgba(0,0,0,0.4);
+      margin-bottom: 10px; letter-spacing: 2px; }
+    #start .tag { font-size: 18px; margin: 4px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+    #start .how {
+      margin-top: 24px; background: rgba(0,0,0,0.35); padding: 18px 26px; border-radius: 14px;
+      max-width: 560px; text-align: left;
     }
-    #start p { font-size: 18px; margin: 6px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+    #start .how h3 { color: #ffd54f; margin-bottom: 8px; text-align: center; }
+    #start .how p { font-size: 14px; margin: 6px 0; }
     #start button {
-      margin-top: 30px; padding: 18px 60px; font-size: 24px;
-      background: #ffeb3b; color: #2d5016; border: none;
-      border-radius: 50px; cursor: pointer; font-weight: 800;
+      margin-top: 26px; padding: 16px 56px; font-size: 22px; background: #ffd54f; color: #2d5016;
+      border: none; border-radius: 50px; cursor: pointer; font-weight: 800; letter-spacing: 2px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-      letter-spacing: 2px;
     }
     #start button:hover { transform: scale(1.05); }
   </style>
@@ -142,9 +148,17 @@
 
 <div id="start">
   <h1>🚜 BENTO FARM</h1>
-  <p>Bem-vindo à sua fazenda!</p>
-  <p style="opacity:0.85;font-size:14px;margin-top:20px;">Dirija o trator • Plante • Colha • Venda • Cresça sua fazenda</p>
-  <button onclick="startGame()">▶ COMEÇAR</button>
+  <p class="tag">Seu simulador de fazenda 3D</p>
+  <div class="how">
+    <h3>COMO JOGAR</h3>
+    <p>🚜 Dirija o trator com <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></p>
+    <p>🔧 Escolha uma ferramenta: <span class="key">1</span> Arado · <span class="key">2</span> Plantadeira · <span class="key">3</span> Colheitadeira</p>
+    <p>🌱 <b>Dirija por cima do campo</b> com a ferramenta ligada — ela trabalha sozinha!</p>
+    <p>🌾 Troque a semente com <span class="key">Q</span></p>
+    <p>🏪 Vá até o mercado e aperte <span class="key">B</span> para comprar/vender</p>
+    <p>🐄 Compre animais que produzem leite e ovos automaticamente</p>
+  </div>
+  <button onclick="startGame()">▶ COMEÇAR A FAZENDA</button>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -154,38 +168,60 @@
 
   <div id="inventory">
     <h3>📦 INVENTÁRIO</h3>
-    <div class="inv-row"><span class="inv-label">🌾 Sementes Trigo</span><span class="inv-val" id="inv-wheat-seed">10</span></div>
-    <div class="inv-row"><span class="inv-label">🌽 Sementes Milho</span><span class="inv-val" id="inv-corn-seed">5</span></div>
-    <div class="inv-row"><span class="inv-label">🥔 Sementes Batata</span><span class="inv-val" id="inv-potato-seed">5</span></div>
+    <div class="inv-row"><span class="inv-label">🌾 Sem. Trigo</span><span class="inv-val" id="inv-wheat-seed">10</span></div>
+    <div class="inv-row"><span class="inv-label">🌽 Sem. Milho</span><span class="inv-val" id="inv-corn-seed">5</span></div>
+    <div class="inv-row"><span class="inv-label">🥔 Sem. Batata</span><span class="inv-val" id="inv-potato-seed">5</span></div>
     <div class="inv-row"><span class="inv-label">🌾 Trigo</span><span class="inv-val" id="inv-wheat">0</span></div>
     <div class="inv-row"><span class="inv-label">🌽 Milho</span><span class="inv-val" id="inv-corn">0</span></div>
     <div class="inv-row"><span class="inv-label">🥔 Batata</span><span class="inv-val" id="inv-potato">0</span></div>
     <div class="inv-row"><span class="inv-label">🥛 Leite</span><span class="inv-val" id="inv-milk">0</span></div>
     <div class="inv-row"><span class="inv-label">🥚 Ovos</span><span class="inv-val" id="inv-eggs">0</span></div>
-    <div class="selected-crop" id="selected-crop">SELECIONADO: 🌾 TRIGO</div>
   </div>
 
-  <div id="prompt"></div>
+  <div id="help">
+    <h3>🎮 CONTROLES</h3>
+    <div class="help-line"><span class="key">W</span><span class="key">S</span> Acelerar / Ré</div>
+    <div class="help-line"><span class="key">A</span><span class="key">D</span> Virar</div>
+    <div class="help-line"><span class="key">⇧</span> Turbo</div>
+    <div class="divider"></div>
+    <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher</div>
+    <div class="help-line"><span class="key">Q</span> Trocar semente</div>
+    <div class="help-line"><span class="key">B</span> Abrir loja (no mercado)</div>
+    <div class="divider"></div>
+    <div class="help-line">💡 Ligue uma ferramenta e <b>dirija por cima do campo!</b></div>
+  </div>
 
-  <div id="controls">
-    <p><span class="key">W A S D</span> — Dirigir trator</p>
-    <p><span class="key">E</span> — Arar / Plantar / Colher</p>
-    <p><span class="key">Q</span> — Trocar semente</p>
-    <p><span class="key">B</span> — Loja (perto do mercado)</p>
-    <p><span class="key">SHIFT</span> — Acelerar</p>
+  <div id="objective">
+    <span class="obj-icon">🎯</span>
+    <span id="objective-text">Dirija até o campo cercado</span>
+  </div>
+
+  <div id="toolbar">
+    <div class="tool" id="tool-0" data-tool="0">
+      <div class="tool-icon">✋</div><div class="tool-name">Nenhuma</div><div class="tool-key">0</div>
+    </div>
+    <div class="tool" id="tool-1" data-tool="1">
+      <div class="tool-icon">🚜</div><div class="tool-name">Arado</div><div class="tool-key">tecla 1</div>
+    </div>
+    <div class="tool" id="tool-2" data-tool="2">
+      <div class="tool-icon">🌱</div><div class="tool-name">Plantadeira</div><div class="tool-sub" id="tool-crop">🌾 Trigo</div><div class="tool-key">tecla 2</div>
+    </div>
+    <div class="tool" id="tool-3" data-tool="3">
+      <div class="tool-icon">🌾</div><div class="tool-name">Colheitadeira</div><div class="tool-key">tecla 3</div>
+    </div>
   </div>
 
   <div id="speedometer">
-    <span class="speed-val" id="speed-val">0</span> km/h
+    <div class="speed-val" id="speed-val">0</div><div class="speed-unit">km/h</div>
   </div>
 
   <div id="message"></div>
+  <div id="hint"></div>
 </div>
 
-<!-- Shop -->
 <div id="shop">
   <h2>🏪 MERCADO DA FAZENDA</h2>
-  <div class="subtitle">Compre sementes e equipamentos • Venda sua produção</div>
+  <div class="subtitle">Compre sementes e animais • Venda sua produção</div>
   <div class="shop-tabs">
     <button class="tab-btn active" onclick="showTab('buy')">🛒 COMPRAR</button>
     <button class="tab-btn" onclick="showTab('sell')">💵 VENDER</button>
@@ -198,979 +234,544 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ============================================================
-//  BENTO FARM SIMULATOR
+//  BENTO FARM SIMULATOR  v2
 // ============================================================
 
-// ---------- STATE ----------
 const state = {
   money: 500,
-  inventory: {
-    wheat_seed: 10, corn_seed: 5, potato_seed: 5,
-    wheat: 0, corn: 0, potato: 0,
-    milk: 0, eggs: 0,
-  },
+  inventory: { wheat_seed:10, corn_seed:5, potato_seed:5, wheat:0, corn:0, potato:0, milk:0, eggs:0 },
   selectedCrop: 'wheat',
   cows: 0, chickens: 0,
-  running: false,
-  shopOpen: false,
-  shopTab: 'buy',
-  lastTime: 0,
+  running: false, shopOpen: false, shopTab: 'buy',
+  tool: 0, // 0 none, 1 plow, 2 plant, 3 harvest
+  objective: 0,
 };
 
 const CROPS = {
-  wheat:  { emoji:'🌾', name:'Trigo',  growTime: 30, sellPrice: 25, seedPrice: 5,  color: 0xf4d03f },
-  corn:   { emoji:'🌽', name:'Milho',  growTime: 45, sellPrice: 50, seedPrice: 10, color: 0xf1c40f },
-  potato: { emoji:'🥔', name:'Batata', growTime: 60, sellPrice: 80, seedPrice: 15, color: 0xa0522d },
+  wheat:  { emoji:'🌾', name:'Trigo',  growTime: 25, sellPrice: 25, seedPrice: 5,  topColor: 0xe6b80b },
+  corn:   { emoji:'🌽', name:'Milho',  growTime: 40, sellPrice: 50, seedPrice: 10, topColor: 0xf1c40f },
+  potato: { emoji:'🥔', name:'Batata', growTime: 55, sellPrice: 80, seedPrice: 15, topColor: 0xa0522d },
 };
 
-// ---------- THREE.JS SETUP ----------
+// ---------- THREE SETUP ----------
 const canvas = document.getElementById('canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setClearColor(0x87ceeb);
+renderer.outputEncoding = THREE.sRGBEncoding;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.Fog(0x87ceeb, 80, 250);
+// Sky gradient via large sphere
+const skyGeo = new THREE.SphereGeometry(400, 32, 16);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: { top:{value:new THREE.Color(0x3a7bd5)}, bottom:{value:new THREE.Color(0xbfe9ff)} },
+  vertexShader: `varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 bottom;
+    void main(){ float h=normalize(vP).y*0.5+0.5; gl_FragColor=vec4(mix(bottom,top,clamp(h,0.0,1.0)),1.0);}`
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+scene.fog = new THREE.Fog(0xbfe9ff, 120, 340);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(68, innerWidth/innerHeight, 0.1, 600);
 
-// Lighting
-const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xfff5d0, 1.2);
-sun.position.set(40, 60, 30);
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xfff2d0, 1.3);
+sun.position.set(60, 90, 40);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -100;
-sun.shadow.camera.right = 100;
-sun.shadow.camera.top = 100;
-sun.shadow.camera.bottom = -100;
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 200;
+const sc = sun.shadow.camera;
+sc.left=-120; sc.right=120; sc.top=120; sc.bottom=-120; sc.near=1; sc.far=300;
+sun.shadow.bias = -0.0004;
 scene.add(sun);
-const hemi = new THREE.HemisphereLight(0x88ccff, 0x447733, 0.5);
-scene.add(hemi);
+scene.add(new THREE.HemisphereLight(0x9fd5ff, 0x3a6b2a, 0.45));
 
-// ---------- GROUND ----------
-const groundGeo = new THREE.PlaneGeometry(400, 400, 80, 80);
-const gpos = groundGeo.attributes.position;
-for(let i=0;i<gpos.count;i++){
-  const x = gpos.getX(i), y = gpos.getY(i);
-  gpos.setZ(i, Math.sin(x*0.04)*0.4 + Math.cos(y*0.04)*0.4);
+// ---------- TEXTURED GROUND ----------
+function makeGrassTexture() {
+  const c = document.createElement('canvas'); c.width=c.height=256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#4f9c3f'; g.fillRect(0,0,256,256);
+  for(let i=0;i<2500;i++){
+    const shade = ['#458a37','#57a647','#3f7d33','#62b050'][i%4];
+    g.fillStyle = shade;
+    const x=Math.random()*256, y=Math.random()*256, s=1+Math.random()*2.5;
+    g.fillRect(x,y,s,s);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(40,40);
+  return t;
 }
+const groundGeo = new THREE.PlaneGeometry(600, 600, 60, 60);
+const gp = groundGeo.attributes.position;
+for(let i=0;i<gp.count;i++){ gp.setZ(i, Math.sin(gp.getX(i)*0.03)*0.5 + Math.cos(gp.getY(i)*0.03)*0.5); }
 groundGeo.computeVertexNormals();
-const ground = new THREE.Mesh(groundGeo,
-  new THREE.MeshLambertMaterial({color: 0x4a8c3e}));
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: makeGrassTexture() }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
 scene.add(ground);
 
 // Dirt road
-const road = new THREE.Mesh(
-  new THREE.PlaneGeometry(8, 200),
-  new THREE.MeshLambertMaterial({color: 0x8d6e63})
-);
-road.rotation.x = -Math.PI/2;
-road.position.y = 0.05;
-road.position.x = -30;
+function makeDirtTexture() {
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  g.fillStyle='#9c7a52'; g.fillRect(0,0,128,128);
+  for(let i=0;i<800;i++){ g.fillStyle=['#8d6e43','#a8855c','#7d5f3a'][i%3];
+    g.fillRect(Math.random()*128,Math.random()*128,2,2); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2,30); return t;
+}
+const road = new THREE.Mesh(new THREE.PlaneGeometry(9, 220), new THREE.MeshLambertMaterial({ map: makeDirtTexture() }));
+road.rotation.x=-Math.PI/2; road.position.set(-34, 0.06, 0); road.receiveShadow=true;
 scene.add(road);
 
-// ---------- FIELD (grid of tilled tiles) ----------
-const FIELD_COLS = 12, FIELD_ROWS = 12, TILE_SIZE = 3;
-const fieldOriginX = 10;
-const fieldOriginZ = -10;
-const tiles = []; // [{state, mesh, plantMesh, plantedAt, crop}]
+// ---------- COLLIDERS ----------
+const colliders = []; // {x,z,r}
+function addCollider(x,z,r){ colliders.push({x,z,r}); }
 
-function makeTile(col, row) {
-  const x = fieldOriginX + col*TILE_SIZE;
-  const z = fieldOriginZ + row*TILE_SIZE;
-  const geo = new THREE.PlaneGeometry(TILE_SIZE*0.95, TILE_SIZE*0.95);
-  const mat = new THREE.MeshLambertMaterial({color: 0x5a8a3e});
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI/2;
-  mesh.position.set(x, 0.08, z);
-  mesh.receiveShadow = true;
+// ---------- FIELD ----------
+const FIELD_COLS=14, FIELD_ROWS=14, TILE=3;
+const fieldOX = 14, fieldOZ = -18;
+const tiles = [];
+const tileMat = {
+  grass: ()=> new THREE.MeshLambertMaterial({color:0x5a9a40}),
+  tilled: ()=> new THREE.MeshLambertMaterial({color:0x6b4a2a}),
+};
+function makeTile(c,r){
+  const x=fieldOX+c*TILE, z=fieldOZ+r*TILE;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97, TILE*0.97), tileMat.grass());
+  mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.09,z); mesh.receiveShadow=true;
   scene.add(mesh);
-  return { state:'grass', mesh, plantMesh: null, plantedAt: 0, crop: null, col, row, x, z };
+  return { state:'grass', mesh, plant:null, plantedAt:0, crop:null, c, r, x, z };
 }
-for(let r=0; r<FIELD_ROWS; r++){
-  const row = [];
-  for(let c=0; c<FIELD_COLS; c++){
-    row.push(makeTile(c, r));
-  }
-  tiles.push(row);
-}
+for(let r=0;r<FIELD_ROWS;r++){ const row=[]; for(let c=0;c<FIELD_COLS;c++) row.push(makeTile(c,r)); tiles.push(row); }
 
-// Field fence
-function makeFencePost(x, z) {
-  const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2),
-    new THREE.MeshLambertMaterial({color: 0x6b4226}));
-  post.position.set(x, 0.6, z);
-  post.castShadow = true;
-  scene.add(post);
+// Field fence (no collider so you can drive in)
+function fencePost(x,z){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,1.1,0.2), new THREE.MeshLambertMaterial({color:0x6b4226})); p.position.set(x,0.55,z); p.castShadow=true; scene.add(p); }
+function fenceRail(x1,z1,x2,z2){
+  const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
+  for(const yy of [0.65,0.95]){
+    const r=new THREE.Mesh(new THREE.BoxGeometry(len,0.07,0.07), new THREE.MeshLambertMaterial({color:0x8d6e63}));
+    r.position.set((x1+x2)/2,yy,(z1+z2)/2); r.rotation.y=Math.atan2(dz,dx); scene.add(r);
+  }
 }
-function makeFenceRail(x1, z1, x2, z2) {
-  const dx = x2-x1, dz = z2-z1;
-  const len = Math.sqrt(dx*dx+dz*dz);
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.08),
-    new THREE.MeshLambertMaterial({color: 0x8d6e63}));
-  rail.position.set((x1+x2)/2, 0.7, (z1+z2)/2);
-  rail.rotation.y = Math.atan2(dz, dx);
-  scene.add(rail);
-  const rail2 = rail.clone();
-  rail2.position.y = 1.0;
-  scene.add(rail2);
-}
-const fxMin = fieldOriginX - TILE_SIZE/2;
-const fxMax = fieldOriginX + (FIELD_COLS-0.5)*TILE_SIZE;
-const fzMin = fieldOriginZ - TILE_SIZE/2;
-const fzMax = fieldOriginZ + (FIELD_ROWS-0.5)*TILE_SIZE;
-for(let x=fxMin; x<=fxMax; x+=4){ makeFencePost(x, fzMin); makeFencePost(x, fzMax); }
-for(let z=fzMin; z<=fzMax; z+=4){ makeFencePost(fxMin, z); makeFencePost(fxMax, z); }
-makeFenceRail(fxMin, fzMin, fxMax, fzMin);
-makeFenceRail(fxMin, fzMax, fxMax, fzMax);
-makeFenceRail(fxMin, fzMin, fxMin, fzMax);
-makeFenceRail(fxMax, fzMin, fxMax, fzMax);
+const fXmin=fieldOX-TILE/2, fXmax=fieldOX+(FIELD_COLS-0.5)*TILE, fZmin=fieldOZ-TILE/2, fZmax=fieldOZ+(FIELD_ROWS-0.5)*TILE;
+for(let x=fXmin;x<=fXmax;x+=4){ fencePost(x,fZmin); fencePost(x,fZmax); }
+for(let z=fZmin;z<=fZmax;z+=4){ fencePost(fXmin,z); fencePost(fXmax,z); }
+fenceRail(fXmin,fZmin,fXmax,fZmin); fenceRail(fXmin,fZmax,fXmax,fZmax);
+fenceRail(fXmin,fZmin,fXmin,fZmax); fenceRail(fXmax,fZmin,fXmax,fZmax);
 
 // ---------- BUILDINGS ----------
-function makeBarn(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 14),
-    new THREE.MeshLambertMaterial({color: 0xc62828}));
-  body.position.y = 3;
-  body.castShadow = true;
-  g.add(body);
-  // Roof
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 14, 4, 1, false, Math.PI/4),
-    new THREE.MeshLambertMaterial({color: 0x6b4226}));
-  roof.rotation.x = Math.PI/2;
-  roof.position.y = 7.5;
-  roof.scale.set(1.05, 1, 1);
-  g.add(roof);
-  // Door
-  const door = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 0.2),
-    new THREE.MeshLambertMaterial({color: 0x3e2723}));
-  door.position.set(0, 2, 7.1);
-  g.add(door);
-  // White X on door
-  const x1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.5, 0.05),
-    new THREE.MeshLambertMaterial({color: 0xffffff}));
-  x1.position.set(0, 2, 7.21);
-  x1.rotation.z = Math.PI/4;
-  g.add(x1);
-  const x2 = x1.clone();
-  x2.rotation.z = -Math.PI/4;
-  g.add(x2);
-  g.position.set(x, 0, z);
-  scene.add(g);
+function makeBarn(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(11,7,15), new THREE.MeshLambertMaterial({color:0xc0392b}));
+  body.position.y=3.5; body.castShadow=true; g.add(body);
+  const roof=new THREE.Mesh(new THREE.CylinderGeometry(8,8,15,4,1,false,Math.PI/4), new THREE.MeshLambertMaterial({color:0x6b4226}));
+  roof.rotation.x=Math.PI/2; roof.position.y=8.5; roof.scale.set(1.05,1,1); roof.castShadow=true; g.add(roof);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(3.5,4.5,0.3), new THREE.MeshLambertMaterial({color:0x3e2723})); door.position.set(0,2.3,7.6); g.add(door);
+  for(const s of [1,-1]){ const x1=new THREE.Mesh(new THREE.BoxGeometry(0.25,5,0.05), new THREE.MeshLambertMaterial({color:0xfff})); x1.position.set(0,2.3,7.76); x1.rotation.z=s*Math.PI/4; g.add(x1);}
+  g.position.set(x,0,z); scene.add(g);
+  addCollider(x,z,8);
 }
-makeBarn(-15, 10);
+makeBarn(-18,14);
 
-// Shop / Market building
-function makeShop(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 8),
-    new THREE.MeshLambertMaterial({color: 0xfff8e1}));
-  body.position.y = 2.5;
-  body.castShadow = true;
-  g.add(body);
-  // Roof
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(7, 3, 4),
-    new THREE.MeshLambertMaterial({color: 0x8b4513}));
-  roof.rotation.y = Math.PI/4;
-  roof.position.y = 6.5;
-  g.add(roof);
-  // Sign
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 0.2),
-    new THREE.MeshLambertMaterial({color: 0xffeb3b}));
-  sign.position.set(0, 4, 4.1);
-  g.add(sign);
-  // Door
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 0.2),
-    new THREE.MeshLambertMaterial({color: 0x4e342e}));
-  door.position.set(0, 1.5, 4.1);
-  g.add(door);
-  g.position.set(x, 0, z);
-  scene.add(g);
+function makeShop(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(9,5.5,9), new THREE.MeshLambertMaterial({color:0xfff3d4}));
+  body.position.y=2.75; body.castShadow=true; g.add(body);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(7.5,3.5,4), new THREE.MeshLambertMaterial({color:0x8b4513}));
+  roof.rotation.y=Math.PI/4; roof.position.y=7.2; roof.castShadow=true; g.add(roof);
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(6,1.2,0.2), new THREE.MeshLambertMaterial({color:0xffd54f, emissive:0x886600, emissiveIntensity:0.3})); sign.position.set(0,4.3,4.6); g.add(sign);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(2,3.2,0.2), new THREE.MeshLambertMaterial({color:0x4e342e})); door.position.set(0,1.6,4.6); g.add(door);
+  // Market awning stripes
+  const awn=new THREE.Mesh(new THREE.BoxGeometry(9.5,0.3,2.5), new THREE.MeshLambertMaterial({color:0xd32f2f})); awn.position.set(0,3.5,5.2); awn.rotation.x=-0.25; g.add(awn);
+  g.position.set(x,0,z); scene.add(g);
+  addCollider(x,z,6.5);
 }
-const shopPos = new THREE.Vector3(-25, 0, -15);
-makeShop(shopPos.x, shopPos.z);
+const shopPos=new THREE.Vector3(-30,0,-18);
+makeShop(shopPos.x,shopPos.z);
 
-// House
-function makeHouse(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 8),
-    new THREE.MeshLambertMaterial({color: 0xf5deb3}));
-  body.position.y = 2;
-  body.castShadow = true;
-  g.add(body);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(6, 3, 4),
-    new THREE.MeshLambertMaterial({color: 0x7a3b2e}));
-  roof.rotation.y = Math.PI/4;
-  roof.position.y = 5.5;
-  g.add(roof);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 0.2),
-    new THREE.MeshLambertMaterial({color: 0x3e2723}));
-  door.position.set(0, 1.25, 4.1);
-  g.add(door);
-  // Windows
-  for(let i=-1;i<=1;i+=2){
-    const w = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.15),
-      new THREE.MeshLambertMaterial({color: 0x88ccff}));
-    w.position.set(i*2, 2.5, 4.1);
-    g.add(w);
-  }
-  g.position.set(x, 0, z);
-  scene.add(g);
+function makeHouse(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(8,4.5,9), new THREE.MeshLambertMaterial({color:0xf5deb3}));
+  body.position.y=2.25; body.castShadow=true; g.add(body);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(6.5,3.5,4), new THREE.MeshLambertMaterial({color:0x7a3b2e}));
+  roof.rotation.y=Math.PI/4; roof.position.y=6.2; roof.castShadow=true; g.add(roof);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(1.4,2.8,0.2), new THREE.MeshLambertMaterial({color:0x3e2723})); door.position.set(0,1.4,4.6); g.add(door);
+  for(const s of [-1,1]){ const w=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,0.15), new THREE.MeshLambertMaterial({color:0x88ccff, emissive:0x224466, emissiveIntensity:0.3})); w.position.set(s*2.3,2.6,4.6); g.add(w);}
+  g.position.set(x,0,z); scene.add(g);
+  addCollider(x,z,6);
 }
-makeHouse(-20, 25);
+makeHouse(-24,30);
 
-// Silo
-function makeSilo(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 10, 16),
-    new THREE.MeshLambertMaterial({color: 0xcfd8dc, shininess: 60}));
-  body.position.y = 5;
-  body.castShadow = true;
-  g.add(body);
-  const top = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 8, 0, Math.PI*2, 0, Math.PI/2),
-    new THREE.MeshLambertMaterial({color: 0x90a4ae}));
-  top.position.y = 10;
-  g.add(top);
-  g.position.set(x, 0, z);
-  scene.add(g);
+function makeSilo(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(2,2,11,18), new THREE.MeshLambertMaterial({color:0xcfd8dc}));
+  body.position.y=5.5; body.castShadow=true; g.add(body);
+  const top=new THREE.Mesh(new THREE.SphereGeometry(2,18,9,0,Math.PI*2,0,Math.PI/2), new THREE.MeshLambertMaterial({color:0x90a4ae})); top.position.y=11; g.add(top);
+  g.position.set(x,0,z); scene.add(g); addCollider(x,z,2.4);
 }
-makeSilo(-5, 12);
-makeSilo(-9, 12);
+makeSilo(-6,16); makeSilo(-10.5,16);
 
-// ---------- TREES & DECORATION ----------
-function makeTree(x, z) {
-  const g = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 3, 6),
-    new THREE.MeshLambertMaterial({color: 0x5d4037}));
-  trunk.position.y = 1.5;
-  trunk.castShadow = true;
-  g.add(trunk);
+// ---------- TREES (with collision) ----------
+function makeTree(x,z,scl=1){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.35*scl,0.5*scl,3.2*scl,7), new THREE.MeshLambertMaterial({color:0x5d4037}));
+  trunk.position.y=1.6*scl; trunk.castShadow=true; g.add(trunk);
   for(let l=0;l<3;l++){
-    const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.6-l*0.3, 10, 8),
-      new THREE.MeshLambertMaterial({color: 0x2e7d32}));
-    leaves.position.y = 3 + l*0.7;
-    leaves.castShadow = true;
-    g.add(leaves);
+    const leaf=new THREE.Mesh(new THREE.SphereGeometry((1.8-l*0.35)*scl,9,8), new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));
+    leaf.position.y=(3.2+l*0.8)*scl; leaf.castShadow=true; g.add(leaf);
   }
-  g.position.set(x, 0, z);
-  scene.add(g);
+  g.position.set(x,0,z); scene.add(g);
+  addCollider(x,z,1.1*scl);
 }
-for(let i=0; i<40; i++){
-  const angle = Math.random()*Math.PI*2;
-  const dist  = 70 + Math.random()*80;
-  const tx = Math.cos(angle)*dist;
-  const tz = Math.sin(angle)*dist;
-  makeTree(tx, tz);
+// Forest ring
+for(let i=0;i<55;i++){ const a=Math.random()*Math.PI*2, d=75+Math.random()*90; makeTree(Math.cos(a)*d, Math.sin(a)*d, 0.8+Math.random()*0.6); }
+for(let i=0;i<18;i++){ makeTree(-55-Math.random()*25, -40+Math.random()*80, 0.8+Math.random()*0.5); }
+// Decorative bushes (no collision)
+for(let i=0;i<40;i++){
+  const a=Math.random()*Math.PI*2, d=20+Math.random()*60;
+  const bx=Math.cos(a)*d, bz=Math.sin(a)*d;
+  if(bx>fXmin-3 && bx<fXmax+3 && bz>fZmin-3 && bz<fZmax+3) continue;
+  const bush=new THREE.Mesh(new THREE.SphereGeometry(0.5+Math.random()*0.4,7,6), new THREE.MeshLambertMaterial({color:0x388e3c}));
+  bush.position.set(bx,0.35,bz); bush.scale.y=0.7; bush.castShadow=true; scene.add(bush);
 }
-// Some trees near edges
-for(let i=0; i<15; i++){
-  const tx = -50 + Math.random()*-30;
-  const tz = -30 + Math.random()*60;
-  makeTree(tx, tz);
-}
-
 // Clouds
-for(let i=0;i<12;i++){
-  const cloud = new THREE.Group();
-  for(let j=0;j<4;j++){
-    const c = new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*1.5, 10, 8),
-      new THREE.MeshBasicMaterial({color: 0xffffff}));
-    c.position.set(j*2-3, Math.random()*0.5, Math.random()*2-1);
-    cloud.add(c);
-  }
-  cloud.position.set(
-    (Math.random()-0.5)*200,
-    40 + Math.random()*15,
-    (Math.random()-0.5)*200
-  );
-  scene.add(cloud);
+for(let i=0;i<14;i++){
+  const cl=new THREE.Group();
+  for(let j=0;j<5;j++){ const c=new THREE.Mesh(new THREE.SphereGeometry(2.2+Math.random()*1.8,9,7), new THREE.MeshBasicMaterial({color:0xffffff})); c.position.set(j*2.4-4,Math.random()*0.6,Math.random()*2-1); cl.add(c);}
+  cl.position.set((Math.random()-0.5)*260, 48+Math.random()*18, (Math.random()-0.5)*260);
+  scene.add(cl);
 }
 
 // ---------- TRACTOR ----------
-const tractor = new THREE.Group();
-// Chassis
-const chassis = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 3.5),
-  new THREE.MeshLambertMaterial({color: 0x2e7d32}));
-chassis.position.y = 1.2;
-chassis.castShadow = true;
-tractor.add(chassis);
-// Hood
-const hood = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1, 1.8),
-  new THREE.MeshLambertMaterial({color: 0x2e7d32}));
-hood.position.set(0, 1.7, -0.7);
-hood.castShadow = true;
-tractor.add(hood);
-// Exhaust
-const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.4, 8),
-  new THREE.MeshLambertMaterial({color: 0x424242}));
-exhaust.position.set(-0.6, 2.6, -1);
-tractor.add(exhaust);
-// Cabin
-const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 1.6),
-  new THREE.MeshLambertMaterial({color: 0xffeb3b}));
-cabin.position.set(0, 2.5, 0.6);
-cabin.castShadow = true;
-tractor.add(cabin);
-// Cabin windows
-const cabWin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 1.5),
-  new THREE.MeshLambertMaterial({color: 0x90caf9, transparent:true, opacity:0.6}));
-cabWin.position.set(0, 2.7, 0.6);
-tractor.add(cabWin);
-// Front wheels (small)
-function makeWheel(r) {
-  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.4, 12),
-    new THREE.MeshLambertMaterial({color: 0x212121}));
-  wheel.rotation.z = Math.PI/2;
-  wheel.castShadow = true;
-  return wheel;
-}
-const fw1 = makeWheel(0.5);
-fw1.position.set(-1.1, 0.5, -1.2);
-tractor.add(fw1);
-const fw2 = makeWheel(0.5);
-fw2.position.set(1.1, 0.5, -1.2);
-tractor.add(fw2);
-// Back wheels (big)
-const bw1 = makeWheel(1);
-bw1.position.set(-1.2, 1, 1.1);
-tractor.add(bw1);
-const bw2 = makeWheel(1);
-bw2.position.set(1.2, 1, 1.1);
-tractor.add(bw2);
-// Tractor light
-const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8),
-  new THREE.MeshBasicMaterial({color: 0xffffaa}));
-headlight.position.set(0, 1.7, -1.7);
-tractor.add(headlight);
+const tractor=new THREE.Group();
+const green=new THREE.MeshLambertMaterial({color:0x2e7d32});
+const darkMetal=new THREE.MeshLambertMaterial({color:0x1b1b1b});
+const yellow=new THREE.MeshLambertMaterial({color:0xf9d71c});
+const chassis=new THREE.Mesh(new THREE.BoxGeometry(2,0.7,3.8), green); chassis.position.y=1.2; chassis.castShadow=true; tractor.add(chassis);
+const hood=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.1,2), green); hood.position.set(0,1.8,-0.9); hood.castShadow=true; tractor.add(hood);
+const grille=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.7,0.15), darkMetal); grille.position.set(0,1.7,-1.9); tractor.add(grille);
+const exhaust=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.5,8), darkMetal); exhaust.position.set(-0.65,2.7,-1.1); tractor.add(exhaust);
+const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.6,1.7), yellow); cabin.position.set(0,2.6,0.7); cabin.castShadow=true; tractor.add(cabin);
+const cabWin=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.1,1.6), new THREE.MeshLambertMaterial({color:0x90caf9, transparent:true, opacity:0.55})); cabWin.position.set(0,2.85,0.7); tractor.add(cabWin);
+function wheel(r){ const w=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.45,16), new THREE.MeshLambertMaterial({color:0x141414})); w.rotation.z=Math.PI/2; w.castShadow=true;
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(r*0.4,r*0.4,0.5,8), new THREE.MeshLambertMaterial({color:0xf9d71c})); hub.rotation.z=Math.PI/2; w.add(hub); return w; }
+const fw1=wheel(0.55); fw1.position.set(-1.15,0.55,-1.3); tractor.add(fw1);
+const fw2=wheel(0.55); fw2.position.set(1.15,0.55,-1.3); tractor.add(fw2);
+const bw1=wheel(1.05); bw1.position.set(-1.25,1.05,1.2); tractor.add(bw1);
+const bw2=wheel(1.05); bw2.position.set(1.25,1.05,1.2); tractor.add(bw2);
+for(const s of [-1,1]){ const hl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8), new THREE.MeshBasicMaterial({color:0xffffcc})); hl.position.set(s*0.5,1.75,-1.95); tractor.add(hl);}
+// Implement indicator (changes per tool) at rear
+const implement=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.3,1.2), new THREE.MeshLambertMaterial({color:0x777777}));
+implement.position.set(0,0.4,2.6); implement.visible=false; tractor.add(implement);
+tractor.position.set(0,0,8); scene.add(tractor);
 
-tractor.position.set(0, 0, 0);
-scene.add(tractor);
-
-const tractorState = {
-  speed: 0,
-  maxSpeed: 12,
-  acceleration: 8,
-  brakeDecel: 14,
-  turnSpeed: 1.8,
-  heading: 0, // radians
-  position: new THREE.Vector3(0, 0, 0),
-};
+const T = { speed:0, maxF:16, maxR:7, accel:14, brake:22, turn:2.0, heading:Math.PI };
 
 // ---------- ANIMALS ----------
-const animals = [];
-function makeCow(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1.6),
-    new THREE.MeshLambertMaterial({color: 0xffffff}));
-  body.position.y = 1;
-  body.castShadow = true;
-  g.add(body);
-  // Black spots
-  for(let i=0;i<3;i++){
-    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.2+Math.random()*0.15, 6, 6),
-      new THREE.MeshLambertMaterial({color: 0x212121}));
-    spot.position.set((Math.random()-0.5)*0.8, 1+(Math.random()-0.5)*0.3, (Math.random()-0.5)*1.2);
-    spot.scale.y = 0.3;
-    g.add(spot);
-  }
-  // Head
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.6),
-    new THREE.MeshLambertMaterial({color: 0xffffff}));
-  head.position.set(0, 1.1, -1);
-  g.add(head);
-  // Snout
-  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.3),
-    new THREE.MeshLambertMaterial({color: 0xffb3a7}));
-  snout.position.set(0, 0.95, -1.3);
-  g.add(snout);
-  // Legs
-  for(let i=0;i<4;i++){
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.18),
-      new THREE.MeshLambertMaterial({color: 0x212121}));
-    leg.position.set((i%2===0?-0.3:0.3), 0.3, (i<2?-0.5:0.5));
-    g.add(leg);
-  }
-  g.position.set(x, 0, z);
-  scene.add(g);
-  return {
-    mesh: g, type:'cow',
-    target: new THREE.Vector3(x, 0, z),
-    speed: 1, wanderTimer: 0, milkTimer: 0,
-    homeX: x, homeZ: z,
-  };
+const animals=[];
+const cowPen={cx:-30,cz:2,sx:9,sz:7}, chickenPen={cx:-30,cz:-32,sx:6,sz:5};
+function makeCow(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.9,1.8), new THREE.MeshLambertMaterial({color:0xfafafa})); body.position.y=1.05; body.castShadow=true; g.add(body);
+  for(let i=0;i<3;i++){ const sp=new THREE.Mesh(new THREE.SphereGeometry(0.22+Math.random()*0.15,6,6), darkMetal); sp.position.set((Math.random()-0.5)*0.9,1.05+(Math.random()-0.5)*0.3,(Math.random()-0.5)*1.3); sp.scale.set(1,0.35,1); g.add(sp);}
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.55,0.65), new THREE.MeshLambertMaterial({color:0xfafafa})); head.position.set(0,1.15,-1.1); g.add(head);
+  const snout=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.28,0.3), new THREE.MeshLambertMaterial({color:0xffb3a7})); snout.position.set(0,1,-1.4); g.add(snout);
+  for(let i=0;i<4;i++){ const leg=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.65,0.2), darkMetal); leg.position.set(i%2?0.35:-0.35,0.32,i<2?-0.55:0.55); g.add(leg);}
+  g.position.set(x,0,z); scene.add(g);
+  return {mesh:g,type:'cow',target:new THREE.Vector3(x,0,z),speed:1,wander:0,prod:0,pen:cowPen};
 }
-function makeChicken(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8),
-    new THREE.MeshLambertMaterial({color: 0xfff8dc}));
-  body.position.y = 0.4;
-  body.scale.set(1, 0.9, 1.3);
-  body.castShadow = true;
-  g.add(body);
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8),
-    new THREE.MeshLambertMaterial({color: 0xfff8dc}));
-  head.position.set(0, 0.7, -0.3);
-  g.add(head);
-  // Beak
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.18, 4),
-    new THREE.MeshLambertMaterial({color: 0xff9800}));
-  beak.rotation.x = -Math.PI/2;
-  beak.position.set(0, 0.7, -0.5);
-  g.add(beak);
-  // Comb (red)
-  const comb = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.2),
-    new THREE.MeshLambertMaterial({color: 0xd32f2f}));
-  comb.position.set(0, 0.92, -0.32);
-  g.add(comb);
-  // Legs
-  for(let i=-1;i<=1;i+=2){
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 4),
-      new THREE.MeshLambertMaterial({color: 0xff9800}));
-    leg.position.set(i*0.1, 0.15, 0);
-    g.add(leg);
-  }
-  g.position.set(x, 0, z);
-  scene.add(g);
-  return {
-    mesh: g, type:'chicken',
-    target: new THREE.Vector3(x, 0, z),
-    speed: 1.6, wanderTimer: 0, eggTimer: 0,
-    homeX: x, homeZ: z,
-  };
+function makeChicken(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,8), new THREE.MeshLambertMaterial({color:0xfff8dc})); body.position.y=0.42; body.scale.set(1,0.9,1.3); body.castShadow=true; g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.21,8,8), new THREE.MeshLambertMaterial({color:0xfff8dc})); head.position.set(0,0.72,-0.32); g.add(head);
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.2,4), new THREE.MeshLambertMaterial({color:0xff9800})); beak.rotation.x=-Math.PI/2; beak.position.set(0,0.72,-0.55); g.add(beak);
+  const comb=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.16,0.22), new THREE.MeshLambertMaterial({color:0xd32f2f})); comb.position.set(0,0.95,-0.34); g.add(comb);
+  g.position.set(x,0,z); scene.add(g);
+  return {mesh:g,type:'chicken',target:new THREE.Vector3(x,0,z),speed:1.8,wander:0,prod:0,pen:chickenPen};
 }
+function penFence(p){
+  for(let x=-p.sx;x<=p.sx;x+=3){ fencePost(p.cx+x,p.cz-p.sz); fencePost(p.cx+x,p.cz+p.sz);}
+  for(let z=-p.sz;z<=p.sz;z+=3){ fencePost(p.cx-p.sx,p.cz+z); fencePost(p.cx+p.sx,p.cz+z);}
+  fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx+p.sx,p.cz-p.sz); fenceRail(p.cx-p.sx,p.cz+p.sz,p.cx+p.sx,p.cz+p.sz);
+  fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx-p.sx,p.cz+p.sz); fenceRail(p.cx+p.sx,p.cz-p.sz,p.cx+p.sx,p.cz+p.sz);
+}
+penFence(cowPen); penFence(chickenPen);
 
-// Animal pens
-function makeAnimalPen(cx, cz, sizeX, sizeZ) {
-  // fence
-  for(let x=-sizeX; x<=sizeX; x+=3){
-    makeFencePost(cx+x, cz-sizeZ); makeFencePost(cx+x, cz+sizeZ);
-  }
-  for(let z=-sizeZ; z<=sizeZ; z+=3){
-    makeFencePost(cx-sizeX, cz+z); makeFencePost(cx+sizeX, cz+z);
-  }
-  makeFenceRail(cx-sizeX, cz-sizeZ, cx+sizeX, cz-sizeZ);
-  makeFenceRail(cx-sizeX, cz+sizeZ, cx+sizeX, cz+sizeZ);
-  makeFenceRail(cx-sizeX, cz-sizeZ, cx-sizeX, cz+sizeZ);
-  makeFenceRail(cx+sizeX, cz-sizeZ, cx+sizeX, cz+sizeZ);
+// ---------- FLOATING TEXT ----------
+const floaters=[];
+function floatText(pos,text,color){
+  const c=document.createElement('canvas'); c.width=256;c.height=64; const g=c.getContext('2d');
+  g.font='bold 34px sans-serif'; g.textAlign='center';
+  g.fillStyle='#000'; g.fillText(text,130,42); g.fillStyle='#'+(color||0xffffff).toString(16).padStart(6,'0'); g.fillText(text,128,40);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
+  sp.scale.set(3,0.75,1); sp.position.copy(pos); sp.position.y+=2.5; scene.add(sp);
+  floaters.push({sp,life:1.4,max:1.4});
 }
-const cowPen = { cx: -25, cz: 0, sx: 8, sz: 6 };
-const chickenPen = { cx: -25, cz: -28, sx: 6, sz: 4 };
-makeAnimalPen(cowPen.cx, cowPen.cz, cowPen.sx, cowPen.sz);
-makeAnimalPen(chickenPen.cx, chickenPen.cz, chickenPen.sx, chickenPen.sz);
+function updateFloaters(dt){ for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.life-=dt; f.sp.position.y+=dt*1.6; f.sp.material.opacity=Math.max(0,f.life/f.max); if(f.life<=0){scene.remove(f.sp);floaters.splice(i,1);} } }
 
 // ---------- INPUT ----------
-const keys = {};
-document.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if(e.code==='KeyE') handleInteract();
+const keys={};
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Digit0') setTool(0);
+  if(e.code==='Digit1') setTool(1);
+  if(e.code==='Digit2') setTool(2);
+  if(e.code==='Digit3') setTool(3);
   if(e.code==='KeyQ') cycleCrop();
   if(e.code==='KeyB') toggleShopIfNear();
 });
-document.addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('keyup',e=>{ keys[e.code]=false; });
 
-function cycleCrop() {
-  const order = ['wheat','corn','potato'];
-  state.selectedCrop = order[(order.indexOf(state.selectedCrop)+1) % order.length];
-  updateHUD();
-  showMessage(`Selecionado: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`, 1000);
+function setTool(t){
+  state.tool=t;
+  document.querySelectorAll('.tool').forEach(el=> el.classList.toggle('active', +el.dataset.tool===t));
+  implement.visible = t!==0;
+  if(t===1) implement.material.color.set(0x8d6e63);
+  if(t===2) implement.material.color.set(0x4caf50);
+  if(t===3) implement.material.color.set(0xf9d71c);
+  const names=['Nenhuma ferramenta','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada'];
+  showMessage(names[t], 900);
+}
+function cycleCrop(){
+  const order=['wheat','corn','potato'];
+  state.selectedCrop=order[(order.indexOf(state.selectedCrop)+1)%order.length];
+  document.getElementById('tool-crop').textContent=`${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;
+  showMessage(`Semente: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`,900);
 }
 
-// ---------- TILE INTERACTION ----------
-function getTileNear(x, z) {
-  const col = Math.round((x - fieldOriginX) / TILE_SIZE);
-  const row = Math.round((z - fieldOriginZ) / TILE_SIZE);
-  if(col<0 || col>=FIELD_COLS || row<0 || row>=FIELD_ROWS) return null;
-  return tiles[row][col];
+// ---------- FARMING (auto by driving) ----------
+function tileUnder(x,z){
+  const c=Math.round((x-fieldOX)/TILE), r=Math.round((z-fieldOZ)/TILE);
+  if(c<0||c>=FIELD_COLS||r<0||r>=FIELD_ROWS) return null;
+  return tiles[r][c];
 }
-function frontOfTractor(distance=2.5) {
-  const fx = tractor.position.x - Math.sin(tractorState.heading)*distance;
-  const fz = tractor.position.z - Math.cos(tractorState.heading)*distance;
-  return { x: fx, z: fz };
-}
-
-function handleInteract() {
-  if(!state.running || state.shopOpen) return;
-  const front = frontOfTractor(3);
-  const tile = getTileNear(front.x, front.z);
-  if(!tile) {
-    // Check animal pens for milk/eggs nearby
-    const px = tractor.position.x, pz = tractor.position.z;
-    // Cow pen
-    if(Math.abs(px-cowPen.cx)<cowPen.sx+3 && Math.abs(pz-cowPen.cz)<cowPen.sz+3 && state.inventory.milk>0){
-      // already auto-collected, nothing to do
+function workTile(t){
+  if(!t) return;
+  if(state.tool===1){ // plow
+    if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tileMat.tilled(); floatText(new THREE.Vector3(t.x,0.3,t.z),'arado',0x8d6e63);}
+  } else if(state.tool===2){ // plant
+    if(t.state==='tilled'){
+      const sk=state.selectedCrop+'_seed';
+      if(state.inventory[sk]>0){
+        state.inventory[sk]--; updateHUD();
+        t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000;
+        const sprout=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.4,5), new THREE.MeshLambertMaterial({color:0x66bb6a}));
+        sprout.position.set(t.x,0.2,t.z); scene.add(sprout); t.plant=sprout;
+        floatText(new THREE.Vector3(t.x,0.3,t.z), CROPS[state.selectedCrop].emoji,0x4caf50);
+      }
     }
-    showMessage('Nada para interagir aqui. Vá até o campo!', 1200);
-    return;
-  }
-  const crop = CROPS[state.selectedCrop];
-  if(tile.state === 'grass') {
-    // Till
-    tile.state = 'tilled';
-    tile.mesh.material.color.set(0x6b4226);
-    showMessage('🚜 Solo arado!', 800);
-  } else if(tile.state === 'tilled') {
-    // Plant
-    const seedKey = state.selectedCrop+'_seed';
-    if(state.inventory[seedKey] <= 0) {
-      showMessage(`❌ Sem sementes de ${crop.name}!`, 1500);
-      return;
+  } else if(state.tool===3){ // harvest
+    if(t.state==='grown'){
+      state.inventory[t.crop]=(state.inventory[t.crop]||0)+1; updateHUD();
+      if(t.plant){scene.remove(t.plant);t.plant=null;}
+      floatText(new THREE.Vector3(t.x,0.4,t.z),'+1 '+CROPS[t.crop].emoji, CROPS[t.crop].topColor);
+      t.state='tilled'; t.mesh.material=tileMat.tilled(); t.crop=null;
     }
-    state.inventory[seedKey]--;
-    tile.state = 'planted';
-    tile.crop = state.selectedCrop;
-    tile.plantedAt = performance.now()/1000;
-    // small sprout
-    const sprout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 5),
-      new THREE.MeshLambertMaterial({color: 0x4caf50}));
-    sprout.position.set(tile.x, 0.2, tile.z);
-    scene.add(sprout);
-    tile.plantMesh = sprout;
-    showMessage(`🌱 ${crop.name} plantado!`, 800);
-    updateHUD();
-  } else if(tile.state === 'grown') {
-    // Harvest
-    state.inventory[tile.crop] = (state.inventory[tile.crop]||0) + 1;
-    if(tile.plantMesh){ scene.remove(tile.plantMesh); tile.plantMesh=null; }
-    tile.state = 'tilled';
-    tile.mesh.material.color.set(0x6b4226);
-    showMessage(`✅ ${CROPS[tile.crop].emoji} ${CROPS[tile.crop].name} colhido!`, 800);
-    tile.crop = null;
-    updateHUD();
-  } else if(tile.state === 'planted') {
-    const elapsed = performance.now()/1000 - tile.plantedAt;
-    const remain = Math.ceil(CROPS[tile.crop].growTime - elapsed);
-    showMessage(`🌱 Crescendo... ${remain}s restantes`, 1200);
   }
+}
+let lastWorked=null;
+function autoFarm(){
+  if(state.tool===0) return;
+  // implement world position (behind tractor)
+  const ix=tractor.position.x + Math.sin(T.heading)*2.6;
+  const iz=tractor.position.z + Math.cos(T.heading)*2.6;
+  const t=tileUnder(ix,iz);
+  if(t && t!==lastWorked){ workTile(t); lastWorked=t; }
+  else if(!t) lastWorked=null;
 }
 
 // ---------- CROP GROWTH ----------
-function updateCrops(now) {
-  for(let r=0;r<FIELD_ROWS;r++){
-    for(let c=0;c<FIELD_COLS;c++){
-      const t = tiles[r][c];
-      if(t.state === 'planted') {
-        const elapsed = now - t.plantedAt;
-        const ratio = elapsed / CROPS[t.crop].growTime;
-        // Update sprout visual
-        if(t.plantMesh) {
-          const h = 0.4 + ratio * 1.0;
-          t.plantMesh.scale.y = Math.min(2.5, 0.4 + ratio*2.2);
-        }
-        if(ratio >= 1) {
-          t.state = 'grown';
-          if(t.plantMesh) { scene.remove(t.plantMesh); }
-          // Final crop visual
-          const cropMesh = new THREE.Group();
-          const crop = CROPS[t.crop];
-          if(t.crop === 'wheat') {
-            for(let i=0;i<5;i++){
-              const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 4),
-                new THREE.MeshLambertMaterial({color: 0xf4d03f}));
-              stalk.position.set((Math.random()-0.5)*1.5, 0.7, (Math.random()-0.5)*1.5);
-              cropMesh.add(stalk);
-              const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 5),
-                new THREE.MeshLambertMaterial({color: 0xe6b80b}));
-              head.position.copy(stalk.position);
-              head.position.y = 1.5;
-              cropMesh.add(head);
-            }
-          } else if(t.crop === 'corn') {
-            for(let i=0;i<3;i++){
-              const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.6, 6),
-                new THREE.MeshLambertMaterial({color: 0x2e7d32}));
-              stalk.position.set((Math.random()-0.5)*1.5, 0.8, (Math.random()-0.5)*1.5);
-              cropMesh.add(stalk);
-              const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 8),
-                new THREE.MeshLambertMaterial({color: 0xf1c40f}));
-              ear.position.copy(stalk.position);
-              ear.position.y = 1.2;
-              ear.position.x += 0.1;
-              cropMesh.add(ear);
-            }
-          } else if(t.crop === 'potato') {
-            for(let i=0;i<4;i++){
-              const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 6),
-                new THREE.MeshLambertMaterial({color: 0x4caf50}));
-              leaf.position.set((Math.random()-0.5)*1.2, 0.4, (Math.random()-0.5)*1.2);
-              leaf.scale.y = 0.4;
-              cropMesh.add(leaf);
-            }
-          }
-          cropMesh.position.set(t.x, 0.1, t.z);
-          scene.add(cropMesh);
-          t.plantMesh = cropMesh;
-          // Slight color change to dirt
-          t.mesh.material.color.set(0x7a5c3e);
-        }
-      }
+function buildCropMesh(crop,t){
+  const g=new THREE.Group();
+  if(crop==='wheat'){
+    for(let i=0;i<6;i++){ const s=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.4,4), new THREE.MeshLambertMaterial({color:0xd4b300})); s.position.set((Math.random()-0.5)*1.6,0.7,(Math.random()-0.5)*1.6); g.add(s);
+      const h=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.35,5), new THREE.MeshLambertMaterial({color:0xe6b80b})); h.position.copy(s.position); h.position.y=1.5; g.add(h);}
+  } else if(crop==='corn'){
+    for(let i=0;i<4;i++){ const s=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.7,6), new THREE.MeshLambertMaterial({color:0x2e7d32})); s.position.set((Math.random()-0.5)*1.6,0.85,(Math.random()-0.5)*1.6); g.add(s);
+      const e=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.5,8), new THREE.MeshLambertMaterial({color:0xf1c40f})); e.position.copy(s.position); e.position.y=1.25; e.position.x+=0.12; g.add(e);}
+  } else {
+    for(let i=0;i<5;i++){ const l=new THREE.Mesh(new THREE.SphereGeometry(0.38,6,6), new THREE.MeshLambertMaterial({color:0x4caf50})); l.position.set((Math.random()-0.5)*1.4,0.45,(Math.random()-0.5)*1.4); l.scale.y=0.45; g.add(l);}
+  }
+  g.position.set(t.x,0.1,t.z); return g;
+}
+function updateCrops(now){
+  for(const row of tiles) for(const t of row){
+    if(t.state==='planted'){
+      const ratio=(now-t.plantedAt)/CROPS[t.crop].growTime;
+      if(t.plant) t.plant.scale.y=Math.min(2.6,0.5+ratio*2.3);
+      if(ratio>=1){ t.state='grown'; if(t.plant)scene.remove(t.plant); t.plant=buildCropMesh(t.crop,t); scene.add(t.plant); t.mesh.material=new THREE.MeshLambertMaterial({color:0x7a5c3e}); }
     }
   }
 }
 
 // ---------- ANIMAL AI ----------
-function updateAnimals(dt) {
-  const now = performance.now()/1000;
-  animals.forEach(a => {
-    a.wanderTimer -= dt;
-    if(a.wanderTimer <= 0) {
-      a.wanderTimer = 2 + Math.random()*4;
-      const isCow = a.type==='cow';
-      const pen = isCow ? cowPen : chickenPen;
-      a.target.set(
-        pen.cx + (Math.random()-0.5)*(pen.sx*2-2),
-        0,
-        pen.cz + (Math.random()-0.5)*(pen.sz*2-2)
-      );
-    }
-    const toTarget = new THREE.Vector3().subVectors(a.target, a.mesh.position);
-    toTarget.y = 0;
-    const d = toTarget.length();
-    if(d > 0.2) {
-      toTarget.normalize();
-      a.mesh.position.addScaledVector(toTarget, a.speed * dt);
-      a.mesh.lookAt(a.target.x, a.mesh.position.y, a.target.z);
-    }
-    // Bobbing animation
-    a.mesh.position.y = Math.sin(now*4 + a.mesh.position.x)*0.05;
-    // Production
-    if(a.type==='cow') {
-      a.milkTimer += dt;
-      if(a.milkTimer >= 25) { a.milkTimer = 0; state.inventory.milk++; updateHUD();
-        floatText(a.mesh.position, '+1 🥛', 0xffffff);
-      }
-    } else {
-      a.eggTimer += dt;
-      if(a.eggTimer >= 20) { a.eggTimer = 0; state.inventory.eggs++; updateHUD();
-        floatText(a.mesh.position, '+1 🥚', 0xfff8dc);
-      }
-    }
-  });
-}
-
-// Floating text effects
-const floatingTexts = [];
-function floatText(pos, text, color) {
-  const canvas2 = document.createElement('canvas');
-  canvas2.width = 256; canvas2.height = 64;
-  const ctx = canvas2.getContext('2d');
-  ctx.font = 'bold 32px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#000';
-  ctx.fillText(text, 130, 42);
-  ctx.fillStyle = '#'+(color||0xffffff).toString(16).padStart(6,'0');
-  ctx.fillText(text, 128, 40);
-  const tex = new THREE.CanvasTexture(canvas2);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true}));
-  sprite.scale.set(3, 0.75, 1);
-  sprite.position.copy(pos);
-  sprite.position.y += 2;
-  scene.add(sprite);
-  floatingTexts.push({ sprite, life: 1.5, maxLife: 1.5 });
-}
-function updateFloatingTexts(dt) {
-  for(let i=floatingTexts.length-1; i>=0; i--){
-    const f = floatingTexts[i];
-    f.life -= dt;
-    f.sprite.position.y += dt*1.5;
-    f.sprite.material.opacity = Math.max(0, f.life/f.maxLife);
-    if(f.life <= 0){ scene.remove(f.sprite); floatingTexts.splice(i,1); }
+function updateAnimals(dt){
+  for(const a of animals){
+    a.wander-=dt;
+    if(a.wander<=0){ a.wander=2+Math.random()*4; a.target.set(a.pen.cx+(Math.random()-0.5)*(a.pen.sx*2-2),0,a.pen.cz+(Math.random()-0.5)*(a.pen.sz*2-2)); }
+    const to=new THREE.Vector3().subVectors(a.target,a.mesh.position); to.y=0; const d=to.length();
+    if(d>0.2){ to.normalize(); a.mesh.position.addScaledVector(to,a.speed*dt); a.mesh.lookAt(a.target.x,a.mesh.position.y,a.target.z); }
+    a.mesh.position.y=Math.abs(Math.sin(performance.now()/1000*4+a.mesh.position.x))*0.05;
+    a.prod+=dt;
+    if(a.type==='cow'&&a.prod>=22){ a.prod=0; state.inventory.milk++; updateHUD(); floatText(a.mesh.position,'+1 🥛',0xffffff); }
+    if(a.type==='chicken'&&a.prod>=18){ a.prod=0; state.inventory.eggs++; updateHUD(); floatText(a.mesh.position,'+1 🥚',0xfff8dc); }
   }
 }
 
 // ---------- HUD ----------
-function updateHUD() {
-  document.getElementById('money').textContent = '💰 $' + state.money;
-  document.getElementById('inv-wheat-seed').textContent  = state.inventory.wheat_seed;
-  document.getElementById('inv-corn-seed').textContent   = state.inventory.corn_seed;
-  document.getElementById('inv-potato-seed').textContent = state.inventory.potato_seed;
-  document.getElementById('inv-wheat').textContent  = state.inventory.wheat;
-  document.getElementById('inv-corn').textContent   = state.inventory.corn;
-  document.getElementById('inv-potato').textContent = state.inventory.potato;
-  document.getElementById('inv-milk').textContent   = state.inventory.milk;
-  document.getElementById('inv-eggs').textContent   = state.inventory.eggs;
-  document.getElementById('selected-crop').textContent =
-    `SELECIONADO: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name.toUpperCase()}`;
+function updateHUD(){
+  document.getElementById('money').textContent='💰 $'+state.money;
+  for(const k of ['wheat_seed','corn_seed','potato_seed','wheat','corn','potato','milk','eggs']){
+    const id='inv-'+k.replace('_','-'); const el=document.getElementById(id); if(el) el.textContent=state.inventory[k];
+  }
 }
+let msgT=0;
+function showMessage(t,ms=1400){ const el=document.getElementById('message'); el.textContent=t; el.style.display='block'; clearTimeout(msgT); msgT=setTimeout(()=>el.style.display='none',ms); }
 
-let msgTimeout = 0;
-function showMessage(text, ms=1500) {
-  const el = document.getElementById('message');
-  el.textContent = text;
-  el.style.display = 'block';
-  clearTimeout(msgTimeout);
-  msgTimeout = setTimeout(()=> el.style.display = 'none', ms);
+// ---------- OBJECTIVES ----------
+const OBJECTIVES=[
+  {icon:'🚜',text:'Dirija até o campo cercado (use W A S D)',done:()=> distXZ(tractor.position,{x:fieldOX+18,z:fieldOZ+18})<22},
+  {icon:'🚜',text:'Aperte 1 (Arado) e dirija por cima do campo',done:()=> tiles.some(r=>r.some(t=>t.state!=='grass'))},
+  {icon:'🌱',text:'Aperte 2 (Plantadeira) e plante dirigindo',done:()=> tiles.some(r=>r.some(t=>t.state==='planted'||t.state==='grown'))},
+  {icon:'⏳',text:'Espere a plantação crescer (fica dourada)',done:()=> tiles.some(r=>r.some(t=>t.state==='grown'))},
+  {icon:'🌾',text:'Aperte 3 (Colheitadeira) e colha dirigindo',done:()=> (state.inventory.wheat+state.inventory.corn+state.inventory.potato)>0},
+  {icon:'🏪',text:'Vá ao mercado (B) e venda sua colheita',done:()=> state.money>500},
+  {icon:'🎉',text:'Fazenda funcionando! Plante, colha e cresça!',done:()=> false},
+];
+function distXZ(a,b){ return Math.hypot(a.x-b.x,a.z-b.z); }
+function updateObjective(){
+  const o=OBJECTIVES[state.objective];
+  if(o && o.done && o.done() && state.objective<OBJECTIVES.length-1){
+    state.objective++;
+    showMessage('✅ Objetivo concluído!',1200);
+  }
+  const cur=OBJECTIVES[state.objective];
+  document.querySelector('#objective .obj-icon').textContent=cur.icon;
+  document.getElementById('objective-text').textContent=cur.text;
 }
 
 // ---------- SHOP ----------
-function distance2D(ax, az, bx, bz) {
-  const dx = ax-bx, dz = az-bz;
-  return Math.sqrt(dx*dx + dz*dz);
+function toggleShopIfNear(){
+  if(state.shopOpen){ closeShop(); return; }
+  if(distXZ(tractor.position,shopPos)>14){ showMessage('🏪 Chegue mais perto do mercado!',1400); return; }
+  state.shopOpen=true; document.getElementById('shop').style.display='block'; renderShop();
 }
-
-function toggleShopIfNear() {
-  if(state.shopOpen) { closeShop(); return; }
-  const d = distance2D(tractor.position.x, tractor.position.z, shopPos.x, shopPos.z);
-  if(d > 12) {
-    showMessage('🏪 Vá até o mercado para abrir a loja!', 1500);
-    return;
-  }
-  openShop();
-}
-
-function openShop() {
-  state.shopOpen = true;
-  document.getElementById('shop').style.display = 'block';
-  renderShop();
-}
-function closeShop() {
-  state.shopOpen = false;
-  document.getElementById('shop').style.display = 'none';
-}
-function showTab(tab) {
-  state.shopTab = tab;
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active', ['buy','sell','animals'][i] === tab);
-  });
-  renderShop();
-}
-
-function renderShop() {
-  const grid = document.getElementById('shop-grid');
-  grid.innerHTML = '';
-  if(state.shopTab === 'buy') {
-    const items = [
-      { key:'wheat_seed',  label:'🌾 Semente de Trigo',  price: CROPS.wheat.seedPrice,  desc: `Tempo: ${CROPS.wheat.growTime}s | Venda: $${CROPS.wheat.sellPrice}` },
-      { key:'corn_seed',   label:'🌽 Semente de Milho',  price: CROPS.corn.seedPrice,   desc: `Tempo: ${CROPS.corn.growTime}s | Venda: $${CROPS.corn.sellPrice}` },
-      { key:'potato_seed', label:'🥔 Semente de Batata', price: CROPS.potato.seedPrice, desc: `Tempo: ${CROPS.potato.growTime}s | Venda: $${CROPS.potato.sellPrice}` },
-    ];
-    items.forEach(it=>{
-      const el = document.createElement('div');
-      el.className = 'shop-item';
-      el.innerHTML = `
-        <h4>${it.label}</h4>
-        <p>${it.desc}</p>
-        <p>Preço: <strong>$${it.price}</strong></p>
-        <button onclick="buySeed('${it.key}', ${it.price})">COMPRAR x1</button>
-        <button onclick="buySeed('${it.key}', ${it.price*10}, 10)">COMPRAR x10</button>
-      `;
+window.closeShop=()=>{ state.shopOpen=false; document.getElementById('shop').style.display='none'; };
+window.showTab=(tab)=>{ state.shopTab=tab; document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell','animals'][i]===tab)); renderShop(); };
+function renderShop(){
+  const grid=document.getElementById('shop-grid'); grid.innerHTML='';
+  if(state.shopTab==='buy'){
+    [['wheat_seed',CROPS.wheat],['corn_seed',CROPS.corn],['potato_seed',CROPS.potato]].forEach(([key,c])=>{
+      const el=document.createElement('div'); el.className='shop-item';
+      el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sellPrice}</p><p>Preço: <b>$${c.seedPrice}</b></p>
+      <button onclick="buySeed('${key}',${c.seedPrice})">x1 ($${c.seedPrice})</button>
+      <button onclick="buySeed('${key}',${c.seedPrice*10},10)">x10 ($${c.seedPrice*10})</button>`;
       grid.appendChild(el);
     });
-  } else if(state.shopTab === 'sell') {
-    const items = [
-      { key:'wheat',  label:'🌾 Trigo',  price: CROPS.wheat.sellPrice },
-      { key:'corn',   label:'🌽 Milho',  price: CROPS.corn.sellPrice },
-      { key:'potato', label:'🥔 Batata', price: CROPS.potato.sellPrice },
-      { key:'milk',   label:'🥛 Leite',  price: 30 },
-      { key:'eggs',   label:'🥚 Ovo',    price: 15 },
-    ];
-    items.forEach(it=>{
-      const have = state.inventory[it.key]||0;
-      const el = document.createElement('div');
-      el.className = 'shop-item';
-      el.innerHTML = `
-        <h4>${it.label}</h4>
-        <p>Você tem: <strong>${have}</strong></p>
-        <p>Preço: <strong>$${it.price}</strong> por unidade</p>
-        <button onclick="sellItem('${it.key}', 1, ${it.price})" ${have<1?'disabled':''}>VENDER 1 ($${it.price})</button>
-        <button onclick="sellItem('${it.key}', ${have}, ${it.price})" ${have<1?'disabled':''}>VENDER TUDO ($${have*it.price})</button>
-      `;
+  } else if(state.shopTab==='sell'){
+    [['wheat',CROPS.wheat.sellPrice,'🌾 Trigo'],['corn',CROPS.corn.sellPrice,'🌽 Milho'],['potato',CROPS.potato.sellPrice,'🥔 Batata'],['milk',30,'🥛 Leite'],['eggs',15,'🥚 Ovo']].forEach(([key,price,label])=>{
+      const have=state.inventory[key]||0; const el=document.createElement('div'); el.className='shop-item';
+      el.innerHTML=`<h4>${label}</h4><p>Você tem: <b>${have}</b></p><p>$${price} cada</p>
+      <button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button>
+      <button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;
       grid.appendChild(el);
     });
-  } else if(state.shopTab === 'animals') {
-    const items = [
-      { key:'cow',     label:'🐄 Vaca',     price: 300, desc:'Produz leite a cada 25s' },
-      { key:'chicken', label:'🐔 Galinha',  price: 100, desc:'Produz ovos a cada 20s' },
-    ];
-    items.forEach(it=>{
-      const el = document.createElement('div');
-      el.className = 'shop-item';
-      el.innerHTML = `
-        <h4>${it.label}</h4>
-        <p>${it.desc}</p>
-        <p>Você tem: <strong>${it.key==='cow'?state.cows:state.chickens}</strong></p>
-        <p>Preço: <strong>$${it.price}</strong></p>
-        <button onclick="buyAnimal('${it.key}', ${it.price})">COMPRAR</button>
-      `;
-      grid.appendChild(el);
-    });
-  }
-}
-
-window.buySeed = function(key, price, qty=1){
-  if(state.money < price) { showMessage('❌ Dinheiro insuficiente!', 1200); return; }
-  state.money -= price;
-  state.inventory[key] = (state.inventory[key]||0) + qty;
-  updateHUD(); renderShop();
-};
-window.sellItem = function(key, qty, unitPrice){
-  if(!qty || qty<=0) return;
-  if((state.inventory[key]||0) < qty) qty = state.inventory[key];
-  state.inventory[key] -= qty;
-  state.money += qty * unitPrice;
-  updateHUD(); renderShop();
-};
-window.buyAnimal = function(key, price){
-  if(state.money < price) { showMessage('❌ Dinheiro insuficiente!', 1200); return; }
-  state.money -= price;
-  if(key==='cow') {
-    state.cows++;
-    const a = makeCow(cowPen.cx + (Math.random()-0.5)*8, cowPen.cz + (Math.random()-0.5)*6);
-    animals.push(a);
   } else {
-    state.chickens++;
-    const a = makeChicken(chickenPen.cx + (Math.random()-0.5)*6, chickenPen.cz + (Math.random()-0.5)*4);
-    animals.push(a);
+    [['cow',300,'🐄 Vaca','Leite a cada 22s'],['chicken',100,'🐔 Galinha','Ovos a cada 18s']].forEach(([key,price,label,desc])=>{
+      const el=document.createElement('div'); el.className='shop-item';
+      el.innerHTML=`<h4>${label}</h4><p>${desc}</p><p>Você tem: <b>${key==='cow'?state.cows:state.chickens}</b></p><p>Preço: <b>$${price}</b></p>
+      <button onclick="buyAnimal('${key}',${price})">COMPRAR</button>`;
+      grid.appendChild(el);
+    });
   }
-  updateHUD(); renderShop();
-};
-window.showTab = showTab;
-window.closeShop = closeShop;
+}
+window.buySeed=(k,p,q=1)=>{ if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;} state.money-=p; state.inventory[k]+=q; updateHUD(); renderShop(); };
+window.sellItem=(k,q,u)=>{ if(q<=0)return; if(state.inventory[k]<q)q=state.inventory[k]; state.inventory[k]-=q; state.money+=q*u; updateHUD(); renderShop(); };
+window.buyAnimal=(k,p)=>{ if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;} state.money-=p;
+  if(k==='cow'){ state.cows++; animals.push(makeCow(cowPen.cx+(Math.random()-0.5)*10,cowPen.cz+(Math.random()-0.5)*8)); }
+  else { state.chickens++; animals.push(makeChicken(chickenPen.cx+(Math.random()-0.5)*8,chickenPen.cz+(Math.random()-0.5)*6)); }
+  updateHUD(); renderShop(); };
 
-// ---------- PROMPTS ----------
-function updatePrompt() {
-  const el = document.getElementById('prompt');
-  if(!state.running || state.shopOpen) { el.style.display='none'; return; }
-
-  // Near shop?
-  const dShop = distance2D(tractor.position.x, tractor.position.z, shopPos.x, shopPos.z);
-  if(dShop < 12) {
-    el.innerHTML = `Pressione <span class="key">B</span> para abrir a loja`;
-    el.style.display='block';
-    return;
-  }
-  // Front of tractor — check tile
-  const front = frontOfTractor(3);
-  const tile = getTileNear(front.x, front.z);
-  if(tile) {
-    let action = '';
-    if(tile.state==='grass') action = 'ARAR solo';
-    else if(tile.state==='tilled') action = `PLANTAR ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;
-    else if(tile.state==='grown') action = `COLHER ${CROPS[tile.crop].emoji} ${CROPS[tile.crop].name}`;
-    else if(tile.state==='planted') action = `${CROPS[tile.crop].emoji} ${CROPS[tile.crop].name} crescendo...`;
-    el.innerHTML = `Pressione <span class="key">E</span> para ${action}`;
-    el.style.display='block';
-    return;
-  }
-  el.style.display='none';
+// ---------- COLLISION ----------
+function collides(x,z){
+  const R=1.6;
+  for(const c of colliders){ if(Math.hypot(x-c.x,z-c.z) < c.r+R) return true; }
+  if(Math.abs(x)>180||Math.abs(z)>180) return true;
+  return false;
 }
 
-// ---------- GAME LOOP ----------
-const clock = new THREE.Clock();
-const camOffset = new THREE.Vector3(0, 6, 11);
-const camLookAt = new THREE.Vector3();
-const camPos = new THREE.Vector3();
+// ---------- LOOP ----------
+const clock=new THREE.Clock();
+const camPos=new THREE.Vector3();
+const camLook=new THREE.Vector3();
 
-function animate() {
+function animate(){
   if(!state.running) return;
   requestAnimationFrame(animate);
-  let dt = clock.getDelta();
-  if(dt > 0.1) dt = 0.1;
-  const now = performance.now()/1000;
+  let dt=clock.getDelta(); if(dt>0.05)dt=0.05;
+  const now=performance.now()/1000;
 
-  // ---- Tractor controls ----
-  const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
-  const maxSpeed = tractorState.maxSpeed * (sprint ? 1.7 : 1);
-  if(keys['KeyW']) {
-    tractorState.speed += tractorState.acceleration * dt;
-  } else if(keys['KeyS']) {
-    tractorState.speed -= tractorState.acceleration * dt;
-  } else {
-    // friction
-    const f = Math.sign(tractorState.speed) * tractorState.brakeDecel * dt * 0.5;
-    if(Math.abs(f) > Math.abs(tractorState.speed)) tractorState.speed = 0;
-    else tractorState.speed -= f;
+  if(!state.shopOpen){
+    // Driving
+    const sprint=keys['ShiftLeft']||keys['ShiftRight'];
+    const maxF=T.maxF*(sprint?1.6:1);
+    if(keys['KeyW']) T.speed+=T.accel*dt;
+    else if(keys['KeyS']) T.speed-=T.accel*dt;
+    else { const f=Math.sign(T.speed)*T.brake*0.4*dt; if(Math.abs(f)>Math.abs(T.speed))T.speed=0; else T.speed-=f; }
+    T.speed=Math.max(-T.maxR,Math.min(maxF,T.speed));
+    if(Math.abs(T.speed)>0.15){
+      const grip=Math.min(1,Math.abs(T.speed)/4);
+      if(keys['KeyA']) T.heading+=T.turn*dt*grip*Math.sign(T.speed);
+      if(keys['KeyD']) T.heading-=T.turn*dt*grip*Math.sign(T.speed);
+    }
+    const nx=tractor.position.x - Math.sin(T.heading)*T.speed*dt;
+    const nz=tractor.position.z - Math.cos(T.heading)*T.speed*dt;
+    // collision: try full move, else axis-separated, else stop
+    if(!collides(nx,nz)){ tractor.position.x=nx; tractor.position.z=nz; }
+    else if(!collides(nx,tractor.position.z)){ tractor.position.x=nx; T.speed*=0.6; }
+    else if(!collides(tractor.position.x,nz)){ tractor.position.z=nz; T.speed*=0.6; }
+    else { T.speed=0; }
+    tractor.rotation.y=T.heading;
+    const spin=T.speed*dt*1.4;
+    bw1.rotation.x+=spin; bw2.rotation.x+=spin; fw1.rotation.x+=spin; fw2.rotation.x+=spin;
+
+    autoFarm();
+    document.getElementById('speed-val').textContent=Math.round(Math.abs(T.speed)*3.6);
   }
-  tractorState.speed = Math.max(-maxSpeed*0.6, Math.min(maxSpeed, tractorState.speed));
 
-  // Turning (only when moving)
-  if(Math.abs(tractorState.speed) > 0.1) {
-    const turnFactor = Math.min(1, Math.abs(tractorState.speed)/3);
-    if(keys['KeyA']) tractorState.heading += tractorState.turnSpeed * dt * turnFactor * Math.sign(tractorState.speed);
-    if(keys['KeyD']) tractorState.heading -= tractorState.turnSpeed * dt * turnFactor * Math.sign(tractorState.speed);
-  }
-
-  // Move tractor
-  const moveX = -Math.sin(tractorState.heading) * tractorState.speed * dt;
-  const moveZ = -Math.cos(tractorState.heading) * tractorState.speed * dt;
-  tractor.position.x += moveX;
-  tractor.position.z += moveZ;
-  tractor.rotation.y = tractorState.heading;
-
-  // Wheel spin animation
-  const wheelSpin = tractorState.speed * dt * 1.5;
-  bw1.rotation.x += wheelSpin;
-  bw2.rotation.x += wheelSpin;
-  fw1.rotation.x += wheelSpin;
-  fw2.rotation.x += wheelSpin;
-
-  // ---- Camera follow ----
-  const camTargetPos = new THREE.Vector3(
-    tractor.position.x + Math.sin(tractorState.heading) * camOffset.z,
-    camOffset.y,
-    tractor.position.z + Math.cos(tractorState.heading) * camOffset.z
+  // Camera follow (smooth)
+  const target=new THREE.Vector3(
+    tractor.position.x + Math.sin(T.heading)*11,
+    7,
+    tractor.position.z + Math.cos(T.heading)*11
   );
-  camPos.lerp(camTargetPos, 0.08);
-  camera.position.copy(camPos);
-  camLookAt.lerp(tractor.position, 0.1);
-  camera.lookAt(camLookAt.x, camLookAt.y + 1.5, camLookAt.z);
+  camPos.lerp(target,0.1); camera.position.copy(camPos);
+  camLook.lerp(tractor.position,0.15);
+  camera.lookAt(camLook.x,camLook.y+1.5,camLook.z);
 
-  // ---- Speedometer ----
-  document.getElementById('speed-val').textContent = Math.round(Math.abs(tractorState.speed)*3.6);
-
-  // ---- Crops ----
   updateCrops(now);
-
-  // ---- Animals ----
   updateAnimals(dt);
-  updateFloatingTexts(dt);
+  updateFloaters(dt);
+  updateObjective();
 
-  // ---- Prompts ----
-  updatePrompt();
-
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 
-function startGame() {
-  document.getElementById('start').style.display = 'none';
-  state.running = true;
-  // Initial animals
-  for(let i=0;i<2;i++){
-    const a = makeCow(cowPen.cx + (Math.random()-0.5)*8, cowPen.cz + (Math.random()-0.5)*6);
-    animals.push(a); state.cows++;
-  }
-  for(let i=0;i<3;i++){
-    const a = makeChicken(chickenPen.cx + (Math.random()-0.5)*6, chickenPen.cz + (Math.random()-0.5)*4);
-    animals.push(a); state.chickens++;
-  }
-  // Initial camera placement
-  camPos.set(tractor.position.x, 6, tractor.position.z + 11);
-  camera.position.copy(camPos);
-  updateHUD();
-  clock.start();
-  clock.getDelta();
+function startGame(){
+  document.getElementById('start').style.display='none';
+  state.running=true;
+  for(let i=0;i<2;i++){ animals.push(makeCow(cowPen.cx+(Math.random()-0.5)*10,cowPen.cz+(Math.random()-0.5)*8)); state.cows++; }
+  for(let i=0;i<3;i++){ animals.push(makeChicken(chickenPen.cx+(Math.random()-0.5)*8,chickenPen.cz+(Math.random()-0.5)*6)); state.chickens++; }
+  camPos.set(tractor.position.x,7,tractor.position.z+11); camera.position.copy(camPos); camLook.copy(tractor.position);
+  setTool(0); updateHUD();
+  clock.start(); clock.getDelta();
   animate();
 }
-window.startGame = startGame;
+window.startGame=startGame;
 
-// Resize
-window.addEventListener('resize', ()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// Render an initial frame
-renderer.render(scene, camera);
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+renderer.render(scene,camera);
 </script>
 </body>
 </html>
