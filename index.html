@@ -352,6 +352,7 @@ const state = {
   tractorsOwned:[0],
   tractorColor:null,
   shopContext:'market',
+  buildings:[],
   season:0,       // 0 spring, 1 summer, 2 autumn, 3 winter
   dayCount:0,
 };
@@ -1391,11 +1392,16 @@ window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.invento
 const SAVE_KEY='bentofarm_save_v1';
 function saveGame(){
   try{
+    // Serialize plantation tiles (only non-grass ones)
+    const tilesData=[];
+    allPlots.forEach((plot,pi)=>{ for(let r=0;r<plot.rows;r++) for(let c=0;c<plot.cols;c++){ const t=plot.tiles[r][c];
+      if(t.state!=='grass') tilesData.push({p:pi,c,r,st:t.state,cr:t.crop,gp:t.growProgress||0,w:t.water?1:0,fz:t.fertilized?1:0,rg:t.regrowing?1:0}); } });
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
       tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
-      stats:state.stats, achievements:state.achievements
+      stats:state.stats, achievements:state.achievements,
+      buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData
     }));
   }catch(e){}
 }
@@ -1426,8 +1432,30 @@ function loadGame(){
     if(d.tractorIdx!=null){ applyTractor(d.tractorIdx); } else { applyTractor(0); }
     // Apply season visuals
     state.season=(state.season+3)%4; advanceSeason();
+    // Recreate buildings
+    state.buildings=[];
+    if(Array.isArray(d.buildings)){ for(const b of d.buildings){ try{ state.buildings.push({id:b.id,x:b.x,z:b.z}); constructBuilding(b.id,b.x,b.z); }catch(e){} } }
+    // Respawn animals
+    if(Array.isArray(d.animals)){ for(const t of d.animals){ if(ANIMAL_TYPES[t]) try{ spawnAnimal(t); }catch(e){} } }
+    // Restore plantation tiles
+    if(Array.isArray(d.tiles)){ for(const td of d.tiles){ try{ restoreTile(td); }catch(e){} } }
     return true;
-  }catch(e){ return false; }
+  }catch(e){ console.error('load',e); return false; }
+}
+function restoreTile(td){
+  const plot=allPlots[td.p]; if(!plot) return;
+  const t=plot.tiles[td.r] && plot.tiles[td.r][td.c]; if(!t) return;
+  t.state=td.st; t.crop=td.cr||null; t.growProgress=td.gp||0; t.water=td.w?1:0; t.fertilized=!!td.fz; t.regrowing=!!td.rg;
+  t.lastUpdate=performance.now()/1000;
+  if(td.st==='tilled'){ t.mesh.material=tilledMat(); t.mesh.position.y=0.13; }
+  else if(td.st==='planted'){
+    t.mesh.material=tilledMat(); t.mesh.position.y=0.13;
+    const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
+    if(t.crop) addCropMarker(t, CROPS[t.crop].emoji);
+  } else if(td.st==='grown'){
+    t.mesh.material=grownDirtMat();
+    if(t.crop){ t.plant=buildCrop(t.crop,t); scene.add(t.plant); addCropMarker(t, CROPS[t.crop].emoji); }
+  }
 }
 
 // ---------- NPCs (wandering animals) ----------
@@ -1779,6 +1807,15 @@ window.placeBuilding=(id,price)=>{
   const bx = veh.position.x - Math.sin(heading)*14;
   const bz = veh.position.z - Math.cos(heading)*14;
   state.money-=price; sndSell();
+  state.buildings=state.buildings||[]; state.buildings.push({id,x:bx,z:bz});
+  constructBuilding(id,bx,bz);
+  state.stats.builtCount=(state.stats.builtCount||0)+1;
+  updateHUD();
+  document.getElementById('build-menu').style.display='none';
+  saveGame();
+};
+// Builds the actual mesh + registers functional zones (used by placeBuilding AND by load)
+function constructBuilding(id,bx,bz){
   if(id==='silo'){ makeSilo(bx,bz); }
   else if(id==='barn2'){ makeBarn(bx,bz); }
   else if(id==='greenhouse'){
@@ -1877,10 +1914,7 @@ window.placeBuilding=(id,price)=>{
     feeders.push({x:bx,z:bz});
     showMessage('🍽️ Comedouro! Consome plantações e reproduz os animais.',2800);
   }
-  state.stats.builtCount=(state.stats.builtCount||0)+1;
-  updateHUD();
-  document.getElementById('build-menu').style.display='none';
-};
+}
 const extraWindmills=[];
 function inGreenhouse(t){ for(const z of greenhouseZones){ if(Math.hypot(t.x-z.x,t.z-z.z)<z.r) return true; } return false; }
 function updateWaterTowers(dt){
