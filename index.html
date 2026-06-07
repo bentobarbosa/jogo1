@@ -133,6 +133,7 @@
     <p>🌾 Troque a semente: <span class="key">Q</span> · 🏪 Loja no mercado: <span class="key">B</span></p>
   </div>
   <button onclick="startGame()">▶ COMEÇAR A FAZENDA</button>
+  <button onclick="if(confirm('Apagar todo o progresso salvo?')){localStorage.removeItem('bentofarm_save_v1');location.reload();}" style="margin-top:10px;padding:8px 24px;font-size:13px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid #fff;border-radius:20px;cursor:pointer;">🗑️ Novo Jogo (apagar progresso)</button>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -835,16 +836,28 @@ let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('mes
 function distXZ(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
 
 // ---------- OBJECTIVES ----------
+function activeVehPos(){ return (activeVeh==='tractor'?tractor:truck).position; }
+function totalCrops(){ let s=0; for(const k of Object.keys(CROPS)) s+=(state.inventory[k]||0); return s; }
+function nearAnyPlot(d){ const p=activeVehPos(); for(const plot of allPlots){ if(distXZ(p,{x:plot.centerX,z:plot.centerZ})<d) return true; } return false; }
 const OBJ=[
-  {icon:'🚜',text:'Dirija até o campo cercado (W A S D)',done:()=>distXZ(tractor.position,{x:allPlots[0].centerX,z:allPlots[0].centerZ})<26},
+  {icon:'🚜',text:'Dirija até o campo cercado (W A S D)',done:()=>nearAnyPlot(30)},
   {icon:'🚜',text:'Aperte 1 (Arado) e dirija sobre o campo',done:()=>anyTile(t=>t.state!=='grass')},
   {icon:'🌱',text:'Aperte 2 (Plantadeira) e plante dirigindo',done:()=>anyTile(t=>t.state==='planted'||t.state==='grown')},
   {icon:'⏳',text:'Espere crescer (a planta fica dourada)',done:()=>anyTile(t=>t.state==='grown')},
-  {icon:'🌾',text:'Aperte 3 (Colheitadeira) e colha dirigindo',done:()=>(state.inventory.wheat+state.inventory.corn+state.inventory.potato)>0},
+  {icon:'🌾',text:'Aperte 3 (Colheitadeira) e colha dirigindo',done:()=>totalCrops()>0},
   {icon:'🏪',text:'Vá ao mercado (B) e venda a colheita',done:()=>state.money>500},
   {icon:'🎉',text:'Fazenda funcionando! Continue plantando!',done:()=>false},
 ];
-function updateObjective(){const o=OBJ[state.objective];if(o&&o.done()&&state.objective<OBJ.length-1){state.objective++;showMessage('✅ Objetivo concluído!',1200);}const c=OBJ[state.objective];document.querySelector('#objective .obj-icon').textContent=c.icon;document.getElementById('objective-text').textContent=c.text;}
+function updateObjective(){
+  // advance through ALL completed objectives in one pass (robust)
+  while(state.objective<OBJ.length-1 && OBJ[state.objective].done()){
+    state.objective++;
+    showMessage('✅ Objetivo concluído!',1200);
+  }
+  const c=OBJ[state.objective];
+  document.querySelector('#objective .obj-icon').textContent=c.icon;
+  document.getElementById('objective-text').textContent=c.text;
+}
 
 // ---------- SHOP ----------
 function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tractor.position,shopPos)>15){showMessage('🏪 Chegue mais perto do mercado!',1400);return;}state.shopOpen=true;document.getElementById('shop').style.display='block';renderShop();}
@@ -883,13 +896,51 @@ window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficie
 window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
 window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
 window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
-window.buyTractor=(idx)=>{const tr=TRACTORS[idx];if(state.money<tr.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=tr.price;state.tractorIdx=idx;
-  // Apply new color to tractor body parts
+function applyTractor(idx){
+  const tr=TRACTORS[idx];
   chassis.material.color.setHex(tr.color);hood.material.color.setHex(tr.color);
-  T.maxF=tr.speed; state.maxFuel=tr.fuelCap; state.fuel=tr.fuelCap;
+  T.maxF=tr.speed; state.maxFuel=tr.fuelCap;
   tractor.scale.setScalar(tr.scale);
-  showMessage(`✅ ${tr.name} equipado!`,1800);sndSell();updateHUD();renderShop();};
-window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=q*u;sndSell();updateHUD();renderShop();};
+}
+window.buyTractor=(idx)=>{const tr=TRACTORS[idx];if(state.money<tr.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=tr.price;state.tractorIdx=idx;
+  applyTractor(idx); state.fuel=tr.fuelCap;
+  showMessage(`✅ ${tr.name} equipado!`,1800);sndSell();updateHUD();renderShop();saveGame();};
+window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=q*u;sndSell();updateHUD();renderShop();saveGame();};
+
+// ---------- SAVE / LOAD (#33 autosave) ----------
+const SAVE_KEY='bentofarm_save_v1';
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
+      tractorIdx:state.tractorIdx, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
+      season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals
+    }));
+  }catch(e){}
+}
+function loadGame(){
+  try{
+    const s=localStorage.getItem(SAVE_KEY); if(!s) return false;
+    const d=JSON.parse(s);
+    state.money = d.money ?? 500;
+    if(d.inventory) Object.assign(state.inventory, d.inventory);
+    if(d.qualityTotals) Object.assign(state.qualityTotals, d.qualityTotals);
+    state.level = d.level ?? 1;
+    state.xp = d.xp ?? 0;
+    state.xpToNext = d.xpToNext ?? 50;
+    state.objective = d.objective ?? 0;
+    state.season = d.season ?? 0;
+    state.dayCount = d.dayCount ?? 0;
+    // Recreate unlocked plots
+    const target = d.plotsUnlocked || 1;
+    while(state.plotsUnlocked < target){ unlockNewPlot(); }
+    // Apply tractor upgrade
+    if(d.tractorIdx){ state.tractorIdx=d.tractorIdx; applyTractor(d.tractorIdx); }
+    // Apply season visuals
+    state.season=(state.season+3)%4; advanceSeason();
+    return true;
+  }catch(e){ return false; }
+}
 
 // ---------- NPCs (wandering animals) ----------
 const npcs=[];
@@ -1211,11 +1262,16 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
 function startGame(){document.getElementById('start').style.display='none';state.running=true;
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
+  // Load saved progress (if any)
+  if(loadGame()) showMessage('💾 Progresso carregado!',1800);
   // Spawn NPCs
   for(let i=0;i<4;i++) npcs.push(makePig(-40+Math.random()*-20,20+Math.random()*20));
   for(let i=0;i<5;i++) npcs.push(makeSheep(-60+Math.random()*-15,40+Math.random()*30));
   for(let i=0;i<8;i++) npcs.push(makeBird((Math.random()-0.5)*120,(Math.random()-0.5)*120));
-  setTool(0);updateHUD();clock.start();clock.getDelta();animate();}
+  setTool(0);updateHUD();clock.start();clock.getDelta();animate();
+  // Autosave every 15s
+  setInterval(saveGame, 15000);
+}
 window.startGame=startGame;
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 renderer.render(scene,camera);
