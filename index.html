@@ -617,7 +617,7 @@ function makeWindmill(x,z){const g=new THREE.Group();
   for(let i=0;i<4;i++){const blade=new THREE.Mesh(new THREE.BoxGeometry(0.4,5,0.1),new THREE.MeshLambertMaterial({color:0xddddcc}));blade.position.y=2.5;const holder=new THREE.Group();holder.add(blade);holder.rotation.z=i*Math.PI/2;hub.add(holder);}
   g.add(hub); g.userData.hub=hub;
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2);return g;}
-const windmill=makeWindmill(40,40);
+const windmill=null; // windmill removed (it overlapped the pig pen)
 
 // ---------- TREES ----------
 const groundTrees=[]; // leaf meshes for seasonal recoloring
