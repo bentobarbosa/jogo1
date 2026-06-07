@@ -49,6 +49,31 @@
       transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); z-index:55; text-align:center; }
     #event-banner.show { transform:translateX(-50%) translateY(0); }
 
+    /* AI Assistant */
+    #ai-btn { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); margin-left:330px;
+      width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#42a5f5,#1976d2);
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:28px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+      display:flex; align-items:center; justify-content:center; }
+    #ai-btn:hover { transform:translateX(-50%) translateX(330px) scale(1.08); }
+    #ai-panel { position:fixed; bottom:90px; right:20px; width:330px; height:440px; background:rgba(20,28,45,0.97);
+      border:2px solid #42a5f5; border-radius:16px; z-index:121; display:none; flex-direction:column;
+      box-shadow:0 10px 40px rgba(0,0,0,0.6); overflow:hidden; }
+    #ai-panel.open { display:flex; }
+    #ai-head { background:linear-gradient(135deg,#1976d2,#1565c0); color:#fff; padding:12px 14px; font-weight:800;
+      display:flex; align-items:center; justify-content:space-between; }
+    #ai-head .ai-x { cursor:pointer; font-size:18px; opacity:0.8; }
+    #ai-msgs { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+    .ai-msg { max-width:85%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.45; }
+    .ai-bot { background:#263a5c; color:#e3f2fd; align-self:flex-start; border-bottom-left-radius:3px; }
+    .ai-user { background:#42a5f5; color:#fff; align-self:flex-end; border-bottom-right-radius:3px; }
+    #ai-input-row { display:flex; gap:6px; padding:10px; border-top:1px solid rgba(255,255,255,0.1); }
+    #ai-input { flex:1; padding:9px 12px; border-radius:20px; border:none; background:#2c3e5c; color:#fff; font-size:13px; outline:none; }
+    #ai-send { padding:9px 14px; border-radius:20px; border:none; background:#42a5f5; color:#fff; font-weight:800; cursor:pointer; }
+    .ai-chips { display:flex; flex-wrap:wrap; gap:5px; padding:0 10px 8px; }
+    .ai-chip { background:rgba(66,165,245,0.2); border:1px solid #42a5f5; color:#90caf9; font-size:11px;
+      padding:4px 9px; border-radius:14px; cursor:pointer; }
+    .ai-chip:hover { background:#42a5f5; color:#fff; }
+
     #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
       padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
     #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
@@ -153,6 +178,18 @@
 
 <canvas id="canvas"></canvas>
 <div id="rain-overlay"></div>
+
+<!-- AI Assistant -->
+<button id="ai-btn" onclick="toggleAI()" title="Assistente">🤖</button>
+<div id="ai-panel">
+  <div id="ai-head"><span>🤖 Assistente Fazenda</span><span class="ai-x" onclick="toggleAI()">✕</span></div>
+  <div id="ai-msgs"></div>
+  <div class="ai-chips" id="ai-chips"></div>
+  <div id="ai-input-row">
+    <input id="ai-input" type="text" placeholder="Pergunte algo..." autocomplete="off">
+    <button id="ai-send" onclick="aiSend()">➤</button>
+  </div>
+</div>
 
 <div id="hud">
   <div id="money">💰 $500</div>
@@ -655,7 +692,10 @@ function removeCropMarker(t){ if(t.marker){ scene.remove(t.marker); if(t.marker.
 
 // ---------- INPUT ----------
 const keys={};
-addEventListener('keydown',e=>{keys[e.code]=true;
+addEventListener('keydown',e=>{
+  // Ignore game controls while typing in a text input (AI chat)
+  if(document.activeElement && document.activeElement.tagName==='INPUT'){ return; }
+  keys[e.code]=true;
   if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4);
   if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
@@ -878,7 +918,7 @@ function tryRefuel(){
   if(need<=0){ showMessage('Tanque cheio!',1000); return; }
   const cost=Math.ceil(need*0.8);
   if(state.money<cost){ showMessage('❌ Sem dinheiro ($'+cost+')',1400); return; }
-  state.money-=cost; state.fuel=state.maxFuel; sndSell();
+  state.money-=cost; state.fuel=state.maxFuel; state.stats.refueled=(state.stats.refueled||0)+1; sndSell();
   showMessage(`⛽ Abastecido! -$${cost}`,1500); updateHUD();
 }
 let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('message');el.textContent=t;el.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>el.style.display='none',ms);}
@@ -889,13 +929,19 @@ function activeVehPos(){ return (activeVeh==='tractor'?tractor:truck).position; 
 function totalCrops(){ let s=0; for(const k of Object.keys(CROPS)) s+=(state.inventory[k]||0); return s; }
 function nearAnyPlot(d){ const p=activeVehPos(); for(const plot of allPlots){ if(distXZ(p,{x:plot.centerX,z:plot.centerZ})<d) return true; } return false; }
 const OBJ=[
-  {icon:'🚜',text:'Dirija até o campo cercado (W A S D)',done:()=>nearAnyPlot(30)},
-  {icon:'🚜',text:'Aperte 1 (Arado) e dirija sobre o campo',done:()=>anyTile(t=>t.state!=='grass')},
-  {icon:'🌱',text:'Aperte 2 (Plantadeira) e plante dirigindo',done:()=>anyTile(t=>t.state==='planted'||t.state==='grown')},
-  {icon:'⏳',text:'Espere crescer (a planta fica dourada)',done:()=>anyTile(t=>t.state==='grown')},
-  {icon:'🌾',text:'Aperte 3 (Colheitadeira) e colha dirigindo',done:()=>totalCrops()>0},
-  {icon:'🏪',text:'Vá ao mercado (B) e venda a colheita',done:()=>state.money>500},
-  {icon:'🎉',text:'Fazenda funcionando! Continue plantando!',done:()=>false},
+  {icon:'🚜',text:'1/12 — Dirija até o campo cercado (W A S D)',done:()=>nearAnyPlot(30)},
+  {icon:'🚜',text:'2/12 — Aperte [1] Arado e dirija sobre o campo',done:()=>anyTile(t=>t.state==='tilled'||t.state==='planted'||t.state==='grown')},
+  {icon:'🌱',text:'3/12 — Aperte [2] Plantadeira e plante dirigindo',done:()=>anyTile(t=>t.state==='planted'||t.state==='grown')},
+  {icon:'💧',text:'4/12 — Aperte [4] Irrigador e regue (cresce 2× mais rápido!)',done:()=>anyTile(t=>t.water>0)},
+  {icon:'⏳',text:'5/12 — Espere a planta crescer (fica dourada)',done:()=>anyTile(t=>t.state==='grown')},
+  {icon:'🌾',text:'6/12 — Aperte [3] Colheitadeira e colha dirigindo',done:()=>totalCrops()>0},
+  {icon:'🏪',text:'7/12 — Vá ao mercado (placa 🏪) e aperte [B]',done:()=>state.money>500},
+  {icon:'💵',text:'8/12 — Na aba VENDER, venda sua colheita',done:()=>state.stats.harvested>0 && totalCrops()===0 && state.money>500},
+  {icon:'📋',text:'9/12 — Cumpra um CONTRATO (painel à esquerda)',done:()=>state.stats.contractsDone>=1},
+  {icon:'🐄',text:'10/12 — Compre um animal na loja (aba ANIMAIS)',done:()=>state.stats.animalsBought>=1},
+  {icon:'🏗️',text:'11/12 — Aperte [G] e construa algo (ex: Estufa)',done:()=>(state.stats.builtCount||0)>=1},
+  {icon:'⛽',text:'12/12 — Abasteça no posto: chegue perto e aperte [R]',done:()=>state.stats.refueled>0},
+  {icon:'🎉',text:'Tutorial completo! Continue crescendo sua fazenda!',done:()=>false},
 ];
 function updateObjective(){
   // advance through ALL completed objectives in one pass (robust)
@@ -1006,6 +1052,79 @@ function updateEvents(dt){
     EVENTS[Math.floor(Math.random()*EVENTS.length)]();
   }
 }
+
+// ---------- AI ASSISTANT (offline knowledge base) ----------
+const AI_KB=[
+  {kw:['oi','ola','olá','eai','e ai','bom dia','boa tarde','boa noite','hello'], a:'Oi! 👋 Sou o assistente da sua fazenda. Posso te ajudar com plantio, colheita, dinheiro, missões, animais e muito mais. O que quer saber?'},
+  {kw:['obrigad','valeu','vlw','thanks'], a:'De nada! 😄 Boa colheita! Se precisar é só perguntar.'},
+  {kw:['plantar','plante','plant','semente','muda'], a:'🌱 Para plantar: aperte [2] (Plantadeira), escolha a semente com [Q], e dirija por cima do solo arado. Ela planta sozinha! Primeiro precisa arar com [1].'},
+  {kw:['arar','arado','arou','lavrar'], a:'🚜 Para arar: aperte [1] (Arado) e dirija por cima da grama do campo. O solo fica marrom, pronto pra plantar.'},
+  {kw:['colher','colheita','colhe','colhi'], a:'🌾 Para colher: quando a planta ficar dourada/madura, aperte [3] (Colheitadeira) e dirija por cima. A colheita vai pro inventário.'},
+  {kw:['regar','rega','irrigar','irrig','agua','molhar','molha'], a:'💧 Para regar: aperte [4] (Irrigador) e dirija por cima das plantas. Regado, cresce 2× mais rápido! A Torre d\'Água (construa com [G]) rega sozinha.'},
+  {kw:['combustivel','combustível','gasolina','posto','abastecer','abasteci','fuel','tanque'], a:'⛽ Combustível: vá até a placa 🏪/⛽ POSTO e aperte [R] pra encher. Sem grana? Compre um 🛢️ Galão na loja e aperte [R] em qualquer lugar. Mesmo vazio o trator anda devagar até o posto.'},
+  {kw:['dinheiro','grana','vender','vende','money','rico','lucro','ganhar'], a:'💰 Para ganhar dinheiro: colha e venda no mercado ([B] perto da placa 🏪, aba VENDER). Dica: melancia 🍉 e abóbora 🎃 valem mais. Cumpra contratos pra ganhar até 1.7×! E aproveite o evento "Boom no Mercado" (venda 2×).'},
+  {kw:['missao','missão','contrato','contrte','tarefa','quest'], a:'📋 Missões/Contratos: o painel azul à esquerda mostra o que entregar (ex: 11× milho). Quando você tiver a quantidade, o botão ENTREGAR acende — clique e ganhe dinheiro + XP! Um novo contrato aparece automaticamente.'},
+  {kw:['animal','animais','vaca','galinha','ovelha','porco','leite','ovo','la','lã','curral'], a:'🐄 Animais: na loja (aba ANIMAIS) compre vaca (leite), galinha (ovo), ovelha (lã) ou porco (trufa). Eles ficam no 🐄 CURRAL e produzem sozinhos. Venda os produtos na aba VENDER = renda passiva!'},
+  {kw:['nivel','nível','xp','level','subir','experiencia','experiência'], a:'⭐ Nível/XP: você ganha XP colhendo e cumprindo contratos. Cada nível libera um NOVO CAMPO (até 9). A barra dourada no topo mostra seu progresso.'},
+  {kw:['construir','construcao','construção','build','estufa','torre','silo','predio','prédio'], a:'🏗️ Construir: aperte [G] pra abrir o menu. A Estufa faz crescer 3× mais rápido, a Torre d\'Água rega sozinha, e o Tanque ⛽ abastece longe do posto. A construção aparece na frente do veículo.'},
+  {kw:['trator','tractor','veiculo','veículo','melhor trator'], a:'🚜 Tratores: na loja (aba TRATORES) você compra modelos melhores — mais rápidos e com tanque maior. O Mega Trator Dourado é o melhor ($80.000)!'},
+  {kw:['loja','mercado','shop','comprar'], a:'🏪 Loja: chegue perto da placa 🏪 MERCADO e aperte [B]. Tem 4 abas: SEMENTES, VENDER, ANIMAIS e TRATORES.'},
+  {kw:['caminhao','caminhão','truck'], a:'🚚 Caminhão: aperte [F] pra trocar entre trator e caminhão. O caminhão é mais rápido — bom pra correr até o mercado!'},
+  {kw:['estacao','estação','inverno','verao','verão','outono','primavera','season'], a:'🍂 Estações: mudam a cada dia (Primavera→Verão→Outono→Inverno). No Verão tudo cresce mais rápido; no Inverno mais devagar (e neva!). Veja no relógio.'},
+  {kw:['clima','chuva','tempo','weather','tempestade'], a:'🌧️ Clima: alterna entre sol, nublado e chuva. Quando chove, suas plantas são regadas de graça! Fica de olho no evento "Chuva Grátis".'},
+  {kw:['fertilizante','fertilizar','adubo'], a:'🧪 Fertilizante: compre na loja. É aplicado automático ao plantar (se você tiver) — cresce +50% e dá +2⭐ de qualidade (vende mais caro).'},
+  {kw:['pesticida','praga','mato','erva','daninha'], a:'🪲 Pesticida/Mato: o mato nasce nas plantações e para o crescimento. Passe com qualquer ferramenta pra arrancar, ou use Pesticida (loja) ao plantar pra prevenir.'},
+  {kw:['galao','galão','jerrycan'], a:'🛢️ Galão: combustível de emergência. Compre na loja e aperte [R] em qualquer lugar pra ganhar +50 de combustível.'},
+  {kw:['conquista','trofeu','troféu','achievement','trofeu'], a:'🏆 Conquistas: você desbloqueia troféus fazendo coisas (1ª colheita, milionário, todos os campos...). Aparecem como notificações douradas!'},
+  {kw:['evento','event'], a:'🎲 Eventos: a cada ~1 min acontece algo legal — Boom no Mercado (venda 2×), Chuva Grátis, Prêmio em dinheiro, Festival de XP ou Doação de sementes!'},
+  {kw:['salvar','save','perder','progresso'], a:'💾 O jogo salva sozinho a cada 15s e quando você vende/compra. Pode fechar e voltar que continua de onde parou!'},
+  {kw:['controle','tecla','como jog','botao','botão','ajuda','help'], a:'🎮 Controles: [W A S D] dirigir, [1] arar, [2] plantar, [3] colher, [4] irrigar, [Q] trocar semente, [B] loja, [G] construir, [F] trocar veículo, [R] abastecer, [H] buzina, [L] faróis.'},
+];
+function aiNormalize(s){ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function aiAnswer(text){
+  const t=aiNormalize(text);
+  const words=new Set(t.split(/[^a-z0-9]+/).filter(Boolean));
+  let best=null, bestScore=0;
+  for(const item of AI_KB){
+    let score=0;
+    for(const k of item.kw){
+      const nk=aiNormalize(k);
+      if(words.has(nk)) score+=2;                          // exact word match
+      else if(nk.length>=4 && t.includes(nk)) score+=1;    // stem match (min 4 chars, avoids false hits)
+    }
+    if(score>bestScore){ bestScore=score; best=item; }
+  }
+  if(best) return best.a;
+  return 'Hmm, não entendi 🤔. Posso ajudar com: plantar, arar, regar, colher, vender, dinheiro, missões, animais, construir, combustível, trator, níveis. Tenta uma dessas palavras!';
+}
+function aiAddMsg(text, who){
+  const m=document.getElementById('ai-msgs');
+  const d=document.createElement('div'); d.className='ai-msg '+(who==='user'?'ai-user':'ai-bot');
+  d.textContent=text; m.appendChild(d); m.scrollTop=m.scrollHeight;
+}
+window.aiSend=()=>{
+  const inp=document.getElementById('ai-input');
+  const txt=inp.value.trim(); if(!txt) return;
+  aiAddMsg(txt,'user'); inp.value='';
+  setTimeout(()=>aiAddMsg(aiAnswer(txt),'bot'), 250);
+};
+window.toggleAI=()=>{
+  const p=document.getElementById('ai-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open') && document.getElementById('ai-msgs').children.length===0){
+    aiAddMsg('Oi! 👋 Sou seu assistente. Pergunte qualquer coisa sobre o jogo, ou toque numa sugestão abaixo:','bot');
+  }
+};
+// Quick chips
+const AI_CHIPS=['Como plantar?','Como ganhar dinheiro?','Como fazer missões?','Como regar?','Como abastecer?','Comprar animais'];
+function aiBuildChips(){
+  const c=document.getElementById('ai-chips'); if(!c) return;
+  for(const q of AI_CHIPS){ const b=document.createElement('div'); b.className='ai-chip'; b.textContent=q;
+    b.onclick=()=>{ aiAddMsg(q,'user'); setTimeout(()=>aiAddMsg(aiAnswer(q),'bot'),250); }; c.appendChild(b); }
+}
+setTimeout(aiBuildChips,0);
+// Send on Enter
+setTimeout(()=>{ const inp=document.getElementById('ai-input'); if(inp){ inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') aiSend(); }); } },0);
 
 // ---------- SHOP ----------
 function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tractor.position,shopPos)>15){showMessage('🏪 Chegue mais perto do mercado!',1400);return;}state.shopOpen=true;document.getElementById('shop').style.display='block';renderShop();}
@@ -1442,6 +1561,7 @@ window.placeBuilding=(id,price)=>{
     g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,3);
     showMessage('🐔 Galinheiro construído!',1800);
   }
+  state.stats.builtCount=(state.stats.builtCount||0)+1;
   updateHUD();
   document.getElementById('build-menu').style.display='none';
 };
