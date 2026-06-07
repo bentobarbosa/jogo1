@@ -149,12 +149,8 @@
   <div id="level-up"><div>🎉 NÍVEL <span id="lu-num">2</span>!</div><div class="lu-sub">+ NOVO CAMPO LIBERADO</div></div>
   <div id="inventory">
     <h3>📦 INVENTÁRIO</h3>
-    <div class="inv-row"><span class="inv-label">🌾 Sem. Trigo</span><span class="inv-val" id="inv-wheat-seed">10</span></div>
-    <div class="inv-row"><span class="inv-label">🌽 Sem. Milho</span><span class="inv-val" id="inv-corn-seed">5</span></div>
-    <div class="inv-row"><span class="inv-label">🥔 Sem. Batata</span><span class="inv-val" id="inv-potato-seed">5</span></div>
-    <div class="inv-row"><span class="inv-label">🌾 Trigo</span><span class="inv-val" id="inv-wheat">0</span></div>
-    <div class="inv-row"><span class="inv-label">🌽 Milho</span><span class="inv-val" id="inv-corn">0</span></div>
-    <div class="inv-row"><span class="inv-label">🥔 Batata</span><span class="inv-val" id="inv-potato">0</span></div>
+    <div id="selected-seed" style="background:rgba(255,213,79,0.25);border-radius:6px;padding:4px 8px;margin-bottom:6px;font-size:12px;font-weight:700;color:#2d5016;">Selecionado: 🌾 Trigo — 10 sementes</div>
+    <div id="inv-list"></div>
   </div>
   <div id="help">
     <h3>🎮 CONTROLES</h3>
@@ -246,7 +242,7 @@ const state = {
   tool:0, objective:0,
   level:1, xp:0, xpToNext:50,
   plotsUnlocked:1,
-  fuel:100, maxFuel:100,
+  fuel:150, maxFuel:150,
   headlights:false,
   time:0.42,        // start mid-morning (clearly daytime)
   daySpeed:1/600,   // 10 minutes per full day (slower)
@@ -425,7 +421,7 @@ function makeShop(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(2,3.2,0.2),new THREE.MeshLambertMaterial({color:0x4e342e}));door.position.set(0,1.6,4.6);g.add(door);
   const awn=new THREE.Mesh(new THREE.BoxGeometry(9.5,0.3,2.5),new THREE.MeshLambertMaterial({color:0xd32f2f}));awn.position.set(0,3.5,5.2);awn.rotation.x=-0.25;g.add(awn);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,6.5);}
-const shopPos=new THREE.Vector3(28,0,8); makeShop(shopPos.x,shopPos.z);
+const shopPos=new THREE.Vector3(34,0,8); makeShop(shopPos.x,shopPos.z);
 
 // Gas pump building
 function makePump(x,z){const g=new THREE.Group();
@@ -440,7 +436,16 @@ function makePump(x,z){const g=new THREE.Group();
   // Sign
   const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
-const pumpPos=new THREE.Vector3(40,0,8); makePump(pumpPos.x,pumpPos.z);
+const pumpPos=new THREE.Vector3(24,0,-6); makePump(pumpPos.x,pumpPos.z);
+// Floating beacon sign helper so player can find key buildings
+function beaconSign(x,z,text){
+  const c=document.createElement('canvas');c.width=256;c.height=80;const g=c.getContext('2d');
+  g.fillStyle='rgba(0,0,0,0.7)';g.fillRect(0,0,256,80);g.fillStyle='#ffd54f';g.font='bold 30px sans-serif';g.textAlign='center';g.fillText(text,128,50);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
+  sp.scale.set(8,2.5,1);sp.position.set(x,8,z);scene.add(sp);
+}
+beaconSign(pumpPos.x,pumpPos.z,'⛽ POSTO');
+beaconSign(shopPos.x,shopPos.z,'🏪 MERCADO');
 
 function makeHouse(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(8,4.5,9),new THREE.MeshLambertMaterial({color:0xf5deb3}));b.position.y=2.25;b.castShadow=true;g.add(b);
@@ -811,14 +816,30 @@ function updateHUD(){
   const fpct=(state.fuel/state.maxFuel*100);
   document.getElementById('fuel-bar').style.width=fpct+'%';
   document.getElementById('fuel-box').classList.toggle('low', fpct<20);
-  for(const k of['wheat_seed','corn_seed','potato_seed','wheat','corn','potato']){const el=document.getElementById('inv-'+k.replace('_','-'));if(el)el.textContent=state.inventory[k];}
+  // Selected seed indicator
+  const sc=CROPS[state.selectedCrop]; const seedN=state.inventory[state.selectedCrop+'_seed']||0;
+  const ssEl=document.getElementById('selected-seed');
+  if(ssEl) ssEl.textContent=`Selecionado: ${sc.emoji} ${sc.name} — ${seedN} sementes`;
+  // Dynamic inventory: show seeds you own + harvested crops you have
+  const list=document.getElementById('inv-list'); if(!list) return;
+  let html='';
+  let anySeed=false;
+  for(const k of Object.keys(CROPS)){ const n=state.inventory[k+'_seed']||0; if(n>0){ anySeed=true; html+=`<div class="inv-row"><span class="inv-label">${CROPS[k].emoji} Sem. ${CROPS[k].name}</span><span class="inv-val">${n}</span></div>`; } }
+  let anyCrop=false; let cropHtml='';
+  for(const k of Object.keys(CROPS)){ const n=state.inventory[k]||0; if(n>0){ anyCrop=true; cropHtml+=`<div class="inv-row"><span class="inv-label">${CROPS[k].emoji} ${CROPS[k].name}</span><span class="inv-val">${n}</span></div>`; } }
+  if(anyCrop){ html+='<div style="border-top:1px dashed rgba(0,0,0,0.2);margin:4px 0;"></div>'+cropHtml; }
+  // Items
+  if(state.inventory.fertilizer>0) html+=`<div class="inv-row"><span class="inv-label">🧪 Fertilizante</span><span class="inv-val">${state.inventory.fertilizer}</span></div>`;
+  if(state.inventory.pesticide>0) html+=`<div class="inv-row"><span class="inv-label">🪲 Pesticida</span><span class="inv-val">${state.inventory.pesticide}</span></div>`;
+  if(state.inventory.jerrycan>0) html+=`<div class="inv-row"><span class="inv-label">🛢️ Galão</span><span class="inv-val">${state.inventory.jerrycan}</span></div>`;
+  list.innerHTML=html;
 }
 
 function tryRefuel(){
   const veh = activeVeh==='tractor'?tractor:truck;
   // Near the main pump OR any built fuel depot?
-  let near = distXZ(veh.position,pumpPos)<11;
-  if(!near) for(const d of fuelDepots){ if(distXZ(veh.position,d)<8){ near=true; break; } }
+  let near = distXZ(veh.position,pumpPos)<16;
+  if(!near) for(const d of fuelDepots){ if(distXZ(veh.position,d)<12){ near=true; break; } }
   // Emergency jerrycan usable anywhere
   if(!near){
     if(state.inventory.jerrycan>0){ state.inventory.jerrycan--; state.fuel=Math.min(state.maxFuel,state.fuel+50); sndSell();
@@ -1215,8 +1236,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
     const hasFuel=state.fuel>0;
     // Limp mode: even with no fuel you can crawl slowly so you always reach a pump
-    const maxF=hasFuel?vs.maxF*(sprint?1.6:1):3.5;
-    const accel=hasFuel?vs.accel:5;
+    const maxF=hasFuel?vs.maxF*(sprint?1.6:1):6;
+    const accel=hasFuel?vs.accel:8;
     if(keys['KeyW'])vs.speed+=accel*dt; else if(keys['KeyS'])vs.speed-=accel*dt;
     else{const f=Math.sign(vs.speed)*vs.brake*0.4*dt;if(Math.abs(f)>Math.abs(vs.speed))vs.speed=0;else vs.speed-=f;}
     vs.speed=Math.max(-vs.maxR,Math.min(maxF,vs.speed));
@@ -1231,8 +1252,12 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
     else { for(const w of truckWheels) w.rotation.x+=spin; }
     // Fuel decay
-    if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?1.5:0.8));
-    if(isTractor && state.tool!==0 && Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.4);
+    // Slower fuel drain so you don't run dry constantly
+    if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?0.4:0.22));
+    if(isTractor && state.tool!==0 && Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.1);
+    // Low fuel warning
+    if(state.fuel>0 && state.fuel<20 && !state._lowFuelWarned){ state._lowFuelWarned=true; showMessage('⚠️ Combustível baixo! Vá ao posto (⛽) ou use 🛢️ galão (R)',2500); }
+    if(state.fuel>=20) state._lowFuelWarned=false;
     document.getElementById('speed-val').textContent=Math.round(Math.abs(vs.speed)*3.6);
   }
   // Always-on systems
