@@ -43,11 +43,12 @@
     .toast .t-title { font-size:14px; } .toast .t-desc { font-size:11px; opacity:0.85; font-weight:600; }
 
     /* Event banner */
-    #event-banner { position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-120%);
-      background:linear-gradient(135deg,#7e57c2,#5e35b1); color:#fff; padding:12px 26px; border-radius:30px;
+    /* Purple bonus banner — only appears briefly when a reward/event happens, below the objective */
+    #event-banner { position:absolute; top:118px; left:50%; transform:translateX(-50%) scale(0.6); opacity:0; pointer-events:none;
+      background:linear-gradient(135deg,#7e57c2,#5e35b1); color:#fff; padding:11px 24px; border-radius:30px;
       font-weight:800; font-size:15px; box-shadow:0 6px 20px rgba(0,0,0,0.4); border:2px solid #fff;
-      transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); z-index:55; text-align:center; }
-    #event-banner.show { transform:translateX(-50%) translateY(0); }
+      transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1); z-index:55; text-align:center; }
+    #event-banner.show { transform:translateX(-50%) scale(1); opacity:1; }
 
     /* AI Assistant */
     #ai-btn { position:fixed; right:20px; top:50%; transform:translateY(10px);
@@ -134,8 +135,8 @@
     #fuel-box.low #fuel-bar { background:#f44336; animation:pulse 0.5s infinite alternate; }
     @keyframes pulse { from{opacity:1} to{opacity:0.5} }
 
-    #clock-box { position:absolute; top:140px; left:16px; background:rgba(0,0,0,0.7); color:#fff;
-      padding:6px 12px; border-radius:10px; font-family:monospace; display:flex; align-items:center; gap:8px;
+    #clock-box { position:absolute; bottom:150px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:#fff;
+      padding:6px 14px; border-radius:20px; font-family:monospace; display:flex; align-items:center; gap:8px;
       font-size:14px; }
     #clock-box .weather-ico { font-size:18px; }
 
@@ -522,7 +523,7 @@ function makeBarn(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(3.5,4.5,0.3),new THREE.MeshLambertMaterial({color:0x3e2723}));door.position.set(0,2.3,7.6);g.add(door);
   for(const s of[1,-1]){const x1=new THREE.Mesh(new THREE.BoxGeometry(0.25,5,0.05),new THREE.MeshLambertMaterial({color:0xffffff}));x1.position.set(0,2.3,7.76);x1.rotation.z=s*Math.PI/4;g.add(x1);}
   g.position.set(x,0,z);scene.add(g);addCol(x,z,8);}
-makeBarn(-44,-30);
+makeBarn(-78,-6);
 
 function makeShop(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(9,5.5,9),new THREE.MeshLambertMaterial({color:0xfff3d4}));b.position.y=2.75;b.castShadow=true;g.add(b);
@@ -608,7 +609,7 @@ function makeSilo(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.CylinderGeometry(2,2,11,18),new THREE.MeshLambertMaterial({color:0xcfd8dc}));b.position.y=5.5;b.castShadow=true;g.add(b);
   const top=new THREE.Mesh(new THREE.SphereGeometry(2,18,9,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:0x90a4ae}));top.position.y=11;g.add(top);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.4);}
-makeSilo(-34,-14); makeSilo(-38.5,-14);
+makeSilo(-66,-6); makeSilo(-69.5,-6);
 
 // Windmill (decor)
 function makeWindmill(x,z){const g=new THREE.Group();
