@@ -74,6 +74,27 @@
       padding:4px 9px; border-radius:14px; cursor:pointer; }
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
+    /* Trophies panel */
+    #trophy-btn { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); margin-left:400px;
+      width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#ffd54f,#ff8f00);
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:28px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+      display:flex; align-items:center; justify-content:center; }
+    #trophy-panel { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9); opacity:0; pointer-events:none;
+      width:520px; max-height:80vh; overflow-y:auto; background:rgba(25,30,48,0.98); border:3px solid #ffd54f;
+      border-radius:18px; z-index:130; padding:20px; transition:all 0.25s; }
+    #trophy-panel.open { transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
+    #trophy-panel h2 { text-align:center; color:#ffd54f; margin-bottom:6px; }
+    #trophy-progress { text-align:center; color:#90caf9; font-size:13px; margin-bottom:14px; }
+    .trophy-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .trophy { display:flex; gap:10px; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:2px solid rgba(255,255,255,0.08); }
+    .trophy.unlocked { border-color:#ffd54f; background:rgba(255,213,79,0.12); }
+    .trophy .t-ico { font-size:30px; filter:grayscale(1) opacity(0.4); }
+    .trophy.unlocked .t-ico { filter:none; }
+    .trophy .t-name { font-size:13px; font-weight:800; color:#fff; }
+    .trophy .t-desc { font-size:11px; color:#b0bec5; }
+    .trophy.unlocked .t-name { color:#ffd54f; }
+    #trophy-close { display:block; margin:16px auto 0; padding:8px 30px; background:#c62828; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+
     #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
       padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
     #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
@@ -178,6 +199,15 @@
 
 <canvas id="canvas"></canvas>
 <div id="rain-overlay"></div>
+
+<!-- Trophies -->
+<button id="trophy-btn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
+<div id="trophy-panel">
+  <h2>🏆 CONQUISTAS</h2>
+  <div id="trophy-progress"></div>
+  <div class="trophy-grid" id="trophy-grid"></div>
+  <button id="trophy-close" onclick="toggleTrophies()">FECHAR</button>
+</div>
 
 <!-- AI Assistant -->
 <button id="ai-btn" onclick="toggleAI()" title="Assistente">🤖</button>
@@ -296,7 +326,7 @@ const state = {
     carrot_seed:0, strawberry_seed:0, pumpkin_seed:0, grape_seed:0, rice_seed:0, cotton_seed:0,
     wheat:0, corn:0, potato:0, tomato:0, soy:0, melon:0, sunflower:0, apple:0, orange:0,
     carrot:0, strawberry:0, pumpkin:0, grape:0, rice:0, cotton:0,
-    fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0 },
+    fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0, cheese:0, feather:0, fur:0, honey:0 },
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
   tool:0, objective:0,
@@ -380,16 +410,18 @@ const skyMat=new THREE.ShaderMaterial({ side:THREE.BackSide,
   vertexShader:`varying vec3 vP; void main(){vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
   fragmentShader:`varying vec3 vP; uniform vec3 top; uniform vec3 bottom; void main(){float h=normalize(vP).y*0.5+0.5; gl_FragColor=vec4(mix(bottom,top,clamp(h,0.0,1.0)),1.0);}`});
 scene.add(new THREE.Mesh(skyGeo,skyMat));
-scene.fog=new THREE.Fog(0xcdeeff,140,400);
+scene.fog=new THREE.Fog(0xdef0ff,170,460);
 
-const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,700);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,700);
 
-scene.add(new THREE.AmbientLight(0xffffff,0.5));
-const sun=new THREE.DirectionalLight(0xfff2d0,1.35);
-sun.position.set(70,100,50); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
-const sc=sun.shadow.camera; sc.left=-130;sc.right=130;sc.top=130;sc.bottom=-130;sc.near=1;sc.far=320; sun.shadow.bias=-0.0004;
+scene.add(new THREE.AmbientLight(0xfff4e0,0.65));
+const sun=new THREE.DirectionalLight(0xfff0d0,1.5);
+sun.position.set(80,120,60); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+const sc=sun.shadow.camera; sc.left=-160;sc.right=160;sc.top=160;sc.bottom=-160;sc.near=1;sc.far=380; sun.shadow.bias=-0.0004; sun.shadow.radius=4;
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0x9fd5ff,0x3a6b2a,0.4));
+// Warm fill + sky hemisphere for a softer, prettier look
+scene.add(new THREE.HemisphereLight(0xbfe3ff,0x5a8a3a,0.55));
+const fill=new THREE.DirectionalLight(0xffe0b0,0.3); fill.position.set(-60,40,-50); scene.add(fill);
 
 // ---------- GROUND ----------
 function grassTex(){
@@ -1024,6 +1056,22 @@ function checkAchievements(dt){
     }
   }
 }
+window.toggleTrophies=()=>{
+  const p=document.getElementById('trophy-panel');
+  const opening=!p.classList.contains('open');
+  p.classList.toggle('open');
+  if(opening){
+    const unlocked=ACHIEVEMENTS.filter(a=>state.achievements[a.id]).length;
+    document.getElementById('trophy-progress').textContent=`${unlocked} / ${ACHIEVEMENTS.length} desbloqueadas`;
+    const grid=document.getElementById('trophy-grid'); grid.innerHTML='';
+    for(const a of ACHIEVEMENTS){
+      const on=!!state.achievements[a.id];
+      const d=document.createElement('div'); d.className='trophy'+(on?' unlocked':'');
+      d.innerHTML=`<div class="t-ico">${a.icon}</div><div><div class="t-name">${on?a.title:'???'}</div><div class="t-desc">${a.desc}</div></div>`;
+      grid.appendChild(d);
+    }
+  }
+};
 
 // ---------- RANDOM EVENTS (keep it fun) ----------
 function showEventBanner(text, ms=3500){
@@ -1282,44 +1330,88 @@ function makeHen(x,z){const g=new THREE.Group();
   const comb=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.16,0.2),new THREE.MeshLambertMaterial({color:0xd32f2f}));comb.position.set(0,0.98,-0.32);g.add(comb);
   for(const s of[-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.25,4),new THREE.MeshLambertMaterial({color:0xff9800}));leg.position.set(s*0.1,0.12,0);g.add(leg);}
   g.position.set(x,0,z);scene.add(g);return g;}
+const FS={flatShading:true};
+function makeGoat(x,z){const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.7,1.3),new THREE.MeshLambertMaterial({color:0xe0e0e0,...FS}));body.position.y=0.85;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.45,0.5),new THREE.MeshLambertMaterial({color:0xeeeeee,...FS}));head.position.set(0,1.05,-0.85);g.add(head);
+  for(const s of[-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.4,5),new THREE.MeshLambertMaterial({color:0x9e9e9e,...FS}));horn.position.set(s*0.13,1.45,-0.85);horn.rotation.x=0.5;g.add(horn);}
+  const beard=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.25,4),new THREE.MeshLambertMaterial({color:0xffffff}));beard.position.set(0,0.85,-1.05);beard.rotation.x=Math.PI;g.add(beard);
+  for(let i=0;i<4;i++){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.55,0.14),new THREE.MeshLambertMaterial({color:0x757575}));leg.position.set(i%2?0.25:-0.25,0.28,i<2?-0.4:0.45);g.add(leg);}
+  g.position.set(x,0,z);scene.add(g);return g;}
+function makeDuck(x,z){const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.3,10,8),new THREE.MeshLambertMaterial({color:0xfff59d,...FS}));body.position.y=0.4;body.scale.set(1,0.9,1.3);body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:0xfff176,...FS}));head.position.set(0,0.68,-0.28);g.add(head);
+  const beak=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.08,0.2),new THREE.MeshLambertMaterial({color:0xff9800}));beak.position.set(0,0.64,-0.46);g.add(beak);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.2,5),new THREE.MeshLambertMaterial({color:0xfff59d}));tail.rotation.x=-Math.PI/2;tail.position.set(0,0.5,0.38);g.add(tail);
+  g.position.set(x,0,z);scene.add(g);return g;}
+function makeRabbit(x,z){const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.26,10,8),new THREE.MeshLambertMaterial({color:0xf5f5f5,...FS}));body.position.y=0.35;body.scale.set(1,1.1,1.3);body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:0xfafafa,...FS}));head.position.set(0,0.62,-0.22);g.add(head);
+  for(const s of[-1,1]){const ear=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.4,6),new THREE.MeshLambertMaterial({color:0xfafafa}));ear.position.set(s*0.08,0.9,-0.22);ear.rotation.z=s*0.15;g.add(ear);}
+  const tail=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshLambertMaterial({color:0xffffff}));tail.position.set(0,0.4,0.3);g.add(tail);
+  g.position.set(x,0,z);scene.add(g);return g;}
+function makeBeehive(x,z){const g=new THREE.Group();
+  for(let i=0;i<4;i++){const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.45-i*0.03,0.5-i*0.03,0.28,12),new THREE.MeshLambertMaterial({color:i%2?0xffca28:0xffb300,...FS}));ring.position.y=0.3+i*0.28;g.add(ring);}
+  const roof=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.55,0.2,12),new THREE.MeshLambertMaterial({color:0x8d6e63}));roof.position.y=1.45;g.add(roof);
+  for(let i=0;i<3;i++){const bee=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),new THREE.MeshBasicMaterial({color:0x000000}));bee.position.set(Math.cos(i*2)*0.7,0.9+Math.sin(i)*0.3,Math.sin(i*2)*0.7);g.add(bee);}
+  g.position.set(x,0,z);scene.add(g);return g;}
 
+// Each animal has its OWN pen
 const ANIMAL_TYPES={
-  cow:    {name:'🐄 Vaca',    price:600,  product:'milk',    productName:'🥛 Leite',  productSell:35, prodTime:18, make:makeCow,     speed:1.0},
-  chicken:{name:'🐔 Galinha', price:250,  product:'egg',     productName:'🥚 Ovo',    productSell:18, prodTime:14, make:makeHen,     speed:1.6},
-  sheep:  {name:'🐑 Ovelha',  price:450,  product:'wool',    productName:'🧶 Lã',     productSell:30, prodTime:22, make:makeSheep,   speed:0.9},
-  pig:    {name:'🐖 Porco',   price:500,  product:'truffle', productName:'🍄 Trufa',  productSell:55, prodTime:28, make:makePig,     speed:1.2},
+  cow:    {name:'🐄 Vaca',    price:600,  product:'milk',    productName:'🥛 Leite',  productSell:35, prodTime:18, make:makeCow,     speed:1.0, pen:{cx:-78,cz:18,sx:8,sz:7},  tint:0x8bc34a},
+  chicken:{name:'🐔 Galinha', price:250,  product:'egg',     productName:'🥚 Ovo',    productSell:18, prodTime:14, make:makeHen,     speed:1.6, pen:{cx:-58,cz:18,sx:7,sz:7},  tint:0xc5e1a5},
+  sheep:  {name:'🐑 Ovelha',  price:450,  product:'wool',    productName:'🧶 Lã',     productSell:30, prodTime:22, make:makeSheep,   speed:0.9, pen:{cx:-38,cz:18,sx:8,sz:7},  tint:0xa5d6a7},
+  pig:    {name:'🐖 Porco',   price:500,  product:'truffle', productName:'🍄 Trufa',  productSell:55, prodTime:28, make:makePig,     speed:1.2, pen:{cx:-18,cz:18,sx:8,sz:7},  tint:0xd7ccc8},
+  goat:   {name:'🐐 Cabra',   price:520,  product:'cheese',  productName:'🧀 Queijo', productSell:45, prodTime:20, make:makeGoat,    speed:1.1, pen:{cx:-78,cz:42,sx:8,sz:7},  tint:0xdcedc8},
+  duck:   {name:'🦆 Pato',    price:300,  product:'feather', productName:'🪶 Pena',   productSell:24, prodTime:16, make:makeDuck,    speed:1.5, pen:{cx:-58,cz:42,sx:7,sz:7},  tint:0xb3e5fc},
+  rabbit: {name:'🐇 Coelho',  price:280,  product:'fur',     productName:'🧥 Pelo',   productSell:26, prodTime:18, make:makeRabbit,  speed:1.8, pen:{cx:-38,cz:42,sx:7,sz:7},  tint:0xf0f4c3},
+  bee:    {name:'🐝 Abelhas',  price:700,  product:'honey',   productName:'🍯 Mel',    productSell:60, prodTime:24, make:makeBeehive, speed:0,   pen:{cx:-18,cz:42,sx:7,sz:7},  tint:0xfff9c4},
 };
 const farmAnimals=[];
-const animalPen={cx:-44,cz:18,sx:14,sz:11};
-setTimeout(()=>{ try{ buildPen(animalPen); beaconSign(animalPen.cx,animalPen.cz,'🐄 CURRAL'); }catch(e){console.error(e);} },0);
-function buildPen(p){
-  for(let x=-p.sx;x<=p.sx;x+=3.5){fencePost(p.cx+x,p.cz-p.sz);fencePost(p.cx+x,p.cz+p.sz);}
-  for(let z=-p.sz;z<=p.sz;z+=3.5){fencePost(p.cx-p.sx,p.cz+z);fencePost(p.cx+p.sx,p.cz+z);}
+function makeTrough(x,z){const t=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.35,0.6),new THREE.MeshLambertMaterial({color:0x6d4c41}));t.position.set(x,0.2,z);scene.add(t);
+  const w=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.1,0.4),new THREE.MeshLambertMaterial({color:0x4fc3f7}));w.position.set(x,0.35,z);scene.add(w);}
+function makeShelter(x,z,col){const g=new THREE.Group();
+  const back=new THREE.Mesh(new THREE.BoxGeometry(3,1.6,0.2),new THREE.MeshLambertMaterial({color:0x8d6e63,...FS}));back.position.set(0,0.8,-1);g.add(back);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.2,2.4),new THREE.MeshLambertMaterial({color:col,...FS}));roof.position.set(0,1.7,0);roof.rotation.x=-0.18;g.add(roof);
+  for(const s of[-1.4,1.4]){const pole=new THREE.Mesh(new THREE.BoxGeometry(0.15,1.6,0.15),new THREE.MeshLambertMaterial({color:0x6d4c41}));pole.position.set(s,0.8,0.9);g.add(pole);}
+  g.position.set(x,0,z);g.rotation.y=Math.PI;scene.add(g);}
+function buildPen(p,emoji,label,tint,roofCol){
+  for(let x=-p.sx;x<=p.sx;x+=3){fencePost(p.cx+x,p.cz-p.sz);fencePost(p.cx+x,p.cz+p.sz);}
+  for(let z=-p.sz;z<=p.sz;z+=3){fencePost(p.cx-p.sx,p.cz+z);fencePost(p.cx+p.sx,p.cz+z);}
   fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx+p.sx,p.cz-p.sz);fenceRail(p.cx-p.sx,p.cz+p.sz,p.cx+p.sx,p.cz+p.sz);
   fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx-p.sx,p.cz+p.sz);fenceRail(p.cx+p.sx,p.cz-p.sz,p.cx+p.sx,p.cz+p.sz);
-  // grass tint
-  const grass=new THREE.Mesh(new THREE.PlaneGeometry(p.sx*2,p.sz*2),new THREE.MeshLambertMaterial({color:0x7cb342}));
-  grass.rotation.x=-Math.PI/2;grass.position.set(p.cx,0.04,p.cz);scene.add(grass);
+  const grass=new THREE.Mesh(new THREE.PlaneGeometry(p.sx*2-0.2,p.sz*2-0.2),new THREE.MeshLambertMaterial({color:tint}));
+  grass.rotation.x=-Math.PI/2;grass.position.set(p.cx,0.05,p.cz);scene.add(grass);
+  makeShelter(p.cx,p.cz-p.sz+2,roofCol);
+  makeTrough(p.cx+p.sx-2,p.cz+p.sz-2);
+  beaconSign(p.cx,p.cz,emoji+' '+label);
 }
+const PEN_ROOFS={cow:0xc62828,chicken:0xa1674a,sheep:0x5e35b1,pig:0xec407a,goat:0x00897b,duck:0x0277bd,rabbit:0x7cb342,bee:0xf9a825};
+setTimeout(()=>{ try{
+  for(const[type,at]of Object.entries(ANIMAL_TYPES)){
+    buildPen(at.pen, at.name.split(' ')[0], at.name.split(' ')[1].toUpperCase(), at.tint, PEN_ROOFS[type]||0x8d6e63);
+  }
+}catch(e){console.error('pen build',e);} },0);
 function spawnAnimal(type){
-  const at=ANIMAL_TYPES[type];
-  const x=animalPen.cx+(Math.random()-0.5)*(animalPen.sx*2-3);
-  const z=animalPen.cz+(Math.random()-0.5)*(animalPen.sz*2-3);
+  const at=ANIMAL_TYPES[type]; const p=at.pen;
+  const x=p.cx+(Math.random()-0.5)*(p.sx*2-3);
+  const z=p.cz+(Math.random()-0.5)*(p.sz*2-3);
   const made=at.make(x,z);
-  // makeCow/makeHen return a Group; makeSheep/makePig return {mesh,...}
   const mesh = made.isObject3D ? made : made.mesh;
   farmAnimals.push({mesh,type,target:new THREE.Vector3(x,0,z),speed:at.speed,wander:Math.random()*4,prod:Math.random()*at.prodTime});
 }
 function updateFarmAnimals(dt){
   const now=performance.now()/1000;
   for(const a of farmAnimals){
-    const at=ANIMAL_TYPES[a.type];
-    a.wander-=dt;
-    if(a.wander<=0){a.wander=2+Math.random()*4;
-      a.target.set(animalPen.cx+(Math.random()-0.5)*(animalPen.sx*2-3),0,animalPen.cz+(Math.random()-0.5)*(animalPen.sz*2-3));}
-    const to=new THREE.Vector3().subVectors(a.target,a.mesh.position);to.y=0;const d=to.length();
-    if(d>0.4){to.normalize();a.mesh.position.addScaledVector(to,a.speed*dt);a.mesh.lookAt(a.target.x,a.mesh.position.y,a.target.z);}
-    a.mesh.position.y=Math.abs(Math.sin(now*4+a.mesh.position.x))*0.05;
+    const at=ANIMAL_TYPES[a.type]; const p=at.pen;
+    if(a.speed>0){
+      a.wander-=dt;
+      if(a.wander<=0){a.wander=2+Math.random()*4;
+        a.target.set(p.cx+(Math.random()-0.5)*(p.sx*2-3),0,p.cz+(Math.random()-0.5)*(p.sz*2-3));}
+      const to=new THREE.Vector3().subVectors(a.target,a.mesh.position);to.y=0;const d=to.length();
+      if(d>0.4){to.normalize();a.mesh.position.addScaledVector(to,a.speed*dt);a.mesh.lookAt(a.target.x,a.mesh.position.y,a.target.z);}
+      a.mesh.position.y=Math.abs(Math.sin(now*4+a.mesh.position.x))*0.05;
+    }
     a.prod+=dt;
     if(a.prod>=at.prodTime){a.prod=0;state.inventory[at.product]=(state.inventory[at.product]||0)+1;
       floatText(a.mesh.position.x,a.mesh.position.z,'+1 '+at.productName.split(' ')[0],0xffffff);}
@@ -1650,9 +1742,7 @@ function startGame(){document.getElementById('start').style.display='none';state
   // Load saved progress (if any)
   if(loadGame()) showMessage('💾 Progresso carregado!',1800);
   // Spawn NPCs
-  for(let i=0;i<4;i++) npcs.push(makePig(-40+Math.random()*-20,20+Math.random()*20));
-  for(let i=0;i<5;i++) npcs.push(makeSheep(-60+Math.random()*-15,40+Math.random()*30));
-  for(let i=0;i<8;i++) npcs.push(makeBird((Math.random()-0.5)*120,(Math.random()-0.5)*120));
+  for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
   // Autosave every 15s
   setInterval(saveGame, 15000);
