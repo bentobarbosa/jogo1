@@ -176,6 +176,11 @@
     <div id="fuel-bar-bg"><div id="fuel-bar"></div></div>
   </div>
   <div id="clock-box"><span class="weather-ico" id="weather-ico">☀️</span><span id="time-text">12:00</span><span id="season-ico" style="margin-left:8px;">🌸</span><span id="season-text" style="font-size:11px;opacity:0.85;">Primavera</span></div>
+  <div id="contract" style="position:absolute;bottom:120px;left:16px;background:rgba(40,30,20,0.92);border:2px solid #6c8cff;border-radius:12px;padding:12px 14px;width:240px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.4);">
+    <div style="color:#9fb4ff;font-size:13px;font-weight:800;text-align:center;letter-spacing:1px;margin-bottom:6px;">📋 CONTRATO</div>
+    <div id="contract-text" style="font-size:12px;line-height:1.5;">—</div>
+    <button id="contract-btn" onclick="claimContract()" style="width:100%;margin-top:8px;padding:6px;background:#3949ab;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;pointer-events:auto;">ENTREGAR</button>
+  </div>
   <div id="speedometer"><div class="speed-val" id="speed-val">0</div><div class="speed-unit">km/h</div></div>
   <div id="message"></div>
 </div>
@@ -192,6 +197,7 @@
   <div class="shop-tabs">
     <button class="tab-btn active" onclick="showTab('buy')">🛒 SEMENTES</button>
     <button class="tab-btn" onclick="showTab('sell')">💵 VENDER</button>
+    <button class="tab-btn" onclick="showTab('animals')">🐄 ANIMAIS</button>
     <button class="tab-btn" onclick="showTab('tractors')">🚜 TRATORES</button>
   </div>
   <div class="shop-grid" id="shop-grid"></div>
@@ -236,7 +242,7 @@ const state = {
     carrot_seed:0, strawberry_seed:0, pumpkin_seed:0, grape_seed:0, rice_seed:0, cotton_seed:0,
     wheat:0, corn:0, potato:0, tomato:0, soy:0, melon:0, sunflower:0, apple:0, orange:0,
     carrot:0, strawberry:0, pumpkin:0, grape:0, rice:0, cotton:0,
-    fertilizer:0, pesticide:0, jerrycan:0 },
+    fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0 },
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
   tool:0, objective:0,
@@ -832,6 +838,7 @@ function updateHUD(){
   if(state.inventory.fertilizer>0) html+=`<div class="inv-row"><span class="inv-label">🧪 Fertilizante</span><span class="inv-val">${state.inventory.fertilizer}</span></div>`;
   if(state.inventory.pesticide>0) html+=`<div class="inv-row"><span class="inv-label">🪲 Pesticida</span><span class="inv-val">${state.inventory.pesticide}</span></div>`;
   if(state.inventory.jerrycan>0) html+=`<div class="inv-row"><span class="inv-label">🛢️ Galão</span><span class="inv-val">${state.inventory.jerrycan}</span></div>`;
+  for(const a of Object.values(ANIMAL_TYPES)){ const n=state.inventory[a.product]||0; if(n>0) html+=`<div class="inv-row"><span class="inv-label">${a.productName}</span><span class="inv-val">${n}</span></div>`; }
   list.innerHTML=html;
 }
 
@@ -880,10 +887,45 @@ function updateObjective(){
   document.getElementById('objective-text').textContent=c.text;
 }
 
+// ---------- CONTRACTS / MISSIONS ----------
+let contract=null;
+function generateContract(){
+  const crops=Object.keys(CROPS).filter(c=>!CROPS[c].tree); // crops only (not trees)
+  const c=crops[Math.floor(Math.random()*crops.length)];
+  const qty=5+Math.floor(Math.random()*16);
+  const rewardMoney=Math.round(CROPS[c].sell*qty*1.7);
+  const rewardXp=qty*8;
+  contract={crop:c,qty,rewardMoney,rewardXp};
+  renderContract();
+}
+function renderContract(){
+  if(!contract) return;
+  const C=CROPS[contract.crop];
+  const el=document.getElementById('contract-text');
+  if(el) el.innerHTML=`Entregue <b>${contract.qty}× ${C.emoji} ${C.name}</b><br>Recompensa: 💰 $${contract.rewardMoney} + ⭐ ${contract.rewardXp} XP`;
+}
+function updateContracts(){
+  if(!contract){ generateContract(); return; }
+  const have=state.inventory[contract.crop]||0;
+  const btn=document.getElementById('contract-btn');
+  if(btn){ btn.disabled = have<contract.qty; btn.textContent = have<contract.qty ? `ENTREGAR (${have}/${contract.qty})` : '✅ ENTREGAR AGORA'; }
+}
+window.claimContract=()=>{
+  if(!contract) return;
+  const have=state.inventory[contract.crop]||0;
+  if(have<contract.qty){ showMessage('Você não tem o suficiente!',1500); return; }
+  state.inventory[contract.crop]-=contract.qty;
+  state.money+=contract.rewardMoney;
+  gainXP(contract.rewardXp);
+  sndSell();
+  showMessage(`✅ Contrato cumprido! +$${contract.rewardMoney} +${contract.rewardXp}XP`,2200);
+  generateContract(); updateHUD(); saveGame();
+};
+
 // ---------- SHOP ----------
 function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tractor.position,shopPos)>15){showMessage('🏪 Chegue mais perto do mercado!',1400);return;}state.shopOpen=true;document.getElementById('shop').style.display='block';renderShop();}
 window.closeShop=()=>{state.shopOpen=false;document.getElementById('shop').style.display='none';};
-window.showTab=(tab)=>{state.shopTab=tab;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell','tractors'][i]===tab));renderShop();};
+window.showTab=(tab)=>{state.shopTab=tab;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell','animals','tractors'][i]===tab));renderShop();};
 function renderShop(){const grid=document.getElementById('shop-grid');grid.innerHTML='';
   if(state.shopTab==='buy'){
     Object.entries(CROPS).forEach(([ck,c])=>{const key=ck+'_seed';const el=document.createElement('div');el.className='shop-item';const treeNote=c.tree?` · Rebrota em ${c.regrow}s`:'';el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sell}${treeNote}</p><p>Preço: <b>$${c.seed}</b></p><button onclick="buySeed('${key}',${c.seed})">x1 ($${c.seed})</button><button onclick="buySeed('${key}',${c.seed*10},10)">x10 ($${c.seed*10})</button>`;grid.appendChild(el);});
@@ -900,6 +942,14 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
     jEl.innerHTML=`<h4>🛢️ Galão de Combustível</h4><p>Tem: <b>${state.inventory.jerrycan}</b></p><p>Aperte R em qualquer lugar = +50 combustível</p><p>Preço: <b>$40</b></p><button onclick="buyJerry(40,1)">x1 ($40)</button><button onclick="buyJerry(150,5)">x5 ($150)</button>`;
     grid.appendChild(jEl);
   }
+  else if(state.shopTab==='animals'){
+    Object.entries(ANIMAL_TYPES).forEach(([key,a])=>{
+      const have=farmAnimals.filter(f=>f.type===key).length;
+      const el=document.createElement('div'); el.className='shop-item';
+      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s (vende $${a.productSell})</p><p>Você tem: <b>${have}</b> · Preço: <b>$${a.price}</b></p><button onclick="buyAnimal('${key}')">COMPRAR</button>`;
+      grid.appendChild(el);
+    });
+  }
   else if(state.shopTab==='tractors'){
     TRACTORS.forEach((tr,idx)=>{
       const owned=idx<=state.tractorIdx;
@@ -911,12 +961,15 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
   }
   else {
     Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const price=Math.round(c.sell*bonus); const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · Qualidade média: <b>${avg}⭐</b></p><p>$${price} cada (com bônus qualidade)</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
+    // Animal products
+    Object.values(ANIMAL_TYPES).forEach(a=>{const key=a.product;const have=state.inventory[key]||0;const price=a.productSell;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${a.productName}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
   }
 }
 window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory[k]+=q;sndSell();updateHUD();renderShop();};
 window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
 window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
 window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
+window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
 function applyTractor(idx){
   const tr=TRACTORS[idx];
   chassis.material.color.setHex(tr.color);hood.material.color.setHex(tr.color);
@@ -1003,6 +1056,66 @@ function updateNPCs(dt){
     if(d>0.5){to.normalize();n.mesh.position.addScaledVector(to,n.speed*dt);if(n.type!=='bird')n.mesh.lookAt(n.target.x,n.mesh.position.y,n.target.z);else n.mesh.lookAt(n.target.x,n.target.y,n.target.z);}
     if(n.type!=='bird')n.mesh.position.y=Math.abs(Math.sin(now*4+n.mesh.position.x))*0.06;
     if(n.type==='bird'){n.mesh.children[1].rotation.z=Math.sin(now*15)*0.6;n.mesh.children[2].rotation.z=-Math.sin(now*15)*0.6;}
+  }
+}
+
+// ---------- PRODUCTIVE FARM ANIMALS ----------
+function makeCow(x,z){const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.9,1.7),new THREE.MeshLambertMaterial({color:0xfafafa}));body.position.y=1;body.castShadow=true;g.add(body);
+  for(let i=0;i<4;i++){const sp=new THREE.Mesh(new THREE.SphereGeometry(0.22+Math.random()*0.12,6,6),new THREE.MeshLambertMaterial({color:0x222222}));sp.position.set((Math.random()-0.5)*0.9,1+(Math.random()-0.5)*0.4,(Math.random()-0.5)*1.4);sp.scale.set(1,0.4,1);g.add(sp);}
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.55,0.6),new THREE.MeshLambertMaterial({color:0xfafafa}));head.position.set(0,1.15,-1.05);g.add(head);
+  const snout=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.3),new THREE.MeshLambertMaterial({color:0xffb3a7}));snout.position.set(0,1.0,-1.35);g.add(snout);
+  for(const s of[-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.2,5),new THREE.MeshLambertMaterial({color:0xeeeeee}));horn.position.set(s*0.2,1.45,-1.05);g.add(horn);}
+  for(let i=0;i<4;i++){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.7,0.2),new THREE.MeshLambertMaterial({color:0x333333}));leg.position.set(i%2?0.35:-0.35,0.35,i<2?-0.5:0.55);g.add(leg);}
+  g.position.set(x,0,z);scene.add(g);return g;}
+function makeHen(x,z){const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,8),new THREE.MeshLambertMaterial({color:0xffffff}));body.position.y=0.45;body.scale.set(1,0.95,1.25);body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshLambertMaterial({color:0xffffff}));head.position.set(0,0.78,-0.3);g.add(head);
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.18,4),new THREE.MeshLambertMaterial({color:0xff9800}));beak.rotation.x=-Math.PI/2;beak.position.set(0,0.78,-0.52);g.add(beak);
+  const comb=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.16,0.2),new THREE.MeshLambertMaterial({color:0xd32f2f}));comb.position.set(0,0.98,-0.32);g.add(comb);
+  for(const s of[-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.25,4),new THREE.MeshLambertMaterial({color:0xff9800}));leg.position.set(s*0.1,0.12,0);g.add(leg);}
+  g.position.set(x,0,z);scene.add(g);return g;}
+
+const ANIMAL_TYPES={
+  cow:    {name:'🐄 Vaca',    price:600,  product:'milk',    productName:'🥛 Leite',  productSell:35, prodTime:18, make:makeCow,     speed:1.0},
+  chicken:{name:'🐔 Galinha', price:250,  product:'egg',     productName:'🥚 Ovo',    productSell:18, prodTime:14, make:makeHen,     speed:1.6},
+  sheep:  {name:'🐑 Ovelha',  price:450,  product:'wool',    productName:'🧶 Lã',     productSell:30, prodTime:22, make:makeSheep,   speed:0.9},
+  pig:    {name:'🐖 Porco',   price:500,  product:'truffle', productName:'🍄 Trufa',  productSell:55, prodTime:28, make:makePig,     speed:1.2},
+};
+const farmAnimals=[];
+const animalPen={cx:-44,cz:18,sx:14,sz:11};
+setTimeout(()=>{ try{ buildPen(animalPen); beaconSign(animalPen.cx,animalPen.cz,'🐄 CURRAL'); }catch(e){console.error(e);} },0);
+function buildPen(p){
+  for(let x=-p.sx;x<=p.sx;x+=3.5){fencePost(p.cx+x,p.cz-p.sz);fencePost(p.cx+x,p.cz+p.sz);}
+  for(let z=-p.sz;z<=p.sz;z+=3.5){fencePost(p.cx-p.sx,p.cz+z);fencePost(p.cx+p.sx,p.cz+z);}
+  fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx+p.sx,p.cz-p.sz);fenceRail(p.cx-p.sx,p.cz+p.sz,p.cx+p.sx,p.cz+p.sz);
+  fenceRail(p.cx-p.sx,p.cz-p.sz,p.cx-p.sx,p.cz+p.sz);fenceRail(p.cx+p.sx,p.cz-p.sz,p.cx+p.sx,p.cz+p.sz);
+  // grass tint
+  const grass=new THREE.Mesh(new THREE.PlaneGeometry(p.sx*2,p.sz*2),new THREE.MeshLambertMaterial({color:0x7cb342}));
+  grass.rotation.x=-Math.PI/2;grass.position.set(p.cx,0.04,p.cz);scene.add(grass);
+}
+function spawnAnimal(type){
+  const at=ANIMAL_TYPES[type];
+  const x=animalPen.cx+(Math.random()-0.5)*(animalPen.sx*2-3);
+  const z=animalPen.cz+(Math.random()-0.5)*(animalPen.sz*2-3);
+  const made=at.make(x,z);
+  // makeCow/makeHen return a Group; makeSheep/makePig return {mesh,...}
+  const mesh = made.isObject3D ? made : made.mesh;
+  farmAnimals.push({mesh,type,target:new THREE.Vector3(x,0,z),speed:at.speed,wander:Math.random()*4,prod:Math.random()*at.prodTime});
+}
+function updateFarmAnimals(dt){
+  const now=performance.now()/1000;
+  for(const a of farmAnimals){
+    const at=ANIMAL_TYPES[a.type];
+    a.wander-=dt;
+    if(a.wander<=0){a.wander=2+Math.random()*4;
+      a.target.set(animalPen.cx+(Math.random()-0.5)*(animalPen.sx*2-3),0,animalPen.cz+(Math.random()-0.5)*(animalPen.sz*2-3));}
+    const to=new THREE.Vector3().subVectors(a.target,a.mesh.position);to.y=0;const d=to.length();
+    if(d>0.4){to.normalize();a.mesh.position.addScaledVector(to,a.speed*dt);a.mesh.lookAt(a.target.x,a.mesh.position.y,a.target.z);}
+    a.mesh.position.y=Math.abs(Math.sin(now*4+a.mesh.position.x))*0.05;
+    a.prod+=dt;
+    if(a.prod>=at.prodTime){a.prod=0;state.inventory[at.product]=(state.inventory[at.product]||0)+1;
+      floatText(a.mesh.position.x,a.mesh.position.z,'+1 '+at.productName.split(' ')[0],0xffffff);}
   }
 }
 
@@ -1279,7 +1392,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   camLook.lerp(veh.position,0.18);camera.lookAt(camLook.x,camLook.y+1.5,camLook.z);
   if(windmill)windmill.userData.hub.rotation.z+=dt*0.6;
   for(const wm of extraWindmills){ if(wm.userData.hub) wm.userData.hub.rotation.z+=dt*0.6; }
-  updateCrops(now);updateFloaters(dt);updateObjective();updateNPCs(dt);
+  updateCrops(now);updateFloaters(dt);updateObjective();updateNPCs(dt);updateFarmAnimals(dt);updateContracts();
   if(river && river.material) river.material.emissiveIntensity = 0.2 + Math.sin(now*0.5)*0.1;
   renderer.render(scene,camera);
   } catch(err){ console.error('animate error:', err); try { renderer.render(scene,camera); } catch(e){} }
