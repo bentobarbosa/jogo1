@@ -410,7 +410,7 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputEncoding=THREE.sRGBEncoding;
-renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.25;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.92;
 
 const scene=new THREE.Scene();
 const skyGeo=new THREE.SphereGeometry(450,32,16);
@@ -423,14 +423,14 @@ scene.fog=new THREE.Fog(0xc8e8ff,200,520);
 
 const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,700);
 
-scene.add(new THREE.AmbientLight(0xfff0d8,0.5));
-const sun=new THREE.DirectionalLight(0xfff2d4,1.9);
+scene.add(new THREE.AmbientLight(0xeae0c8,0.4));
+const sun=new THREE.DirectionalLight(0xffeec8,1.25);
 sun.position.set(80,120,60); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
 const sc=sun.shadow.camera; sc.left=-160;sc.right=160;sc.top=160;sc.bottom=-160;sc.near=1;sc.far=380; sun.shadow.bias=-0.0004; sun.shadow.radius=5;
 scene.add(sun);
-// Warm fill + sky hemisphere for a softer, prettier look
-scene.add(new THREE.HemisphereLight(0xbfe3ff,0x4a7a2a,0.5));
-const fill=new THREE.DirectionalLight(0xffe0b0,0.35); fill.position.set(-60,40,-50); scene.add(fill);
+// Softer sky hemisphere + gentle warm fill
+scene.add(new THREE.HemisphereLight(0x9fc8ee,0x4a7a2a,0.4));
+const fill=new THREE.DirectionalLight(0xffe0b0,0.25); fill.position.set(-60,40,-50); scene.add(fill);
 
 // ---------- GROUND ----------
 function grassTex(){
@@ -1558,11 +1558,11 @@ function updateDayNight(){
     const sx=Math.cos(ang)*100, sy=Math.sin(ang)*100;
     sun.position.set(sx, Math.max(20, sy), 30);   // keep sun above horizon for lighting
     const day=Math.max(0, Math.sin(t*Math.PI*2-Math.PI/2)*0.5+0.5);
-    // KEEP IT BRIGHT — even at night still see
-    sun.intensity = 0.8 + day*0.7;
-    // Sky never gets pitch dark
-    const top = new THREE.Color(0x2a3960).lerp(new THREE.Color(0x2c6fd6), day);
-    const bot = new THREE.Color(0x4a5680).lerp(new THREE.Color(0xcdeeff), day);
+    // Softer light so it's not blown-out white
+    sun.intensity = 0.5 + day*0.65;
+    // Sky never gets pitch dark, daytime a calmer blue (not bright white)
+    const top = new THREE.Color(0x24335a).lerp(new THREE.Color(0x3f86d6), day);
+    const bot = new THREE.Color(0x3e4e74).lerp(new THREE.Color(0xa9d8f0), day);
     if(day < 0.3 && day > 0.05){
       const dusk = 1 - day*3.3;
       top.lerp(new THREE.Color(0xff7043), dusk*0.3);
