@@ -34,6 +34,21 @@
     #level-up.show { transform:translate(-50%,-50%) scale(1); }
     #level-up .lu-sub { font-size:18px; margin-top:8px; letter-spacing:1px; }
 
+    /* Achievement toasts */
+    #toasts { position:absolute; bottom:240px; left:16px; display:flex; flex-direction:column; gap:8px; align-items:flex-start; z-index:60; }
+    .toast { background:linear-gradient(135deg,#ffd54f,#ff9800); color:#3e2723; padding:10px 16px; border-radius:12px;
+      font-weight:800; box-shadow:0 6px 20px rgba(0,0,0,0.4); border:2px solid #fff; max-width:280px;
+      transform:translateX(-120%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    .toast.show { transform:translateX(0); }
+    .toast .t-title { font-size:14px; } .toast .t-desc { font-size:11px; opacity:0.85; font-weight:600; }
+
+    /* Event banner */
+    #event-banner { position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-120%);
+      background:linear-gradient(135deg,#7e57c2,#5e35b1); color:#fff; padding:12px 26px; border-radius:30px;
+      font-weight:800; font-size:15px; box-shadow:0 6px 20px rgba(0,0,0,0.4); border:2px solid #fff;
+      transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); z-index:55; text-align:center; }
+    #event-banner.show { transform:translateX(-50%) translateY(0); }
+
     #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
       padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
     #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
@@ -147,6 +162,8 @@
     <div id="xp-text"><span id="xp-cur">0</span>/<span id="xp-need">50</span> XP</div>
   </div>
   <div id="level-up"><div>🎉 NÍVEL <span id="lu-num">2</span>!</div><div class="lu-sub">+ NOVO CAMPO LIBERADO</div></div>
+  <div id="toasts"></div>
+  <div id="event-banner"></div>
   <div id="inventory">
     <h3>📦 INVENTÁRIO</h3>
     <div id="selected-seed" style="background:rgba(255,213,79,0.25);border-radius:6px;padding:4px 8px;margin-bottom:6px;font-size:12px;font-weight:700;color:#2d5016;">Selecionado: 🌾 Trigo — 10 sementes</div>
@@ -250,6 +267,10 @@ const state = {
   plotsUnlocked:1,
   fuel:150, maxFuel:150,
   headlights:false,
+  stats:{harvested:0, contractsDone:0, animalsBought:0, cropsSeen:{}},
+  achievements:{},
+  sellMultiplier:1,
+  eventTimer:50,
   time:0.42,        // start mid-morning (clearly daytime)
   daySpeed:1/600,   // 10 minutes per full day (slower)
   weather:'sun',    // sun, cloudy, rain
@@ -715,7 +736,7 @@ function workTile(t){ if(!t)return;
       if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
       if(t.fertilTint){scene.remove(t.fertilTint); t.fertilTint=null;}
     }
-    gainXP(XP_PER_HARVEST[cropKey]||5); updateHUD();
+    gainXP(XP_PER_HARVEST[cropKey]||5); state.stats.harvested++; state.stats.cropsSeen[cropKey]=true; updateHUD();
   } }
   else if(state.tool===4){ if(t.state!=='grass'){ t.water=1; t.waterUntil=performance.now()/1000 + 60;
     if(!t.waterTint){ const wt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97,TILE*0.97), new THREE.MeshBasicMaterial({color:0x4fc3f7,transparent:true,opacity:0.25}));
@@ -917,10 +938,74 @@ window.claimContract=()=>{
   state.inventory[contract.crop]-=contract.qty;
   state.money+=contract.rewardMoney;
   gainXP(contract.rewardXp);
+  state.stats.contractsDone++;
   sndSell();
   showMessage(`✅ Contrato cumprido! +$${contract.rewardMoney} +${contract.rewardXp}XP`,2200);
   generateContract(); updateHUD(); saveGame();
 };
+
+// ---------- ACHIEVEMENTS / TROFÉUS ----------
+const ACHIEVEMENTS=[
+  {id:'first_harvest', icon:'🌾', title:'Primeira Colheita',  desc:'Colheu sua primeira plantação', check:()=>state.stats.harvested>=1},
+  {id:'harvest_100',   icon:'🚜', title:'Fazendeiro',         desc:'Colheu 100 plantações',        check:()=>state.stats.harvested>=100},
+  {id:'harvest_1000',  icon:'👑', title:'Rei da Fazenda',     desc:'Colheu 1000 plantações',       check:()=>state.stats.harvested>=1000},
+  {id:'first_animal',  icon:'🐄', title:'Criador',            desc:'Comprou seu primeiro animal',  check:()=>state.stats.animalsBought>=1},
+  {id:'all_crops',     icon:'🌈', title:'Colecionador',       desc:'Colheu todas as 15 culturas',  check:()=>Object.keys(CROPS).every(c=>state.stats.cropsSeen[c])},
+  {id:'level_10',      icon:'⭐', title:'Nível 10',           desc:'Alcançou o nível 10',          check:()=>state.level>=10},
+  {id:'level_50',      icon:'🌟', title:'Nível 50',           desc:'Alcançou o nível 50',          check:()=>state.level>=50},
+  {id:'level_100',     icon:'💫', title:'Nível 100',          desc:'Alcançou o nível 100',         check:()=>state.level>=100},
+  {id:'millionaire',   icon:'💰', title:'Milionário',         desc:'Acumulou $1.000.000',          check:()=>state.money>=1000000},
+  {id:'all_plots',     icon:'🗺️', title:'Conquistador',       desc:'Desbloqueou todos os campos',  check:()=>state.plotsUnlocked>=9},
+  {id:'gold_tractor',  icon:'🏆', title:'Trator Dourado',     desc:'Comprou o Mega Trator Dourado',check:()=>state.tractorIdx>=4},
+  {id:'contracts_10',  icon:'📋', title:'Empreiteiro',        desc:'Cumpriu 10 contratos',         check:()=>state.stats.contractsDone>=10},
+];
+function showToast(icon,title,desc){
+  const c=document.getElementById('toasts');
+  const t=document.createElement('div'); t.className='toast';
+  t.innerHTML=`<div class="t-title">${icon} ${title}</div><div class="t-desc">${desc}</div>`;
+  c.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  beep(800,0.1); setTimeout(()=>beep(1200,0.12),110);
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),500); }, 4000);
+}
+let achTimer=0;
+function checkAchievements(dt){
+  achTimer-=dt; if(achTimer>0) return; achTimer=1;
+  for(const a of ACHIEVEMENTS){
+    if(!state.achievements[a.id] && a.check()){
+      state.achievements[a.id]=true;
+      showToast(a.icon, '🏆 '+a.title, a.desc);
+    }
+  }
+}
+
+// ---------- RANDOM EVENTS (keep it fun) ----------
+function showEventBanner(text, ms=3500){
+  const b=document.getElementById('event-banner');
+  b.textContent=text; b.classList.add('show');
+  setTimeout(()=>b.classList.remove('show'), ms);
+}
+const EVENTS=[
+  ()=>{ state.sellMultiplier=2; setTimeout(()=>{state.sellMultiplier=1;},30000); showEventBanner('🎉 BOOM NO MERCADO! Venda vale 2× por 30s!',4000); },
+  ()=>{ // free rain — water everything
+    for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){ if(t.state==='planted'){ t.water=1; t.waterUntil=performance.now()/1000+30; } }
+    state.weather='rain'; document.getElementById('weather-ico').textContent='🌧️'; document.getElementById('rain-overlay').classList.add('on'); rain.visible=true;
+    showEventBanner('🌧️ CHUVA GRÁTIS! Toda a plantação foi regada!',4000);
+  },
+  ()=>{ const bonus=500+state.level*50; state.money+=bonus; updateHUD(); showEventBanner('💰 PRÊMIO SURPRESA! +$'+bonus,4000); },
+  ()=>{ gainXP(100+state.level*5); showEventBanner('⭐ FESTIVAL! Bônus de XP!',4000); },
+  ()=>{ // free seeds
+    for(const c of Object.keys(CROPS)) state.inventory[c+'_seed']=(state.inventory[c+'_seed']||0)+5;
+    updateHUD(); showEventBanner('🌱 DOAÇÃO! +5 de cada semente!',4000);
+  },
+];
+function updateEvents(dt){
+  state.eventTimer-=dt;
+  if(state.eventTimer<=0){
+    state.eventTimer=60+Math.random()*40; // every 60-100s
+    EVENTS[Math.floor(Math.random()*EVENTS.length)]();
+  }
+}
 
 // ---------- SHOP ----------
 function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tractor.position,shopPos)>15){showMessage('🏪 Chegue mais perto do mercado!',1400);return;}state.shopOpen=true;document.getElementById('shop').style.display='block';renderShop();}
@@ -969,7 +1054,7 @@ window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficie
 window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
 window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
 window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
-window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
+window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
 function applyTractor(idx){
   const tr=TRACTORS[idx];
   chassis.material.color.setHex(tr.color);hood.material.color.setHex(tr.color);
@@ -979,7 +1064,7 @@ function applyTractor(idx){
 window.buyTractor=(idx)=>{const tr=TRACTORS[idx];if(state.money<tr.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=tr.price;state.tractorIdx=idx;
   applyTractor(idx); state.fuel=tr.fuelCap;
   showMessage(`✅ ${tr.name} equipado!`,1800);sndSell();updateHUD();renderShop();saveGame();};
-window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=q*u;sndSell();updateHUD();renderShop();saveGame();};
+window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=Math.round(q*u*state.sellMultiplier);sndSell();updateHUD();renderShop();saveGame();};
 
 // ---------- SAVE / LOAD (#33 autosave) ----------
 const SAVE_KEY='bentofarm_save_v1';
@@ -988,7 +1073,8 @@ function saveGame(){
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
       tractorIdx:state.tractorIdx, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
-      season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals
+      season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
+      stats:state.stats, achievements:state.achievements
     }));
   }catch(e){}
 }
@@ -1005,6 +1091,8 @@ function loadGame(){
     state.objective = d.objective ?? 0;
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
+    if(d.stats) Object.assign(state.stats, d.stats);
+    if(d.achievements) Object.assign(state.achievements, d.achievements);
     // Recreate unlocked plots
     const target = d.plotsUnlocked || 1;
     while(state.plotsUnlocked < target){ unlockNewPlot(); }
@@ -1139,6 +1227,45 @@ function makeRiver(){
   return river;
 }
 const river=makeRiver();
+
+// ---------- DECORATIONS (graphics polish, all flat on ground) ----------
+function makeScarecrow(x,z){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.6,6),new THREE.MeshLambertMaterial({color:0x6d4c41}));pole.position.y=1.3;g.add(pole);
+  const arms=new THREE.Mesh(new THREE.BoxGeometry(2,0.12,0.12),new THREE.MeshLambertMaterial({color:0x6d4c41}));arms.position.y=1.9;g.add(arms);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.8,0.4),new THREE.MeshLambertMaterial({color:0xc62828}));body.position.y=1.9;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.28,8,8),new THREE.MeshLambertMaterial({color:0xf5deb3}));head.position.y=2.5;g.add(head);
+  const hat=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.5,8),new THREE.MeshLambertMaterial({color:0x795548}));hat.position.y=2.85;g.add(hat);
+  // eyes
+  for(const s of[-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6),new THREE.MeshLambertMaterial({color:0x000000}));e.position.set(s*0.1,2.55,0.25);g.add(e);}
+  g.position.set(x,0,z);scene.add(g);
+}
+// Scarecrows at field corners
+for(const plot of allPlots){ makeScarecrow(plot.centerX, plot.centerZ); }
+// Colorful flower patches scattered (flat on ground)
+function makeFlowerPatch(x,z){
+  const colors=[0xff5252,0xffeb3b,0xff80ab,0xb388ff,0x40c4ff,0xff9100];
+  for(let i=0;i<8;i++){
+    const f=new THREE.Group();
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,4),new THREE.MeshLambertMaterial({color:0x2e7d32}));stem.position.y=0.2;f.add(stem);
+    const petals=new THREE.Mesh(new THREE.SphereGeometry(0.13,6,5),new THREE.MeshLambertMaterial({color:colors[Math.floor(Math.random()*colors.length)]}));petals.position.y=0.42;petals.scale.y=0.7;f.add(petals);
+    f.position.set(x+(Math.random()-0.5)*4,0,z+(Math.random()-0.5)*4);
+    scene.add(f);
+  }
+}
+for(let i=0;i<30;i++){
+  const a=Math.random()*Math.PI*2, d=15+Math.random()*70;
+  const fx=Math.cos(a)*d, fz=Math.sin(a)*d;
+  if(!insideAnyPlot(fx,fz)) makeFlowerPatch(fx,fz);
+}
+// Hay bales (decorative cylinders)
+for(let i=0;i<15;i++){
+  const a=Math.random()*Math.PI*2, d=20+Math.random()*55;
+  const hx=Math.cos(a)*d, hz=Math.sin(a)*d;
+  if(insideAnyPlot(hx,hz)) continue;
+  const bale=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,1.2,12),new THREE.MeshLambertMaterial({color:0xd4b35a}));
+  bale.rotation.z=Math.PI/2; bale.position.set(hx,0.8,hz); bale.castShadow=true; scene.add(bale);
+}
 
 // ---------- RAIN PARTICLES ----------
 const rainGeo=new THREE.BufferGeometry();
@@ -1392,7 +1519,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   camLook.lerp(veh.position,0.18);camera.lookAt(camLook.x,camLook.y+1.5,camLook.z);
   if(windmill)windmill.userData.hub.rotation.z+=dt*0.6;
   for(const wm of extraWindmills){ if(wm.userData.hub) wm.userData.hub.rotation.z+=dt*0.6; }
-  updateCrops(now);updateFloaters(dt);updateObjective();updateNPCs(dt);updateFarmAnimals(dt);updateContracts();
+  updateCrops(now);updateFloaters(dt);updateObjective();updateNPCs(dt);updateFarmAnimals(dt);updateContracts();checkAchievements(dt);updateEvents(dt);
   if(river && river.material) river.material.emissiveIntensity = 0.2 + Math.sin(now*0.5)*0.1;
   renderer.render(scene,camera);
   } catch(err){ console.error('animate error:', err); try { renderer.render(scene,camera); } catch(e){} }
