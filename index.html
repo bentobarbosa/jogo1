@@ -196,8 +196,12 @@
     <p>🌱 <b>Dirija por cima do campo</b> com a ferramenta ligada — ela trabalha sozinha!</p>
     <p>🌾 Troque a semente: <span class="key">Q</span> · 🏪 Loja no mercado: <span class="key">B</span></p>
   </div>
-  <button onclick="startGame()">▶ COMEÇAR A FAZENDA</button>
-  <button onclick="if(confirm('Apagar todo o progresso salvo?')){localStorage.removeItem('bentofarm_save_v1');location.reload();}" style="margin-top:10px;padding:8px 24px;font-size:13px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid #fff;border-radius:20px;cursor:pointer;">🗑️ Novo Jogo (apagar progresso)</button>
+  <button id="btn-new" onclick="startGame(true)">🆕 NOVO JOGO (do zero)</button>
+  <button id="btn-continue" onclick="startGame(false)" style="display:none;margin-top:10px;padding:12px 40px;font-size:16px;background:rgba(255,255,255,0.25);color:#fff;border:2px solid #fff;border-radius:30px;cursor:pointer;font-weight:700;">▶ CONTINUAR <span id="continue-lvl"></span></button>
+  <script>
+    // Show "Continuar" only if a save exists
+    (function(){ try{ var s=localStorage.getItem('bentofarm_save_v1'); if(s){ var d=JSON.parse(s); var b=document.getElementById('btn-continue'); b.style.display='inline-block'; document.getElementById('continue-lvl').textContent='(Nível '+(d.level||1)+')'; document.getElementById('btn-new').textContent='🆕 COMEÇAR DO ZERO'; } }catch(e){} })();
+  </script>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -1775,11 +1779,17 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   renderer.render(scene,camera);
   } catch(err){ console.error('animate error:', err); try { renderer.render(scene,camera); } catch(e){} }
 }
-function startGame(){document.getElementById('start').style.display='none';state.running=true;
+function startGame(fresh){document.getElementById('start').style.display='none';state.running=true;
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
-  // Load saved progress (if any)
-  if(loadGame()) showMessage('💾 Progresso carregado!',1800);
+  if(fresh){
+    // NEW GAME from zero — wipe any save and keep default state (level 1, $500)
+    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+    showMessage('🆕 Novo jogo! Boa sorte, fazendeiro!',1800);
+  } else {
+    // Continue: load saved progress if any
+    if(loadGame()) showMessage('💾 Progresso carregado!',1800);
+  }
   // Spawn NPCs
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
