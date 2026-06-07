@@ -99,6 +99,12 @@
     .trophy.unlocked .t-name { color:#ffd54f; }
     #trophy-close { display:block; margin:16px auto 0; padding:8px 30px; background:#c62828; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
 
+    /* Touch controls */
+    .tbtn { position:absolute; width:50px; height:50px; border-radius:12px; background:rgba(0,0,0,0.5);
+      border:2px solid rgba(255,255,255,0.5); color:#fff; font-size:20px; cursor:pointer; }
+    .tact { width:54px; height:54px; border-radius:50%; background:rgba(0,0,0,0.55);
+      border:2px solid rgba(255,255,255,0.5); color:#fff; font-size:22px; cursor:pointer; }
+
     #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
       padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
     #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
@@ -207,6 +213,36 @@
 
 <canvas id="canvas"></canvas>
 <div id="vignette" style="position:fixed;inset:0;pointer-events:none;z-index:4;box-shadow:inset 0 0 220px rgba(20,40,20,0.35);"></div>
+
+<!-- Minimap -->
+<canvas id="minimap" width="150" height="150" style="position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(64px);width:150px;height:150px;border:3px solid rgba(255,255,255,0.6);border-radius:12px;z-index:12;background:rgba(20,40,20,0.5);"></canvas>
+
+<!-- Music + Stats buttons -->
+<button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-106px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
+<button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(78px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
+
+<!-- Stats panel -->
+<div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
+  <h2 style="text-align:center;color:#9fa8ff;margin-bottom:12px;">📊 ESTATÍSTICAS</h2>
+  <div id="stats-body" style="font-size:14px;line-height:1.9;"></div>
+  <button onclick="toggleStats()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
+
+<!-- Touch controls (mobile only) -->
+<div id="touch-controls" style="display:none;position:fixed;inset:0;z-index:90;pointer-events:none;">
+  <div id="touch-dpad" style="position:absolute;left:20px;bottom:20px;width:160px;height:160px;pointer-events:auto;">
+    <button class="tbtn" data-k="KeyW" style="left:55px;top:0;">▲</button>
+    <button class="tbtn" data-k="KeyA" style="left:0;top:55px;">◀</button>
+    <button class="tbtn" data-k="KeyD" style="left:110px;top:55px;">▶</button>
+    <button class="tbtn" data-k="KeyS" style="left:55px;top:110px;">▼</button>
+  </div>
+  <div style="position:absolute;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;pointer-events:auto;">
+    <button class="tact" onclick="setTool(state.tool===1?0:1)">🚜</button>
+    <button class="tact" onclick="setTool(state.tool===2?0:2)">🌱</button>
+    <button class="tact" onclick="setTool(state.tool===3?0:3)">🌾</button>
+    <button class="tact" onclick="toggleShopIfNear()">🏪</button>
+  </div>
+</div>
 <div id="rain-overlay"></div>
 
 <!-- Trophies -->
@@ -331,7 +367,7 @@ const state = {
     carrot_seed:0, strawberry_seed:0, pumpkin_seed:0, grape_seed:0, rice_seed:0, cotton_seed:0,
     wheat:0, corn:0, potato:0, tomato:0, soy:0, melon:0, sunflower:0, apple:0, orange:0,
     carrot:0, strawberry:0, pumpkin:0, grape:0, rice:0, cotton:0,
-    fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0, cheese:0, feather:0, fur:0, honey:0 },
+    fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0, cheese:0, feather:0, fur:0, honey:0, flour:0, bread:0 },
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
   tool:0, objective:0,
@@ -391,6 +427,7 @@ const CROPS = {
 
 // ---------- AUDIO ----------
 let actx;
+function getAudio(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); return actx; }
 function beep(freq,dur,type='square',vol=0.2){
   try{ if(!actx) actx=new (AudioContext||webkitAudioContext)();
     const o=actx.createOscillator(), g=actx.createGain();
@@ -747,10 +784,25 @@ truck.position.set(-16,0,22); truck.rotation.y=0;
 scene.add(truck);
 const TRK={speed:0,maxF:20,maxR:7,accel:18,brake:24,turn:2.0,heading:0};
 TRK.heading=0;
+
+// ---------- CAR (3rd vehicle — fast sports car) ----------
+const car=new THREE.Group();
+const carBody=new THREE.Mesh(new THREE.BoxGeometry(2,0.7,4),new THREE.MeshLambertMaterial({color:0xe53935,flatShading:true}));carBody.position.y=0.7;carBody.castShadow=true;car.add(carBody);
+const carCabin=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.7,2),new THREE.MeshLambertMaterial({color:0xb71c1c,flatShading:true}));carCabin.position.set(0,1.25,-0.2);car.add(carCabin);
+const carWind=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,1.9),new THREE.MeshLambertMaterial({color:0x263238,transparent:true,opacity:0.7}));carWind.position.set(0,1.3,-0.2);car.add(carWind);
+const carWheels=[];
+for(const[wx,wz] of [[-1,-1.3],[1,-1.3],[-1,1.3],[1,1.3]]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.3,14),new THREE.MeshLambertMaterial({color:0x111}));w.rotation.z=Math.PI/2;w.position.set(wx,0.45,wz);w.castShadow=true;car.add(w);carWheels.push(w);}
+for(const s of[-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,8),new THREE.MeshBasicMaterial({color:0xffffcc}));hl.position.set(s*0.6,0.7,-2);car.add(hl);}
+const carSpoiler=new THREE.Mesh(new THREE.BoxGeometry(2,0.1,0.5),new THREE.MeshLambertMaterial({color:0x111}));carSpoiler.position.set(0,1.2,2);car.add(carSpoiler);
+car.position.set(-20,0,22); scene.add(car);
+const CAR={speed:0,maxF:30,maxR:9,accel:24,brake:28,turn:2.3,heading:0};
+
 let activeVeh='tractor';
+const VEH_ORDER=['tractor','truck','car'];
+const VEH_NAMES={tractor:'🚜 TRATOR',truck:'🚚 CAMINHÃO',car:'🏎️ CARRO'};
 function toggleVehicle(){
-  activeVeh = activeVeh==='tractor' ? 'truck' : 'tractor';
-  showMessage(activeVeh==='tractor' ? '🚜 Controlando o TRATOR' : '🚚 Controlando o CAMINHÃO', 1500);
+  activeVeh = VEH_ORDER[(VEH_ORDER.indexOf(activeVeh)+1)%VEH_ORDER.length];
+  showMessage('Controlando: '+VEH_NAMES[activeVeh], 1500);
 }
 
 // ---------- FLOATING TEXT (capped + disposed to prevent memory leak/freeze) ----------
@@ -998,6 +1050,7 @@ function updateHUD(){
   if(state.inventory.pesticide>0) html+=`<div class="inv-row"><span class="inv-label">🪲 Pesticida</span><span class="inv-val">${state.inventory.pesticide}</span></div>`;
   if(state.inventory.jerrycan>0) html+=`<div class="inv-row"><span class="inv-label">🛢️ Galão</span><span class="inv-val">${state.inventory.jerrycan}</span></div>`;
   for(const a of Object.values(ANIMAL_TYPES)){ const n=state.inventory[a.product]||0; if(n>0) html+=`<div class="inv-row"><span class="inv-label">${a.productName}</span><span class="inv-val">${n}</span></div>`; }
+  for(const [k,lbl] of [['flour','🌬️ Farinha'],['bread','🍞 Pão']]){ const n=state.inventory[k]||0; if(n>0) html+=`<div class="inv-row"><span class="inv-label">${lbl}</span><span class="inv-val">${n}</span></div>`; }
   list.innerHTML=html;
 }
 
@@ -1347,6 +1400,8 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
     Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const price=Math.round(c.sell*bonus); const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · Qualidade média: <b>${avg}⭐</b></p><p>$${price} cada (com bônus qualidade)</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
     // Animal products
     Object.values(ANIMAL_TYPES).forEach(a=>{const key=a.product;const have=state.inventory[key]||0;const price=a.productSell;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${a.productName}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
+    // Processed goods (production chain)
+    [['flour','🌬️ Farinha',45],['bread','🍞 Pão',90]].forEach(([key,label,price])=>{const have=state.inventory[key]||0;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${label}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
   }
 }
 window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory[k]+=q;sndSell();updateHUD();renderShop();};
@@ -1786,6 +1841,8 @@ const BUILDINGS=[
   {id:'market2',   name:'🏪 Banca de Mercado', price:1200, desc:'FUNÇÃO: abra a loja [B] perto dela'},
   {id:'butcher',   name:'🥩 Açougue',          price:1700, desc:'FUNÇÃO: venda seus animais [B] perto dele'},
   {id:'feeder',    name:'🍽️ Comedouro',        price:1500, desc:'FUNÇÃO: alimenta e reproduz os animais'},
+  {id:'mill',      name:'🏭 Moinho',           price:2200, desc:'FUNÇÃO: transforma Trigo em 🌬️ Farinha'},
+  {id:'bakery',    name:'🥖 Padaria',          price:3000, desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
 ];
 function toggleBuildMenu(){
   const m=document.getElementById('build-menu');
@@ -1807,6 +1864,8 @@ window.placeBuilding=(id,price)=>{
   const heading = activeVeh==='tractor'?T.heading:TRK.heading;
   const bx = veh.position.x - Math.sin(heading)*14;
   const bz = veh.position.z - Math.cos(heading)*14;
+  // Space check — don't allow building on top of another building/object
+  for(const c of colliders){ if(Math.abs(bx-c.x)<c.hw+3.5 && Math.abs(bz-c.z)<c.hd+3.5){ showMessage('🚫 Sem espaço aqui! Ande até um lugar livre.',1800); return; } }
   state.money-=price; sndSell();
   state.buildings=state.buildings||[]; state.buildings.push({id,x:bx,z:bz});
   constructBuilding(id,bx,bz);
@@ -1915,8 +1974,28 @@ function constructBuilding(id,bx,bz){
     feeders.push({x:bx,z:bz});
     showMessage('🍽️ Comedouro! Consome plantações e reproduz os animais.',2800);
   }
+  else if(id==='mill'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(2.4,3,5,12),new THREE.MeshLambertMaterial({color:0xd7ccc8,flatShading:true}));body.position.y=2.5;body.castShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(2.8,2,12),new THREE.MeshLambertMaterial({color:0x6d4c41}));roof.position.y=6;g.add(roof);
+    const hub=new THREE.Group(); hub.position.set(0,4,2.6);
+    for(let i=0;i<4;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.3,3.5,0.08),new THREE.MeshLambertMaterial({color:0xefebe9}));const h=new THREE.Group();b.position.y=1.75;h.add(b);h.rotation.z=i*Math.PI/2;hub.add(h);}
+    g.add(hub); g.userData.hub=hub; extraWindmills.push(g);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
+    mills.push({x:bx,z:bz}); showMessage('🏭 Moinho! Transforma trigo em farinha.',2500);
+  }
+  else if(id==='bakery'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(5,4,5),new THREE.MeshLambertMaterial({color:0xffe0b2,flatShading:true}));body.position.y=2;body.castShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(3.8,2,4),new THREE.MeshLambertMaterial({color:0x8d6e63}));roof.rotation.y=Math.PI/4;roof.position.y=5;g.add(roof);
+    const chim=new THREE.Mesh(new THREE.BoxGeometry(0.6,1.6,0.6),new THREE.MeshLambertMaterial({color:0xbcaaa4}));chim.position.set(1.4,5.5,1.4);g.add(chim);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(3.4,1,0.2),new THREE.MeshLambertMaterial({color:0xff7043,emissive:0x552200,emissiveIntensity:0.3}));sign.position.set(0,3,2.55);g.add(sign);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
+    bakeries.push({x:bx,z:bz}); showMessage('🥖 Padaria! Transforma farinha em pão.',2500);
+  }
 }
 const extraWindmills=[];
+const mills=[], bakeries=[];
 function inGreenhouse(t){ for(const z of greenhouseZones){ if(Math.hypot(t.x-z.x,t.z-z.z)<z.r) return true; } return false; }
 function updateWaterTowers(dt){
   if(waterTowers.length===0) return;
@@ -1951,6 +2030,10 @@ function updateProducers(dt){
       // no crops to feed — hint occasionally
     }
   }
+  // Mill: trigo -> farinha
+  if(mills.length){ const conv=Math.min(state.inventory.wheat||0, mills.length*2); if(conv>0){ state.inventory.wheat-=conv; state.inventory.flour=(state.inventory.flour||0)+conv; gained=true; } }
+  // Bakery: farinha -> pão
+  if(bakeries.length){ const conv=Math.min(state.inventory.flour||0, bakeries.length*2); if(conv>0){ state.inventory.flour-=conv; state.inventory.bread=(state.inventory.bread||0)+conv; gained=true; } }
   if(gained) updateHUD();
 }
 
@@ -1965,8 +2048,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   let dt=clock.getDelta();if(dt>0.05)dt=0.05;const now=performance.now()/1000;
   // Active vehicle selection
   const isTractor = activeVeh==='tractor';
-  const veh = isTractor ? tractor : truck;
-  const vs  = isTractor ? T : TRK;
+  const veh = activeVeh==='tractor'?tractor : activeVeh==='truck'?truck : car;
+  const vs  = activeVeh==='tractor'?T : activeVeh==='truck'?TRK : CAR;
   if(!state.shopOpen){
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
     const hasFuel=state.fuel>0;
@@ -1985,7 +2068,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     veh.rotation.y=vs.heading;
     const spin=vs.speed*dt*1.4;
     if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
-    else { for(const w of truckWheels) w.rotation.x+=spin; }
+    else if(activeVeh==='truck'){ for(const w of truckWheels) w.rotation.x+=spin; }
+    else { for(const w of carWheels) w.rotation.x+=spin; }
     // Fuel decay
     // Slower fuel drain so you don't run dry constantly
     if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?0.4:0.22));
@@ -2007,6 +2091,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWeeds(dt);
   updateWaterTowers(dt);
   updateProducers(dt);
+  drawMinimap(dt);
+  updateEngine();
   updateHUD();
   // Camera: orbit around active vehicle
   const ang=vs.heading+cam.yaw;
@@ -2020,7 +2106,111 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   renderer.render(scene,camera);
   } catch(err){ console.error('animate error:', err); try { renderer.render(scene,camera); } catch(e){} }
 }
+// ---------- MINIMAP ----------
+const miniCanvas=document.getElementById('minimap'); const miniCtx=miniCanvas?miniCanvas.getContext('2d'):null;
+let miniTimer=0;
+function drawMinimap(dt){
+  if(!miniCtx) return; miniTimer-=dt; if(miniTimer>0) return; miniTimer=0.2;
+  const W=150,H=150,SC=0.5, cx=W/2, cy=H/2;
+  const veh=(activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car);
+  const px=veh.position.x, pz=veh.position.z;
+  miniCtx.clearRect(0,0,W,H);
+  miniCtx.fillStyle='rgba(74,140,69,0.6)'; miniCtx.fillRect(0,0,W,H);
+  function toMap(x,z){ return [cx+(x-px)*SC, cy+(z-pz)*SC]; }
+  // plots (green)
+  miniCtx.fillStyle='#8d6e3a';
+  for(const plot of allPlots){ const [mx,my]=toMap(plot.centerX,plot.centerZ); const s=plot.cols*3.2*SC; miniCtx.fillRect(mx-s/2,my-s/2,s,s); }
+  // pens (tan)
+  miniCtx.fillStyle='#cddc8a';
+  for(const a of Object.values(ANIMAL_TYPES)){ const [mx,my]=toMap(a.pen.cx,a.pen.cz); miniCtx.fillRect(mx-3,my-3,6,6); }
+  // stations (colored dots)
+  const dots=[[shopPos,'#ffd54f'],[garagePos,'#90caf9'],[animalShopPos,'#a5d6a7'],[pumpPos,'#ef5350']];
+  for(const [p,col] of dots){ const [mx,my]=toMap(p.x,p.z); miniCtx.fillStyle=col; miniCtx.beginPath(); miniCtx.arc(mx,my,3,0,7); miniCtx.fill(); }
+  // player arrow
+  const vs=(activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
+  miniCtx.save(); miniCtx.translate(cx,cy); miniCtx.rotate(-vs.heading+Math.PI);
+  miniCtx.fillStyle='#fff'; miniCtx.beginPath(); miniCtx.moveTo(0,-6); miniCtx.lineTo(4,5); miniCtx.lineTo(-4,5); miniCtx.closePath(); miniCtx.fill();
+  miniCtx.restore();
+}
+
+// ---------- MUSIC + ENGINE (Web Audio) ----------
+let musicOn=true, musicNode=null, engineOsc=null, engineGain=null;
+function startMusic(){
+  try{ const ctx=getAudio(); if(musicNode) return;
+    musicNode={ctx, next:ctx.currentTime, step:0};
+    scheduleMusic();
+  }catch(e){}
+}
+const MELODY=[0,4,7,12,7,4,0,4,5,9,12,9,5,2,7,2]; // pleasant arpeggio (semitones from C)
+function scheduleMusic(){
+  if(!musicNode) return;
+  const ctx=musicNode.ctx;
+  while(musicNode.next < ctx.currentTime+0.4){
+    if(musicOn){
+      const n=MELODY[musicNode.step%MELODY.length];
+      const freq=261.63*Math.pow(2,n/12)/2; // one octave down, softer
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=freq;
+      g.gain.setValueAtTime(0.0,musicNode.next);
+      g.gain.linearRampToValueAtTime(0.06,musicNode.next+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,musicNode.next+0.45);
+      o.connect(g); g.connect(ctx.destination); o.start(musicNode.next); o.stop(musicNode.next+0.5);
+    }
+    musicNode.next+=0.5; musicNode.step++;
+  }
+  setTimeout(scheduleMusic,200);
+}
+window.toggleMusic=()=>{ musicOn=!musicOn; if(musicOn) startMusic(); showMessage(musicOn?'🎵 Música ligada':'🔇 Música desligada',1200); };
+function startEngine(){
+  try{ const ctx=getAudio(); if(engineOsc) return;
+    engineOsc=ctx.createOscillator(); engineGain=ctx.createGain();
+    engineOsc.type='sawtooth'; engineOsc.frequency.value=40; engineGain.gain.value=0;
+    const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=300;
+    engineOsc.connect(filt); filt.connect(engineGain); engineGain.connect(ctx.destination); engineOsc.start();
+  }catch(e){}
+}
+function updateEngine(){
+  if(!engineGain) return;
+  const vs=(activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
+  const sp=Math.abs(vs.speed);
+  try{ engineOsc.frequency.value=40+sp*6; engineGain.gain.value=musicOn? Math.min(0.05,0.012+sp*0.004):0; }catch(e){}
+}
+
+// ---------- STATS PANEL ----------
+window.toggleStats=()=>{
+  const p=document.getElementById('stats-panel');
+  const open=p.style.display==='none';
+  p.style.display=open?'block':'none';
+  if(open){
+    const s=state.stats;
+    document.getElementById('stats-body').innerHTML=
+      `🌾 Total colhido: <b>${s.harvested||0}</b><br>`+
+      `📋 Contratos: <b>${s.contractsDone||0}</b><br>`+
+      `🐄 Animais comprados: <b>${s.animalsBought||0}</b><br>`+
+      `🏗️ Construções: <b>${s.builtCount||0}</b><br>`+
+      `🎖️ Nível: <b>${state.level}</b> · XP: <b>${state.xp}/${state.xpToNext}</b><br>`+
+      `💰 Dinheiro: <b>$${state.money}</b><br>`+
+      `🌍 Campos: <b>${state.plotsUnlocked}/9</b><br>`+
+      `🚜 Tratores: <b>${state.tractorsOwned.length}</b><br>`+
+      `🏆 Conquistas: <b>${Object.keys(state.achievements).length}/${ACHIEVEMENTS.length}</b>`;
+  }
+};
+
+// ---------- TOUCH CONTROLS ----------
+function setupTouch(){
+  const isTouch='ontouchstart' in window || navigator.maxTouchPoints>0;
+  if(!isTouch) return;
+  document.getElementById('touch-controls').style.display='block';
+  document.querySelectorAll('#touch-dpad .tbtn').forEach(b=>{
+    const k=b.dataset.k;
+    const dn=e=>{e.preventDefault();keys[k]=true;}; const up=e=>{e.preventDefault();keys[k]=false;};
+    b.addEventListener('touchstart',dn); b.addEventListener('touchend',up); b.addEventListener('touchcancel',up);
+    b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up);
+  });
+}
+
 function startGame(fresh){document.getElementById('start').style.display='none';state.running=true;
+  startMusic(); startEngine(); setupTouch();
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
   if(fresh){
