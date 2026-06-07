@@ -785,7 +785,7 @@ function buildCrop(crop,t){const g=new THREE.Group();
   else if(crop==='cotton'){for(let i=0;i<5;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.8,4),new THREE.MeshLambertMaterial({color:0x558b2f}));stem.position.set((Math.random()-0.5)*1.6,0.4,(Math.random()-0.5)*1.6);g.add(stem);const ball=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,7),new THREE.MeshLambertMaterial({color:0xfafafa}));ball.position.set(stem.position.x,0.85,stem.position.z);g.add(ball);}}
   g.position.set(t.x,0.1,t.z);return g;}
 function updateCrops(now){
-  for(const plot of allPlots) for(const row of plot) for(const t of row){
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
     // Water tint cleanup
     if(t.waterUntil && now > t.waterUntil){ t.water=0; t.waterUntil=0; if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;} }
     if(t.state==='planted'){
