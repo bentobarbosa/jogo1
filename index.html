@@ -162,7 +162,7 @@
     <div class="divider"></div>
     <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher &nbsp;<span class="key">4</span> 💧 Irrigar &nbsp;<span class="key">0</span> Guardar</div>
     <div class="help-line"><span class="key">Q</span> Semente &nbsp; <span class="key">B</span> Loja &nbsp; <span class="key">H</span> 🔊 Buzina &nbsp; <span class="key">L</span> 💡 Faróis</div>
-    <div class="help-line"><span class="key">R</span> Abastecer (no posto) &nbsp;⏱️ Ciclo dia/noite</div>
+    <div class="help-line"><span class="key">R</span> Abastecer &nbsp; <span class="key">F</span> 🚚 Trocar veículo &nbsp; <span class="key">G</span> 🏗️ Construir</div>
     <div class="divider"></div>
     <div class="help-line">💡 Ligue a ferramenta e <b>dirija por cima do campo!</b></div>
   </div>
@@ -181,6 +181,12 @@
   <div id="clock-box"><span class="weather-ico" id="weather-ico">☀️</span><span id="time-text">12:00</span><span id="season-ico" style="margin-left:8px;">🌸</span><span id="season-text" style="font-size:11px;opacity:0.85;">Primavera</span></div>
   <div id="speedometer"><div class="speed-val" id="speed-val">0</div><div class="speed-unit">km/h</div></div>
   <div id="message"></div>
+</div>
+
+<div id="build-menu" style="display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:rgba(40,30,20,0.95);border:3px solid #ffd54f;border-radius:14px;padding:16px;z-index:90;color:#fff;width:560px;pointer-events:auto;">
+  <h3 style="text-align:center;color:#ffd54f;margin-bottom:10px;">🏗️ CONSTRUIR (será colocado à sua frente)</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="build-grid"></div>
+  <button onclick="toggleBuildMenu()" style="display:block;margin:12px auto 0;padding:6px 24px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR [G]</button>
 </div>
 
 <div id="shop">
@@ -549,6 +555,30 @@ tractor.position.set(0,0,10); tractor.rotation.y=0;
 scene.add(tractor);
 // T declared above
 
+// ---------- TRUCK (#5) — faster transport vehicle ----------
+const truck=new THREE.Group();
+const tCab=new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.6),new THREE.MeshLambertMaterial({color:0x1565c0}));tCab.position.set(0,1.6,-2.2);tCab.castShadow=true;truck.add(tCab);
+const tWind=new THREE.Mesh(new THREE.BoxGeometry(2.2,1,2.65),new THREE.MeshLambertMaterial({color:0x90caf9,transparent:true,opacity:0.6}));tWind.position.set(0,2.1,-2.2);truck.add(tWind);
+const tCargo=new THREE.Mesh(new THREE.BoxGeometry(2.6,2,5),new THREE.MeshLambertMaterial({color:0xbdbdbd}));tCargo.position.set(0,1.6,1.2);tCargo.castShadow=true;truck.add(tCargo);
+// Cargo ribs
+for(let i=-2;i<=2;i++){const rib=new THREE.Mesh(new THREE.BoxGeometry(2.65,2.05,0.12),new THREE.MeshLambertMaterial({color:0x9e9e9e}));rib.position.set(0,1.6,1.2+i*1);truck.add(rib);}
+// Wheels (6)
+const truckWheels=[];
+for(const [wx,wz] of [[-1.3,-2.3],[1.3,-2.3],[-1.3,1],[1.3,1],[-1.3,2.5],[1.3,2.5]]){
+  const w=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,0.4,14),new THREE.MeshLambertMaterial({color:0x141414}));w.rotation.z=Math.PI/2;w.position.set(wx,0.7,wz);w.castShadow=true;truck.add(w);truckWheels.push(w);
+}
+// Headlights
+for(const s of [-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),new THREE.MeshBasicMaterial({color:0xffffcc}));hl.position.set(s*0.7,1.3,-3.5);truck.add(hl);}
+truck.position.set(-16,0,22); truck.rotation.y=0;
+scene.add(truck);
+const TRK={speed:0,maxF:20,maxR:7,accel:18,brake:24,turn:2.0,heading:0};
+TRK.heading=0;
+let activeVeh='tractor';
+function toggleVehicle(){
+  activeVeh = activeVeh==='tractor' ? 'truck' : 'tractor';
+  showMessage(activeVeh==='tractor' ? '🚜 Controlando o TRATOR' : '🚚 Controlando o CAMINHÃO', 1500);
+}
+
 // ---------- FLOATING TEXT (capped + disposed to prevent memory leak/freeze) ----------
 const floaters=[];
 const MAX_FLOATERS=20;
@@ -575,6 +605,8 @@ addEventListener('keydown',e=>{keys[e.code]=true;
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
   if(e.code==='KeyL'){ state.headlights=!state.headlights; const v=state.headlights?2.5:0; headLight1.intensity=v; headLight2.intensity=v; showMessage(state.headlights?'💡 Faróis LIGADOS':'💡 Faróis DESLIGADOS',900); }
   if(e.code==='KeyR'){ tryRefuel(); }
+  if(e.code==='KeyF'){ toggleVehicle(); }
+  if(e.code==='KeyG'){ toggleBuildMenu(); }
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
@@ -725,6 +757,7 @@ function updateCrops(now){
       let speedMult = 1 / SEASONS[state.season].growMult; // season affects growth speed
       if(t.water>0) speedMult *= 2;
       if(t.fertilized) speedMult *= 1.5;
+      if(inGreenhouse(t)) speedMult *= 3; // greenhouse bonus
       if(t.weed) speedMult = 0; // halt
       t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
       t.lastUpdate = now;
@@ -980,6 +1013,73 @@ function updateWeeds(dt){
   }
 }
 
+// ---------- BUILD SYSTEM (#19) ----------
+const greenhouseZones=[];  // {x,z,r} crops grow 3x inside
+const waterTowers=[];      // {x,z,r} auto-water nearby tiles
+let waterTowerTimer=0;
+const BUILDINGS=[
+  {id:'silo',     name:'🏛️ Silo',          price:500,  desc:'Decorativo'},
+  {id:'greenhouse',name:'🪴 Estufa',        price:2500, desc:'Plantações dentro crescem 3× rápido'},
+  {id:'watertower',name:'🚰 Torre d\'Água',  price:1500, desc:'Rega o campo perto sozinha'},
+  {id:'barn2',    name:'🏚️ Celeiro Extra',  price:1200, desc:'Decorativo'},
+];
+function toggleBuildMenu(){
+  const m=document.getElementById('build-menu');
+  if(m.style.display==='block'){ m.style.display='none'; return; }
+  const grid=document.getElementById('build-grid'); grid.innerHTML='';
+  BUILDINGS.forEach(b=>{
+    const el=document.createElement('div');
+    el.style.cssText='background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;';
+    el.innerHTML=`<div style="font-weight:700;color:#ffd54f;">${b.name}</div><div style="font-size:11px;opacity:0.85;margin:4px 0;">${b.desc}</div><button onclick="placeBuilding('${b.id}',${b.price})" style="width:100%;padding:5px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">$${b.price}</button>`;
+    grid.appendChild(el);
+  });
+  m.style.display='block';
+}
+window.toggleBuildMenu=toggleBuildMenu;
+window.placeBuilding=(id,price)=>{
+  if(state.money<price){ showMessage('❌ Dinheiro insuficiente!',1500); return; }
+  // Place 14 units in front of the active vehicle
+  const veh = activeVeh==='tractor'?tractor:truck;
+  const heading = activeVeh==='tractor'?T.heading:TRK.heading;
+  const bx = veh.position.x - Math.sin(heading)*14;
+  const bz = veh.position.z - Math.cos(heading)*14;
+  state.money-=price; sndSell();
+  if(id==='silo'){ makeSilo(bx,bz); }
+  else if(id==='barn2'){ makeBarn(bx,bz); }
+  else if(id==='greenhouse'){
+    const g=new THREE.Group();
+    const glass=new THREE.Mesh(new THREE.BoxGeometry(8,4,10),new THREE.MeshLambertMaterial({color:0xaaffcc,transparent:true,opacity:0.4}));glass.position.y=2;g.add(glass);
+    const roof=new THREE.Mesh(new THREE.CylinderGeometry(5.7,5.7,10,3),new THREE.MeshLambertMaterial({color:0xccffdd,transparent:true,opacity:0.4}));roof.rotation.z=Math.PI/2;roof.rotation.y=Math.PI/2;roof.position.y=4;g.add(roof);
+    for(const sx of [-4,4])for(const sz of [-5,5]){const post=new THREE.Mesh(new THREE.BoxGeometry(0.2,4,0.2),new THREE.MeshLambertMaterial({color:0xffffff}));post.position.set(sx,2,sz);g.add(post);}
+    g.position.set(bx,0,bz);scene.add(g);
+    greenhouseZones.push({x:bx,z:bz,r:7});
+    showMessage('🪴 Estufa construída! Plante dentro dela.',2500);
+  }
+  else if(id==='watertower'){
+    const g=new THREE.Group();
+    for(const sx of [-1.2,1.2])for(const sz of [-1.2,1.2]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.25,6,0.25),new THREE.MeshLambertMaterial({color:0x8d6e63}));leg.position.set(sx,3,sz);g.add(leg);}
+    const tank=new THREE.Mesh(new THREE.CylinderGeometry(2,2,3,16),new THREE.MeshLambertMaterial({color:0x4fc3f7}));tank.position.y=7.5;g.add(tank);
+    const top=new THREE.Mesh(new THREE.ConeGeometry(2.2,1.5,16),new THREE.MeshLambertMaterial({color:0x0277bd}));top.position.y=9.7;g.add(top);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2);
+    waterTowers.push({x:bx,z:bz,r:18});
+    showMessage('🚰 Torre d\'água! Rega o campo perto automaticamente.',2500);
+  }
+  updateHUD();
+  document.getElementById('build-menu').style.display='none';
+};
+function inGreenhouse(t){ for(const z of greenhouseZones){ if(Math.hypot(t.x-z.x,t.z-z.z)<z.r) return true; } return false; }
+function updateWaterTowers(dt){
+  if(waterTowers.length===0) return;
+  waterTowerTimer-=dt; if(waterTowerTimer>0) return; waterTowerTimer=5;
+  for(const tower of waterTowers){
+    for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+      if(t.state==='planted' && Math.hypot(t.x-tower.x,t.z-tower.z)<tower.r){
+        t.water=1; t.waterUntil=performance.now()/1000+10;
+      }
+    }
+  }
+}
+
 // ---------- COLLISION ----------
 function collides(x,z){const R=1.6;for(const c of colliders){if(Math.hypot(x-c.x,z-c.z)<c.r+R)return true;}if(Math.abs(x)>200||Math.abs(z)>200)return true;return false;}
 
@@ -989,27 +1089,31 @@ const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
 function animate(){if(!state.running)return;requestAnimationFrame(animate);
   try {
   let dt=clock.getDelta();if(dt>0.05)dt=0.05;const now=performance.now()/1000;
+  // Active vehicle selection
+  const isTractor = activeVeh==='tractor';
+  const veh = isTractor ? tractor : truck;
+  const vs  = isTractor ? T : TRK;
   if(!state.shopOpen){
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
     const hasFuel=state.fuel>0;
-    const maxF=hasFuel?T.maxF*(sprint?1.6:1):0;
-    if(hasFuel && keys['KeyW'])T.speed+=T.accel*dt; else if(hasFuel && keys['KeyS'])T.speed-=T.accel*dt;
-    else{const f=Math.sign(T.speed)*T.brake*0.4*dt;if(Math.abs(f)>Math.abs(T.speed))T.speed=0;else T.speed-=f;}
-    T.speed=Math.max(-T.maxR,Math.min(maxF,T.speed));
-    if(Math.abs(T.speed)>0.15){const grip=Math.min(1,Math.abs(T.speed)/4);if(keys['KeyA'])T.heading+=T.turn*dt*grip*Math.sign(T.speed);if(keys['KeyD'])T.heading-=T.turn*dt*grip*Math.sign(T.speed);}
-    const nx=tractor.position.x-Math.sin(T.heading)*T.speed*dt, nz=tractor.position.z-Math.cos(T.heading)*T.speed*dt;
-    if(!collides(nx,nz)){tractor.position.x=nx;tractor.position.z=nz;}
-    else if(!collides(nx,tractor.position.z)){tractor.position.x=nx;T.speed*=0.5;}
-    else if(!collides(tractor.position.x,nz)){tractor.position.z=nz;T.speed*=0.5;}
-    else T.speed=0;
-    tractor.rotation.y=T.heading;
-    const spin=T.speed*dt*1.4;bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin;
-    if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6;
-    autoFarm();
+    const maxF=hasFuel?vs.maxF*(sprint?1.6:1):0;
+    if(hasFuel && keys['KeyW'])vs.speed+=vs.accel*dt; else if(hasFuel && keys['KeyS'])vs.speed-=vs.accel*dt;
+    else{const f=Math.sign(vs.speed)*vs.brake*0.4*dt;if(Math.abs(f)>Math.abs(vs.speed))vs.speed=0;else vs.speed-=f;}
+    vs.speed=Math.max(-vs.maxR,Math.min(maxF,vs.speed));
+    if(Math.abs(vs.speed)>0.15){const grip=Math.min(1,Math.abs(vs.speed)/4);if(keys['KeyA'])vs.heading+=vs.turn*dt*grip*Math.sign(vs.speed);if(keys['KeyD'])vs.heading-=vs.turn*dt*grip*Math.sign(vs.speed);}
+    const nx=veh.position.x-Math.sin(vs.heading)*vs.speed*dt, nz=veh.position.z-Math.cos(vs.heading)*vs.speed*dt;
+    if(!collides(nx,nz)){veh.position.x=nx;veh.position.z=nz;}
+    else if(!collides(nx,veh.position.z)){veh.position.x=nx;vs.speed*=0.5;}
+    else if(!collides(veh.position.x,nz)){veh.position.z=nz;vs.speed*=0.5;}
+    else vs.speed=0;
+    veh.rotation.y=vs.heading;
+    const spin=vs.speed*dt*1.4;
+    if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
+    else { for(const w of truckWheels) w.rotation.x+=spin; }
     // Fuel decay
-    if(Math.abs(T.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?1.5:0.8));
-    if(state.tool!==0 && Math.abs(T.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.4);
-    document.getElementById('speed-val').textContent=Math.round(Math.abs(T.speed)*3.6);
+    if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?1.5:0.8));
+    if(isTractor && state.tool!==0 && Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.4);
+    document.getElementById('speed-val').textContent=Math.round(Math.abs(vs.speed)*3.6);
   }
   // Always-on systems
   const prevTime = state.time;
@@ -1021,12 +1125,13 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateDayNight();
   updateWeather(dt);
   updateWeeds(dt);
+  updateWaterTowers(dt);
   updateHUD();
-  // Camera: orbit around tractor (yaw relative to tractor heading)
-  const ang=T.heading+cam.yaw;
+  // Camera: orbit around active vehicle
+  const ang=vs.heading+cam.yaw;
   const off=new THREE.Vector3(Math.sin(ang)*Math.cos(cam.pitch)*cam.dist, Math.sin(cam.pitch)*cam.dist+2, Math.cos(ang)*Math.cos(cam.pitch)*cam.dist);
-  camPos.lerp(new THREE.Vector3().copy(tractor.position).add(off),0.12);camera.position.copy(camPos);
-  camLook.lerp(tractor.position,0.18);camera.lookAt(camLook.x,camLook.y+1.5,camLook.z);
+  camPos.lerp(new THREE.Vector3().copy(veh.position).add(off),0.12);camera.position.copy(camPos);
+  camLook.lerp(veh.position,0.18);camera.lookAt(camLook.x,camLook.y+1.5,camLook.z);
   if(windmill)windmill.userData.hub.rotation.z+=dt*0.6;
   updateCrops(now);updateFloaters(dt);updateObjective();updateNPCs(dt);
   if(river && river.material) river.material.emissiveIntensity = 0.2 + Math.sin(now*0.5)*0.1;
