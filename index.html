@@ -50,11 +50,12 @@
     #event-banner.show { transform:translateX(-50%) translateY(0); }
 
     /* AI Assistant */
-    #ai-btn { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); margin-left:330px;
-      width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#42a5f5,#1976d2);
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:28px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+    #ai-btn { position:fixed; right:20px; top:50%; transform:translateY(10px);
+      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#42a5f5,#1976d2);
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; }
-    #ai-btn:hover { transform:translateX(-50%) translateX(330px) scale(1.08); }
+    #ai-btn:hover { transform:translateY(10px) scale(1.08); }
+    #ai-btn::after { content:'Ajuda'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #ai-panel { position:fixed; bottom:90px; right:20px; width:330px; height:440px; background:rgba(20,28,45,0.97);
       border:2px solid #42a5f5; border-radius:16px; z-index:121; display:none; flex-direction:column;
       box-shadow:0 10px 40px rgba(0,0,0,0.6); overflow:hidden; }
@@ -75,10 +76,12 @@
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
     /* Trophies panel */
-    #trophy-btn { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); margin-left:400px;
-      width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#ffd54f,#ff8f00);
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:28px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+    #trophy-btn { position:fixed; right:20px; top:50%; transform:translateY(-58px);
+      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#ffd54f,#ff8f00);
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; }
+    #trophy-btn:hover { transform:translateY(-58px) scale(1.08); }
+    #trophy-btn::after { content:'Conquistas'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #trophy-panel { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9); opacity:0; pointer-events:none;
       width:520px; max-height:80vh; overflow-y:auto; background:rgba(25,30,48,0.98); border:3px solid #ffd54f;
       border-radius:18px; z-index:130; padding:20px; transition:all 0.25s; }
@@ -479,20 +482,19 @@ function createPlot(cols, rows, centerX, centerZ){
   return plot;
 }
 
-// Plot 1 (initial)
-createPlot(12, 12, 0, -30);
-
-// Predefined positions for future plots (unlocked by leveling up)
-const PLOT_LOCATIONS = [
-  {cols:10,rows:10,cx:-44,cz:-50},
-  {cols:10,rows:10,cx:44,cz:-50},
-  {cols:12,rows:8,cx:0,cz:-72},
-  {cols:8,rows:14,cx:-58,cz:-20},
-  {cols:8,rows:14,cx:58,cz:-20},
-  {cols:14,rows:8,cx:0,cz:60},
-  {cols:10,rows:10,cx:-50,cz:30},
-  {cols:10,rows:10,cx:50,cz:30},
+// Plantations arranged in a clean 3×3 grid (all same size, in neat rows)
+const PLOT_SIZE=10, PLOT_GAP=38;
+// grid columns x=-38,0,38 ; rows z=-28,-66,-104  (row 0 closest to start)
+const PLOT_GRID=[
+  {cx:0,  cz:-28},   // initial (center front)
+  {cx:-38,cz:-28},{cx:38,cz:-28},
+  {cx:0,  cz:-66},{cx:-38,cz:-66},{cx:38,cz:-66},
+  {cx:0,  cz:-104},{cx:-38,cz:-104},{cx:38,cz:-104},
 ];
+// Plot 1 (initial)
+createPlot(PLOT_SIZE, PLOT_SIZE, PLOT_GRID[0].cx, PLOT_GRID[0].cz);
+// Future plots (unlocked by leveling up) fill the rest of the grid in order
+const PLOT_LOCATIONS = PLOT_GRID.slice(1).map(g=>({cols:PLOT_SIZE,rows:PLOT_SIZE,cx:g.cx,cz:g.cz}));
 function unlockNewPlot(){
   const i = state.plotsUnlocked - 1;
   if(i >= PLOT_LOCATIONS.length) return;
@@ -517,7 +519,7 @@ function makeShop(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(2,3.2,0.2),new THREE.MeshLambertMaterial({color:0x4e342e}));door.position.set(0,1.6,4.6);g.add(door);
   const awn=new THREE.Mesh(new THREE.BoxGeometry(9.5,0.3,2.5),new THREE.MeshLambertMaterial({color:0xd32f2f}));awn.position.set(0,3.5,5.2);awn.rotation.x=-0.25;g.add(awn);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,6.5);}
-const shopPos=new THREE.Vector3(34,0,8); makeShop(shopPos.x,shopPos.z);
+const shopPos=new THREE.Vector3(58,0,4); makeShop(shopPos.x,shopPos.z);
 
 // Gas pump building
 function makePump(x,z){const g=new THREE.Group();
@@ -532,7 +534,7 @@ function makePump(x,z){const g=new THREE.Group();
   // Sign
   const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
-const pumpPos=new THREE.Vector3(24,0,-6); makePump(pumpPos.x,pumpPos.z);
+const pumpPos=new THREE.Vector3(58,0,22); makePump(pumpPos.x,pumpPos.z);
 // Floating beacon sign helper so player can find key buildings
 function beaconSign(x,z,text){
   const c=document.createElement('canvas');c.width=256;c.height=80;const g=c.getContext('2d');
@@ -540,8 +542,22 @@ function beaconSign(x,z,text){
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
   sp.scale.set(8,2.5,1);sp.position.set(x,8,z);scene.add(sp);
 }
+
+// Tractor garage / barn (parking shed for vehicles)
+function makeGarage(x,z){const g=new THREE.Group();
+  // Back wall + 2 side walls (open front)
+  const back=new THREE.Mesh(new THREE.BoxGeometry(10,5,0.4),new THREE.MeshLambertMaterial({color:0x8d6e63,flatShading:true}));back.position.set(0,2.5,-3.5);g.add(back);
+  for(const s of[-5,5]){const wall=new THREE.Mesh(new THREE.BoxGeometry(0.4,5,7),new THREE.MeshLambertMaterial({color:0xa1887f,flatShading:true}));wall.position.set(s,2.5,0);g.add(wall);}
+  // Roof
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(11,0.5,8),new THREE.MeshLambertMaterial({color:0x5d4037,flatShading:true}));roof.position.set(0,5.2,0);g.add(roof);
+  const roof2=new THREE.Mesh(new THREE.ConeGeometry(7.6,2,4),new THREE.MeshLambertMaterial({color:0x4e342e,flatShading:true}));roof2.rotation.y=Math.PI/4;roof2.position.set(0,6,0);roof2.scale.set(1,1,0.7);g.add(roof2);
+  // Sign
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(6,1,0.2),new THREE.MeshLambertMaterial({color:0x2e7d32,emissive:0x114411,emissiveIntensity:0.3}));sign.position.set(0,4.2,0.2);g.add(sign);
+  g.position.set(x,0,z);scene.add(g);addCol(x,z,5.5);}
+const garagePos=new THREE.Vector3(-30,0,14); makeGarage(garagePos.x,garagePos.z);
 beaconSign(pumpPos.x,pumpPos.z,'⛽ POSTO');
 beaconSign(shopPos.x,shopPos.z,'🏪 MERCADO');
+beaconSign(garagePos.x,garagePos.z,'🚜 GARAGEM');
 
 function makeHouse(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(8,4.5,9),new THREE.MeshLambertMaterial({color:0xf5deb3}));b.position.y=2.25;b.castShadow=true;g.add(b);
@@ -1358,14 +1374,14 @@ function makeBeehive(x,z){const g=new THREE.Group();
 
 // Each animal has its OWN pen
 const ANIMAL_TYPES={
-  cow:    {name:'🐄 Vaca',    price:600,  product:'milk',    productName:'🥛 Leite',  productSell:35, prodTime:18, make:makeCow,     speed:1.0, pen:{cx:-78,cz:18,sx:8,sz:7},  tint:0x8bc34a},
-  chicken:{name:'🐔 Galinha', price:250,  product:'egg',     productName:'🥚 Ovo',    productSell:18, prodTime:14, make:makeHen,     speed:1.6, pen:{cx:-58,cz:18,sx:7,sz:7},  tint:0xc5e1a5},
-  sheep:  {name:'🐑 Ovelha',  price:450,  product:'wool',    productName:'🧶 Lã',     productSell:30, prodTime:22, make:makeSheep,   speed:0.9, pen:{cx:-38,cz:18,sx:8,sz:7},  tint:0xa5d6a7},
-  pig:    {name:'🐖 Porco',   price:500,  product:'truffle', productName:'🍄 Trufa',  productSell:55, prodTime:28, make:makePig,     speed:1.2, pen:{cx:-18,cz:18,sx:8,sz:7},  tint:0xd7ccc8},
-  goat:   {name:'🐐 Cabra',   price:520,  product:'cheese',  productName:'🧀 Queijo', productSell:45, prodTime:20, make:makeGoat,    speed:1.1, pen:{cx:-78,cz:42,sx:8,sz:7},  tint:0xdcedc8},
-  duck:   {name:'🦆 Pato',    price:300,  product:'feather', productName:'🪶 Pena',   productSell:24, prodTime:16, make:makeDuck,    speed:1.5, pen:{cx:-58,cz:42,sx:7,sz:7},  tint:0xb3e5fc},
-  rabbit: {name:'🐇 Coelho',  price:280,  product:'fur',     productName:'🧥 Pelo',   productSell:26, prodTime:18, make:makeRabbit,  speed:1.8, pen:{cx:-38,cz:42,sx:7,sz:7},  tint:0xf0f4c3},
-  bee:    {name:'🐝 Abelhas',  price:700,  product:'honey',   productName:'🍯 Mel',    productSell:60, prodTime:24, make:makeBeehive, speed:0,   pen:{cx:-18,cz:42,sx:7,sz:7},  tint:0xfff9c4},
+  cow:    {name:'🐄 Vaca',    price:600,  product:'milk',    productName:'🥛 Leite',  productSell:35, prodTime:18, make:makeCow,     speed:1.0, pen:{cx:-52,cz:42,sx:7,sz:7}, tint:0x8bc34a},
+  chicken:{name:'🐔 Galinha', price:250,  product:'egg',     productName:'🥚 Ovo',    productSell:18, prodTime:14, make:makeHen,     speed:1.6, pen:{cx:-20,cz:42,sx:7,sz:7}, tint:0xc5e1a5},
+  sheep:  {name:'🐑 Ovelha',  price:450,  product:'wool',    productName:'🧶 Lã',     productSell:30, prodTime:22, make:makeSheep,   speed:0.9, pen:{cx:12, cz:42,sx:7,sz:7}, tint:0xa5d6a7},
+  pig:    {name:'🐖 Porco',   price:500,  product:'truffle', productName:'🍄 Trufa',  productSell:55, prodTime:28, make:makePig,     speed:1.2, pen:{cx:44, cz:42,sx:7,sz:7}, tint:0xd7ccc8},
+  goat:   {name:'🐐 Cabra',   price:520,  product:'cheese',  productName:'🧀 Queijo', productSell:45, prodTime:20, make:makeGoat,    speed:1.1, pen:{cx:-52,cz:70,sx:7,sz:7}, tint:0xdcedc8},
+  duck:   {name:'🦆 Pato',    price:300,  product:'feather', productName:'🪶 Pena',   productSell:24, prodTime:16, make:makeDuck,    speed:1.5, pen:{cx:-20,cz:70,sx:7,sz:7}, tint:0xb3e5fc},
+  rabbit: {name:'🐇 Coelho',  price:280,  product:'fur',     productName:'🧥 Pelo',   productSell:26, prodTime:18, make:makeRabbit,  speed:1.8, pen:{cx:12, cz:70,sx:7,sz:7}, tint:0xf0f4c3},
+  bee:    {name:'🐝 Abelhas',  price:700,  product:'honey',   productName:'🍯 Mel',    productSell:60, prodTime:24, make:makeBeehive, speed:0,   pen:{cx:44, cz:70,sx:7,sz:7}, tint:0xfff9c4},
 };
 const farmAnimals=[];
 function makeTrough(x,z){const t=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.35,0.6),new THREE.MeshLambertMaterial({color:0x6d4c41}));t.position.set(x,0.2,z);scene.add(t);
