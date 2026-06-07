@@ -291,6 +291,7 @@
     <button class="tab-btn active" onclick="showTab('buy')">🛒 SEMENTES</button>
     <button class="tab-btn" onclick="showTab('sell')">💵 VENDER</button>
     <button class="tab-btn" onclick="showTab('animals')">🐄 ANIMAIS</button>
+    <button class="tab-btn" onclick="showTab('butcher')">🥩 AÇOUGUE</button>
     <button class="tab-btn" onclick="showTab('tractors')">🚜 TRATORES</button>
   </div>
   <div class="shop-grid" id="shop-grid"></div>
@@ -456,9 +457,7 @@ const groundGeo=new THREE.PlaneGeometry(700,700,1,1);
 const ground=new THREE.Mesh(groundGeo,new THREE.MeshLambertMaterial({map:grassTex()}));
 ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 
-// Pond
-const pond=new THREE.Mesh(new THREE.CircleGeometry(11,32),new THREE.MeshLambertMaterial({color:0x2a7fb8,transparent:true,opacity:0.85}));
-pond.rotation.x=-Math.PI/2; pond.position.set(48,0.1,28); scene.add(pond);
+// (ponds removed by request)
 
 // ---------- COLLIDERS ----------
 const colliders=[];
@@ -622,7 +621,7 @@ function makeTree(x,z,scl=1){const g=new THREE.Group();
   for(let l=0;l<3;l++){const leaf=new THREE.Mesh(new THREE.SphereGeometry((1.8-l*0.35)*scl,9,8),new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));leaf.position.y=(3.2+l*0.8)*scl;leaf.castShadow=true;g.add(leaf);groundTrees.push(leaf);}
   g.position.set(x,0,z);scene.add(g);addCol(x,z,1.1*scl);}
 for(let i=0;i<60;i++){const a=Math.random()*Math.PI*2,d=80+Math.random()*110;makeTree(Math.cos(a)*d,Math.sin(a)*d,0.8+Math.random()*0.6);}
-// Decorative flowers + bushes (no collision)
+// Decorative flowers + bushes (no collision) — kept OUTSIDE the farm/build area so they never block construction
 function insideAnyPlot(bx,bz){
   for(const p of allPlots){
     const xMin=p.fOX-TILE/2, xMax=p.fOX+(p.cols-0.5)*TILE;
@@ -631,9 +630,11 @@ function insideAnyPlot(bx,bz){
   }
   return false;
 }
-for(let i=0;i<80;i++){
-  const a=Math.random()*Math.PI*2,d=18+Math.random()*70; const bx=Math.cos(a)*d,bz=Math.sin(a)*d;
-  if(insideAnyPlot(bx,bz)) continue;
+// Central area reserved for farming/animals/buildings — no decorations here
+function inFarmZone(x,z){ return x>-78 && x<78 && z>-124 && z<92; }
+for(let i=0;i<60;i++){
+  const a=Math.random()*Math.PI*2,d=100+Math.random()*55; const bx=Math.cos(a)*d,bz=Math.sin(a)*d;
+  if(inFarmZone(bx,bz)) continue;
   if(Math.random()<0.5){ const bush=new THREE.Mesh(new THREE.SphereGeometry(0.5+Math.random()*0.4,7,6),new THREE.MeshLambertMaterial({color:0x388e3c}));bush.position.set(bx,0.35,bz);bush.scale.y=0.7;bush.castShadow=true;scene.add(bush);}
   else { const f=new THREE.Group(); const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5,4),new THREE.MeshLambertMaterial({color:0x2e7d32}));stem.position.y=0.25;f.add(stem);const head=new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6),new THREE.MeshLambertMaterial({color:[0xff5252,0xffeb3b,0xff80ab,0xb388ff][i%4]}));head.position.y=0.55;f.add(head);f.position.set(bx,0,bz);scene.add(f);}
 }
@@ -943,6 +944,7 @@ function updateCrops(now){
       if(t.water>0) speedMult *= 2;
       if(t.fertilized) speedMult *= 1.5;
       if(inGreenhouse(t)) speedMult *= 3; // greenhouse bonus
+      for(const h of hiveZones){ if(Math.hypot(t.x-h.x,t.z-h.z)<h.r){ speedMult *= 1.5; break; } } // hive pollination
       if(t.weed) speedMult = 0; // halt
       t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
       t.lastUpdate = now;
@@ -1225,9 +1227,18 @@ setTimeout(aiBuildChips,0);
 setTimeout(()=>{ const inp=document.getElementById('ai-input'); if(inp){ inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') aiSend(); }); } },0);
 
 // ---------- SHOP ----------
-function toggleShopIfNear(){if(state.shopOpen){closeShop();return;}if(distXZ(tractor.position,shopPos)>15){showMessage('🏪 Chegue mais perto do mercado!',1400);return;}state.shopOpen=true;document.getElementById('shop').style.display='block';renderShop();}
+function nearAny(list,d){ const p=(activeVeh==='tractor'?tractor:truck).position; for(const m of list){ if(distXZ(p,m)<d) return true; } return false; }
+function toggleShopIfNear(){
+  if(state.shopOpen){closeShop();return;}
+  const p=(activeVeh==='tractor'?tractor:truck).position;
+  const nearButcher = nearAny(butchers,14);
+  const nearMarket = distXZ(p,shopPos)<15 || nearAny(marketStalls,14);
+  if(!nearMarket && !nearButcher){ showMessage('🏪 Chegue perto do MERCADO, BANCA ou AÇOUGUE!',1600); return; }
+  state.shopOpen=true; state.shopTab = nearButcher && !nearMarket ? 'butcher' : 'buy';
+  document.getElementById('shop').style.display='block'; renderShop();
+}
 window.closeShop=()=>{state.shopOpen=false;document.getElementById('shop').style.display='none';};
-window.showTab=(tab)=>{state.shopTab=tab;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell','animals','tractors'][i]===tab));renderShop();};
+window.showTab=(tab)=>{state.shopTab=tab;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['buy','sell','animals','butcher','tractors'][i]===tab));renderShop();};
 function renderShop(){const grid=document.getElementById('shop-grid');grid.innerHTML='';
   if(state.shopTab==='buy'){
     Object.entries(CROPS).forEach(([ck,c])=>{const key=ck+'_seed';const el=document.createElement('div');el.className='shop-item';const treeNote=c.tree?` · Rebrota em ${c.regrow}s`:'';el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sell}${treeNote}</p><p>Preço: <b>$${c.seed}</b></p><button onclick="buySeed('${key}',${c.seed})">x1 ($${c.seed})</button><button onclick="buySeed('${key}',${c.seed*10},10)">x10 ($${c.seed*10})</button>`;grid.appendChild(el);});
@@ -1249,6 +1260,18 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
       const have=farmAnimals.filter(f=>f.type===key).length;
       const el=document.createElement('div'); el.className='shop-item';
       el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s (vende $${a.productSell})</p><p>Você tem: <b>${have}</b> · Preço: <b>$${a.price}</b></p><button onclick="buyAnimal('${key}')">COMPRAR</button>`;
+      grid.appendChild(el);
+    });
+  }
+  else if(state.shopTab==='butcher'){
+    const tip=document.createElement('div'); tip.style.cssText='grid-column:1/3;text-align:center;color:#ffcdd2;font-size:12px;margin-bottom:4px;';
+    tip.innerHTML='🥩 Venda seus animais aqui. O mercador paga 65% do preço de compra.';
+    grid.appendChild(tip);
+    Object.entries(ANIMAL_TYPES).forEach(([key,a])=>{
+      const have=farmAnimals.filter(f=>f.type===key).length;
+      const sellPrice=Math.round(a.price*0.65);
+      const el=document.createElement('div'); el.className='shop-item';
+      el.innerHTML=`<h4>${a.name}</h4><p>Você tem: <b>${have}</b></p><p>Venda: <b>$${sellPrice}</b> cada</p><button onclick="sellAnimal('${key}',${sellPrice})" ${have<1?'disabled':''}>VENDER 1 ($${sellPrice})</button>`;
       grid.appendChild(el);
     });
   }
@@ -1279,6 +1302,13 @@ window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!
 window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
 window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
 window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
+window.sellAnimal=(type,price)=>{
+  const idx=farmAnimals.findIndex(f=>f.type===type);
+  if(idx<0){ showMessage('Você não tem esse animal!',1500); return; }
+  const a=farmAnimals[idx]; scene.remove(a.mesh); farmAnimals.splice(idx,1);
+  state.money+=price; sndSell(); showMessage(`🥩 ${ANIMAL_TYPES[type].name} vendido por $${price}!`,1800);
+  updateHUD(); renderShop(); saveGame();
+};
 function applyTractor(idx){
   const tr=TRACTORS[idx];
   chassis.material.color.setHex(tr.color);hood.material.color.setHex(tr.color);
@@ -1494,25 +1524,8 @@ function updateFarmAnimals(dt){
 }
 
 // ---------- RIVER (decorative water plane) ----------
-function makeRiver(){
-  const riverGeo=new THREE.PlaneGeometry(20,200);
-  const riverMat=new THREE.MeshPhongMaterial({color:0x1976d2,emissive:0x0d47a1,emissiveIntensity:0.2,shininess:100,transparent:true,opacity:0.85});
-  const river=new THREE.Mesh(riverGeo,riverMat);
-  river.rotation.x=-Math.PI/2;river.position.set(-80,0.1,0);scene.add(river);
-  // Riverbanks
-  for(const s of [-1,1]){
-    const bank=new THREE.Mesh(new THREE.BoxGeometry(3,0.5,200),new THREE.MeshLambertMaterial({color:0x6d4c41}));
-    bank.position.set(-80+s*11.5,0.25,0);scene.add(bank);
-    // Reeds along banks
-    for(let i=-90;i<90;i+=4){const reed=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.5,4),new THREE.MeshLambertMaterial({color:0x4caf50}));reed.position.set(-80+s*(10+Math.random()*2),0.75,i+Math.random()*3);scene.add(reed);}
-  }
-  // Lily pads
-  for(let i=0;i<20;i++){const lily=new THREE.Mesh(new THREE.CircleGeometry(0.6,8),new THREE.MeshLambertMaterial({color:0x2e7d32}));lily.rotation.x=-Math.PI/2;lily.position.set(-80+(Math.random()-0.5)*16,0.12,-90+i*9+Math.random()*3);scene.add(lily);
-    if(Math.random()<0.3){const flower=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,6),new THREE.MeshLambertMaterial({color:0xffffff}));flower.position.copy(lily.position);flower.position.y+=0.1;scene.add(flower);}
-  }
-  return river;
-}
-const river=makeRiver();
+// (river/lakes removed by request)
+const river=null;
 
 // ---------- DECORATIONS (graphics polish, all flat on ground) ----------
 function makeScarecrow(x,z){
@@ -1526,8 +1539,8 @@ function makeScarecrow(x,z){
   for(const s of[-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6),new THREE.MeshLambertMaterial({color:0x000000}));e.position.set(s*0.1,2.55,0.25);g.add(e);}
   g.position.set(x,0,z);scene.add(g);
 }
-// Scarecrows at field corners
-for(const plot of allPlots){ makeScarecrow(plot.centerX, plot.centerZ); }
+// One scarecrow per plot, placed just OUTSIDE the fence corner (never blocks farming)
+for(const plot of allPlots){ makeScarecrow(plot.centerX - (plot.cols/2*TILE) - 2.5, plot.centerZ - (plot.rows/2*TILE) - 2.5); }
 // Colorful flower patches scattered (flat on ground)
 function makeFlowerPatch(x,z){
   const colors=[0xff5252,0xffeb3b,0xff80ab,0xb388ff,0x40c4ff,0xff9100];
@@ -1539,25 +1552,25 @@ function makeFlowerPatch(x,z){
     scene.add(f);
   }
 }
-for(let i=0;i<30;i++){
-  const a=Math.random()*Math.PI*2, d=15+Math.random()*70;
+for(let i=0;i<22;i++){
+  const a=Math.random()*Math.PI*2, d=100+Math.random()*55;
   const fx=Math.cos(a)*d, fz=Math.sin(a)*d;
-  if(!insideAnyPlot(fx,fz)) makeFlowerPatch(fx,fz);
+  if(!inFarmZone(fx,fz)) makeFlowerPatch(fx,fz);
 }
 // Hay bales (decorative cylinders)
-for(let i=0;i<15;i++){
-  const a=Math.random()*Math.PI*2, d=20+Math.random()*55;
+for(let i=0;i<14;i++){
+  const a=Math.random()*Math.PI*2, d=100+Math.random()*50;
   const hx=Math.cos(a)*d, hz=Math.sin(a)*d;
-  if(insideAnyPlot(hx,hz)) continue;
+  if(inFarmZone(hx,hz)) continue;
   const bale=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,1.2,12),new THREE.MeshLambertMaterial({color:0xd4b35a,flatShading:true}));
   bale.rotation.z=Math.PI/2; bale.position.set(hx,0.8,hz); bale.castShadow=true; scene.add(bale);
 }
-// Grass tufts scattered for detail (low-poly blades)
+// Grass tufts scattered for detail (low-poly blades) — only outside the farm zone
 const tuftGeo=new THREE.ConeGeometry(0.12,0.6,4);
-for(let i=0;i<260;i++){
-  const a=Math.random()*Math.PI*2, d=8+Math.random()*90;
+for(let i=0;i<200;i++){
+  const a=Math.random()*Math.PI*2, d=85+Math.random()*70;
   const gx=Math.cos(a)*d, gz=Math.sin(a)*d;
-  if(insideAnyPlot(gx,gz)) continue;
+  if(inFarmZone(gx,gz)) continue;
   const tuft=new THREE.Group();
   const col=[0x4e9c3a,0x63b34d,0x569f42][i%3];
   for(let j=0;j<3;j++){const blade=new THREE.Mesh(tuftGeo,new THREE.MeshLambertMaterial({color:col,flatShading:true}));
@@ -1671,15 +1684,25 @@ function updateWeeds(dt){
 const greenhouseZones=[];  // {x,z,r} crops grow 3x inside
 const waterTowers=[];      // {x,z,r} auto-water nearby tiles
 const fuelDepots=[];       // {x,z} refuel near these
-let waterTowerTimer=0;
+const marketStalls=[];     // {x,z} open shop near these
+const butchers=[];         // {x,z} sell animals near these
+const solarPanels=[];      // passive money
+const composters=[];       // passive fertilizer
+const seedSheds=[];        // passive seeds
+const feeders=[];          // breed animals
+const hiveZones=[];        // {x,z,r} crops grow 1.5x
+let waterTowerTimer=0, producerTimer=0;
 const BUILDINGS=[
-  {id:'silo',      name:'🏛️ Silo',           price:500,  desc:'Decorativo'},
-  {id:'greenhouse',name:'🪴 Estufa',          price:2500, desc:'Plantações dentro crescem 3× rápido'},
-  {id:'watertower',name:'🚰 Torre d\'Água',   price:1500, desc:'Rega o campo perto sozinha'},
-  {id:'fueldepot', name:'⛽ Tanque Combust.', price:1800, desc:'Abasteça (R) perto dele'},
-  {id:'windmill2', name:'🌬️ Moinho',          price:900,  desc:'Decorativo girando'},
-  {id:'coop',      name:'🐔 Galinheiro',      price:700,  desc:'Decorativo'},
-  {id:'barn2',     name:'🏚️ Celeiro Extra',   price:1200, desc:'Decorativo'},
+  {id:'greenhouse',name:'🪴 Estufa',          price:2500, desc:'FUNÇÃO: plantações dentro crescem 3× rápido'},
+  {id:'watertower',name:'🚰 Torre d\'Água',   price:1500, desc:'FUNÇÃO: rega o campo perto sozinha'},
+  {id:'fueldepot', name:'⛽ Tanque Combust.', price:1800, desc:'FUNÇÃO: abasteça [R] perto dele'},
+  {id:'solar',     name:'☀️ Painel Solar',    price:2000, desc:'FUNÇÃO: gera dinheiro sozinho'},
+  {id:'composter', name:'🌰 Composteira',      price:1400, desc:'FUNÇÃO: produz fertilizante sozinho'},
+  {id:'seedshed',  name:'🌱 Galpão Sementes',  price:1600, desc:'FUNÇÃO: produz sementes sozinho'},
+  {id:'hive',      name:'🐝 Colmeia Polin.',   price:1800, desc:'FUNÇÃO: plantações perto crescem +50%'},
+  {id:'market2',   name:'🏪 Banca de Mercado', price:1200, desc:'FUNÇÃO: abra a loja [B] perto dela'},
+  {id:'butcher',   name:'🥩 Açougue',          price:1700, desc:'FUNÇÃO: venda seus animais [B] perto dele'},
+  {id:'feeder',    name:'🍽️ Comedouro',        price:1500, desc:'FUNÇÃO: alimenta e reproduz os animais'},
 ];
 function toggleBuildMenu(){
   const m=document.getElementById('build-menu');
@@ -1740,6 +1763,66 @@ window.placeBuilding=(id,price)=>{
     g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,3);
     showMessage('🐔 Galinheiro construído!',1800);
   }
+  else if(id==='solar'){
+    const g=new THREE.Group();
+    for(const s of[-1.6,1.6]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.2,2,0.2),new THREE.MeshLambertMaterial({color:0x555}));leg.position.set(s,1,0);g.add(leg);}
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(4.5,0.2,3),new THREE.MeshPhongMaterial({color:0x1a237e,emissive:0x3949ab,emissiveIntensity:0.3,shininess:90}));panel.position.set(0,2.2,0);panel.rotation.x=-0.5;g.add(panel);
+    // grid lines
+    for(let i=-2;i<=2;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.22,3),new THREE.MeshBasicMaterial({color:0x90caf9}));l.position.set(i,2.2,0);l.rotation.x=-0.5;g.add(l);}
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,3);
+    solarPanels.push({x:bx,z:bz});
+    showMessage('☀️ Painel solar! Gera dinheiro sozinho.',2500);
+  }
+  else if(id==='composter'){
+    const g=new THREE.Group();
+    const bin=new THREE.Mesh(new THREE.BoxGeometry(3,2.2,3),new THREE.MeshLambertMaterial({color:0x4e342e,flatShading:true}));bin.position.y=1.1;g.add(bin);
+    const top=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.4,3.2),new THREE.MeshLambertMaterial({color:0x6d4c41}));top.position.y=2.3;g.add(top);
+    const heap=new THREE.Mesh(new THREE.SphereGeometry(1.3,8,6),new THREE.MeshLambertMaterial({color:0x33691e}));heap.position.y=2.2;heap.scale.y=0.5;g.add(heap);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.5);
+    composters.push({x:bx,z:bz});
+    showMessage('🌰 Composteira! Produz fertilizante sozinho.',2500);
+  }
+  else if(id==='seedshed'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(4,3,4),new THREE.MeshLambertMaterial({color:0x8d6e63,flatShading:true}));body.position.y=1.5;body.castShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(3.2,1.6,4),new THREE.MeshLambertMaterial({color:0x33691e}));roof.rotation.y=Math.PI/4;roof.position.y=3.8;g.add(roof);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.8,0.2),new THREE.MeshLambertMaterial({color:0x8bc34a,emissive:0x224400,emissiveIntensity:0.3}));sign.position.set(0,2.5,2.05);g.add(sign);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,3);
+    seedSheds.push({x:bx,z:bz});
+    showMessage('🌱 Galpão de sementes! Produz sementes sozinho.',2500);
+  }
+  else if(id==='hive'){
+    const g=new THREE.Group();
+    for(let i=0;i<4;i++){const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.9-i*0.05,1-i*0.05,0.5,12),new THREE.MeshLambertMaterial({color:i%2?0xffca28:0xffb300,flatShading:true}));ring.position.y=0.5+i*0.5;g.add(ring);}
+    const roof=new THREE.Mesh(new THREE.CylinderGeometry(0.2,1.1,0.4,12),new THREE.MeshLambertMaterial({color:0x8d6e63}));roof.position.y=2.7;g.add(roof);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2);
+    hiveZones.push({x:bx,z:bz,r:14});
+    showMessage('🐝 Colmeia! Plantações perto crescem +50%.',2500);
+  }
+  else if(id==='market2'){
+    makeShop(bx,bz); marketStalls.push({x:bx,z:bz}); beaconSign(bx,bz,'🏪 BANCA');
+    showMessage('🏪 Banca de mercado! Aperte [B] perto dela.',2500);
+  }
+  else if(id==='butcher'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(6,4,6),new THREE.MeshLambertMaterial({color:0xede7e0,flatShading:true}));body.position.y=2;body.castShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(4.6,2,4),new THREE.MeshLambertMaterial({color:0xb71c1c}));roof.rotation.y=Math.PI/4;roof.position.y=5;g.add(roof);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(4,1,0.2),new THREE.MeshLambertMaterial({color:0xc62828,emissive:0x550000,emissiveIntensity:0.3}));sign.position.set(0,3.4,3.05);g.add(sign);
+    const awn=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.3,1.6),new THREE.MeshLambertMaterial({color:0xb71c1c}));awn.position.set(0,2.6,3.4);awn.rotation.x=-0.25;g.add(awn);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,4); beaconSign(bx,bz,'🥩 AÇOUGUE');
+    butchers.push({x:bx,z:bz});
+    showMessage('🥩 Açougue! Aperte [B] perto dele pra vender animais.',2500);
+  }
+  else if(id==='feeder'){
+    const g=new THREE.Group();
+    const trough=new THREE.Mesh(new THREE.BoxGeometry(4,0.6,1.2),new THREE.MeshLambertMaterial({color:0x6d4c41,flatShading:true}));trough.position.y=0.4;g.add(trough);
+    const food=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.3,0.9),new THREE.MeshLambertMaterial({color:0xfdd835}));food.position.y=0.7;g.add(food);
+    const post=new THREE.Mesh(new THREE.BoxGeometry(0.2,2,0.2),new THREE.MeshLambertMaterial({color:0x8d6e63}));post.position.set(-2.2,1,0);g.add(post);
+    const board=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.8,0.1),new THREE.MeshLambertMaterial({color:0xfff59d}));board.position.set(-2.2,2,0);g.add(board);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.5);
+    feeders.push({x:bx,z:bz});
+    showMessage('🍽️ Comedouro! Consome plantações e reproduz os animais.',2800);
+  }
   state.stats.builtCount=(state.stats.builtCount||0)+1;
   updateHUD();
   document.getElementById('build-menu').style.display='none';
@@ -1756,6 +1839,30 @@ function updateWaterTowers(dt){
       }
     }
   }
+}
+// Passive producers: solar=$, composter=fertilizer, seedshed=seeds, feeder=breeding
+function updateProducers(dt){
+  producerTimer-=dt; if(producerTimer>0) return; producerTimer=8; // every 8s
+  let gained=false;
+  if(solarPanels.length){ const amt=solarPanels.length*(30+state.level*4); state.money+=amt; gained=true; }
+  if(composters.length){ state.inventory.fertilizer+=composters.length; gained=true; }
+  if(seedSheds.length){ const crops=Object.keys(CROPS); for(let i=0;i<seedSheds.length;i++){ const c=crops[Math.floor(Math.random()*crops.length)]; state.inventory[c+'_seed']=(state.inventory[c+'_seed']||0)+2; } gained=true; }
+  // Feeder: consume some crops as feed and breed a baby of an owned animal type
+  if(feeders.length && farmAnimals.length){
+    const cropKeys=Object.keys(CROPS).filter(c=>(state.inventory[c]||0)>0);
+    if(cropKeys.length){
+      const fc=cropKeys[0]; state.inventory[fc]=Math.max(0,state.inventory[fc]-2);
+      // breed: pick a random owned animal type that has at least 1, spawn a baby
+      const ownedTypes=[...new Set(farmAnimals.map(a=>a.type))];
+      const bt=ownedTypes[Math.floor(Math.random()*ownedTypes.length)];
+      spawnAnimal(bt);
+      showMessage(`🐣 Um novo ${ANIMAL_TYPES[bt].name} nasceu! (comeu ${CROPS[fc].emoji})`,1800);
+      gained=true;
+    } else {
+      // no crops to feed — hint occasionally
+    }
+  }
+  if(gained) updateHUD();
 }
 
 // ---------- COLLISION ----------
@@ -1810,6 +1917,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWeather(dt);
   updateWeeds(dt);
   updateWaterTowers(dt);
+  updateProducers(dt);
   updateHUD();
   // Camera: orbit around active vehicle
   const ang=vs.heading+cam.yaw;
