@@ -597,6 +597,21 @@ function floatText(x,z,text,color){
 }
 function updateFloaters(dt){for(let i=floaters.length-1;i>=0;i--){const f=floaters[i];f.life-=dt;f.sp.position.y+=dt*1.6;f.sp.material.opacity=Math.max(0,f.life/f.max);if(f.life<=0){disposeFloater(f);floaters.splice(i,1);}}}
 
+// ---------- PERSISTENT CROP EMOJI MARKERS (stay on tile until harvested) ----------
+const emojiTexCache={};
+function getEmojiTex(emoji){
+  if(emojiTexCache[emoji]) return emojiTexCache[emoji];
+  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  g.font='90px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(emoji,64,68);
+  const tex=new THREE.CanvasTexture(c); emojiTexCache[emoji]=tex; return tex;
+}
+function addCropMarker(t,emoji){
+  if(t.marker){ scene.remove(t.marker); t.marker=null; }
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:getEmojiTex(emoji),transparent:true}));
+  sp.scale.set(1.4,1.4,1); sp.position.set(t.x,2.2,t.z); scene.add(sp); t.marker=sp;
+}
+function removeCropMarker(t){ if(t.marker){ scene.remove(t.marker); if(t.marker.material)t.marker.material.dispose(); t.marker=null; } }
+
 // ---------- INPUT ----------
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
@@ -640,7 +655,7 @@ function notifyNoSeed(){
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
   if(t.weed){ const w=t.weed; t.weed=null; scene.remove(w); if(w.geometry)w.geometry.dispose(); if(w.material)w.material.dispose(); }
-  if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; floatText(t.x,t.z,'arado',0x8d6e63); sndPlow(); } }
+  if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; sndPlow(); } }
   else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--;
     // Auto-apply fertilizer if available
     if(state.inventory.fertilizer>0){ state.inventory.fertilizer--; t.fertilized=true;
@@ -654,7 +669,7 @@ function workTile(t){ if(!t)return;
     }
     updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
-      floatText(t.x,t.z,CROPS[state.selectedCrop].emoji,0x4caf50); sndPlant(); } else { notifyNoSeed(); } } }
+      addCropMarker(t, CROPS[state.selectedCrop].emoji); sndPlant(); } else { notifyNoSeed(); } } }
   else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop; state.inventory[cropKey]=(state.inventory[cropKey]||0)+1;
     if(t.plant){scene.remove(t.plant);t.plant=null;}
     // Quality calc: 1-5 stars based on care
@@ -676,6 +691,7 @@ function workTile(t){ if(!t)return;
       baby.position.set(t.x,0.1,t.z); scene.add(baby); t.plant=baby;
     } else {
       t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0; t.fertilized=false;
+      removeCropMarker(t);
       if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
       if(t.fertilTint){scene.remove(t.fertilTint); t.fertilTint=null;}
     }
