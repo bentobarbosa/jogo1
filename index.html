@@ -51,11 +51,11 @@
     #event-banner.show { transform:translateX(-50%) scale(1); opacity:1; }
 
     /* AI Assistant */
-    #ai-btn { position:fixed; right:20px; top:50%; transform:translateY(10px);
+    #ai-btn { position:fixed; right:20px; top:50%; transform:translateY(82px);
       width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#42a5f5,#1976d2);
       border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; }
-    #ai-btn:hover { transform:translateY(10px) scale(1.08); }
+    #ai-btn:hover { transform:translateY(82px) scale(1.08); }
     #ai-btn::after { content:'Ajuda'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #ai-panel { position:fixed; bottom:90px; right:20px; width:330px; height:440px; background:rgba(20,28,45,0.97);
       border:2px solid #42a5f5; border-radius:16px; z-index:121; display:none; flex-direction:column;
@@ -77,12 +77,34 @@
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
     /* Trophies panel */
-    #trophy-btn { position:fixed; right:20px; top:50%; transform:translateY(-58px);
+    #trophy-btn { position:fixed; right:20px; top:50%; transform:translateY(18px);
       width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#ffd54f,#ff8f00);
       border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; }
-    #trophy-btn:hover { transform:translateY(-58px) scale(1.08); }
+    #trophy-btn:hover { transform:translateY(18px) scale(1.08); }
     #trophy-btn::after { content:'Conquistas'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #missions-btn { position:fixed; right:20px; top:50%; transform:translateY(-46px);
+      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#66bb6a,#388e3c);
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4); }
+    #missions-btn:hover { transform:translateY(-46px) scale(1.08); }
+    #missions-btn::after { content:'Missões'; position:absolute; right:64px; top:18px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #level-box { cursor:pointer; pointer-events:auto; }
+    #level-box:hover { border-color:#fff; }
+    .mrow { background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; margin-bottom:8px; border:2px solid rgba(255,255,255,0.08); }
+    .mrow.done { border-color:#66bb6a; background:rgba(102,187,106,0.12); }
+    .mrow .mtop { display:flex; justify-content:space-between; align-items:center; }
+    .mrow .mname { font-weight:700; font-size:14px; }
+    .mrow .mxp { color:#ffd54f; font-weight:800; font-size:13px; }
+    .mbar-bg { background:rgba(0,0,0,0.4); border-radius:6px; height:10px; margin-top:6px; overflow:hidden; }
+    .mbar { height:100%; background:linear-gradient(90deg,#66bb6a,#a5d6a7); border-radius:6px; }
+    .mclaim { margin-top:8px; width:100%; padding:6px; background:#ffd54f; color:#2d5016; border:none; border-radius:6px; font-weight:800; cursor:pointer; }
+    .mclaim:disabled { background:#555; color:#aaa; cursor:default; }
+    .lrow { display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:8px; margin-bottom:6px; background:rgba(255,255,255,0.05); }
+    .lrow.reached { background:rgba(255,213,79,0.14); border:1px solid #ffd54f; }
+    .lrow.current { background:rgba(102,187,106,0.2); border:2px solid #66bb6a; }
+    .lrow .lvln { font-weight:800; width:54px; color:#ffd54f; }
+    .lrow .lvld { font-size:13px; }
+    .lrow.locked .lvld { opacity:0.5; }
     #trophy-panel { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9); opacity:0; pointer-events:none;
       width:520px; max-height:80vh; overflow-y:auto; background:rgba(25,30,48,0.98); border:3px solid #ffd54f;
       border-radius:18px; z-index:130; padding:20px; transition:all 0.25s; }
@@ -218,8 +240,8 @@
 <canvas id="minimap" width="150" height="150" style="position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(64px);width:150px;height:150px;border:3px solid rgba(255,255,255,0.6);border-radius:12px;z-index:12;background:rgba(20,40,20,0.5);"></canvas>
 
 <!-- Music + Stats buttons -->
-<button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-106px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
-<button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(78px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
+<button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-110px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
+<button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
 
 <!-- Stats panel -->
 <div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
@@ -254,6 +276,23 @@
   <button id="trophy-close" onclick="toggleTrophies()">FECHAR</button>
 </div>
 
+<!-- Missions -->
+<button id="missions-btn" onclick="toggleMissions()" title="Missões">📜<span id="missions-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#e53935;border:2px solid #fff;"></span></button>
+<div id="missions-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-height:80vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #66bb6a;border-radius:16px;z-index:130;padding:20px;color:#fff;">
+  <h2 style="text-align:center;color:#a5d6a7;margin-bottom:6px;">📜 MISSÕES</h2>
+  <div style="text-align:center;color:#90caf9;font-size:13px;margin-bottom:12px;">Complete missões para ganhar XP!</div>
+  <div id="missions-list"></div>
+  <button onclick="toggleMissions()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
+
+<!-- Level rewards panel (click NÍVEL) -->
+<div id="level-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-height:80vh;overflow-y:auto;background:rgba(30,25,15,0.98);border:3px solid #ffd54f;border-radius:16px;z-index:130;padding:20px;color:#fff;">
+  <h2 style="text-align:center;color:#ffd54f;margin-bottom:6px;">🎖️ NÍVEIS & DESBLOQUEIOS</h2>
+  <div id="level-panel-cur" style="text-align:center;color:#fff9c4;font-size:13px;margin-bottom:12px;"></div>
+  <div id="level-list"></div>
+  <button onclick="toggleLevelPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
+
 <!-- AI Assistant -->
 <button id="ai-btn" onclick="toggleAI()" title="Assistente">🤖</button>
 <div id="ai-panel">
@@ -268,7 +307,7 @@
 
 <div id="hud">
   <div id="money">💰 $500</div>
-  <div id="level-box">
+  <div id="level-box" onclick="toggleLevelPanel()" title="Ver desbloqueios">
     <div class="lvl-title"><span>🎖️ NÍVEL</span><span class="lvl-num" id="lvl-num">1</span></div>
     <div id="xp-bar-bg"><div id="xp-bar"></div></div>
     <div id="xp-text"><span id="xp-cur">0</span>/<span id="xp-need">50</span> XP</div>
@@ -377,6 +416,7 @@ const state = {
   headlights:false,
   stats:{harvested:0, contractsDone:0, animalsBought:0, cropsSeen:{}},
   achievements:{},
+  missionsClaimed:{},
   sellMultiplier:1,
   eventTimer:50,
   time:0.42,        // start mid-morning (clearly daytime)
@@ -427,8 +467,10 @@ const CROPS = {
 
 // ---------- AUDIO ----------
 let actx;
+let soundOn=true; // master sound toggle (music + engine + effects)
 function getAudio(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); return actx; }
 function beep(freq,dur,type='square',vol=0.2){
+  if(!soundOn) return;
   try{ if(!actx) actx=new (AudioContext||webkitAudioContext)();
     const o=actx.createOscillator(), g=actx.createGain();
     o.type=type; o.frequency.value=freq; o.connect(g); g.connect(actx.destination);
@@ -939,9 +981,15 @@ function gainXP(amount){
     state.xp -= state.xpToNext; state.level++;
     state.xpToNext = 50 + (state.level-1)*40;
     unlockNewPlot();
+    // Level-up money bonus
+    const bonus=200+state.level*50; state.money+=bonus;
     const lu=document.getElementById('level-up');
     document.getElementById('lu-num').textContent=state.level;
-    lu.classList.add('show'); setTimeout(()=>lu.classList.remove('show'), 2200);
+    // Show what this level unlocked (if anything)
+    const unlock=(typeof LEVEL_UNLOCKS!=='undefined')?LEVEL_UNLOCKS.find(u=>u.lvl===state.level):null;
+    const sub=lu.querySelector('.lu-sub');
+    if(sub) sub.textContent = unlock ? ('🔓 '+unlock.icon+' '+unlock.name) : ('+$'+bonus+' de bônus!');
+    lu.classList.add('show'); setTimeout(()=>lu.classList.remove('show'), 2600);
     beep(700,0.08); setTimeout(()=>beep(1050,0.08),100); setTimeout(()=>beep(1400,0.15),200);
   }
 }
@@ -1174,6 +1222,7 @@ function checkAchievements(dt){
       showToast(a.icon, '🏆 '+a.title, a.desc);
     }
   }
+  if(typeof updateMissionsBadge==='function') updateMissionsBadge();
 }
 window.toggleTrophies=()=>{
   const p=document.getElementById('trophy-panel');
@@ -1188,6 +1237,79 @@ window.toggleTrophies=()=>{
       const d=document.createElement('div'); d.className='trophy'+(on?' unlocked':'');
       d.innerHTML=`<div class="t-ico">${a.icon}</div><div><div class="t-name">${on?a.title:'???'}</div><div class="t-desc">${a.desc}</div></div>`;
       grid.appendChild(d);
+    }
+  }
+};
+
+// ---------- MISSIONS (earn XP) ----------
+const MISSIONS=[
+  {id:'h10',  icon:'🌱', name:'Colha 10 plantações',       target:10,  xp:60,  prog:()=>state.stats.harvested||0},
+  {id:'h50',  icon:'🚜', name:'Colha 50 plantações',       target:50,  xp:180, prog:()=>state.stats.harvested||0},
+  {id:'h200', icon:'👑', name:'Colha 200 plantações',      target:200, xp:500, prog:()=>state.stats.harvested||0},
+  {id:'c5',   icon:'🌈', name:'Colha 5 culturas diferentes',target:5,  xp:150, prog:()=>Object.keys(state.stats.cropsSeen||{}).length},
+  {id:'c15',  icon:'🏅', name:'Colha todas as 15 culturas', target:15, xp:600, prog:()=>Object.keys(state.stats.cropsSeen||{}).length},
+  {id:'ct3',  icon:'📋', name:'Cumpra 3 contratos',         target:3,  xp:160, prog:()=>state.stats.contractsDone||0},
+  {id:'ct10', icon:'📑', name:'Cumpra 10 contratos',        target:10, xp:450, prog:()=>state.stats.contractsDone||0},
+  {id:'an3',  icon:'🐄', name:'Compre 3 animais',           target:3,  xp:140, prog:()=>state.stats.animalsBought||0},
+  {id:'bd3',  icon:'🏗️', name:'Construa 3 prédios',         target:3,  xp:160, prog:()=>state.stats.builtCount||0},
+  {id:'tr3',  icon:'🚜', name:'Tenha 3 tratores',           target:3,  xp:300, prog:()=>state.tractorsOwned.length},
+  {id:'pl9',  icon:'🗺️', name:'Desbloqueie todos os campos',target:9,  xp:500, prog:()=>state.plotsUnlocked},
+  {id:'mn',   icon:'💰', name:'Acumule $50.000',            target:50000,xp:700,prog:()=>state.money},
+];
+function missionsClaimable(){ return MISSIONS.some(m=>!state.missionsClaimed[m.id] && m.prog()>=m.target); }
+function updateMissionsBadge(){ const b=document.getElementById('missions-badge'); if(b) b.style.display=missionsClaimable()?'block':'none'; }
+window.claimMission=(id)=>{
+  const m=MISSIONS.find(x=>x.id===id); if(!m||state.missionsClaimed[id]||m.prog()<m.target) return;
+  state.missionsClaimed[id]=true; gainXP(m.xp);
+  showMessage(`📜 Missão completa! +${m.xp} XP`,2000); beep(700,0.08); setTimeout(()=>beep(1100,0.12),100);
+  updateHUD(); saveGame(); renderMissions(); updateMissionsBadge();
+};
+function renderMissions(){
+  const list=document.getElementById('missions-list'); if(!list) return; list.innerHTML='';
+  for(const m of MISSIONS){
+    const p=Math.min(m.prog(),m.target), done=!!state.missionsClaimed[m.id], ready=!done&&p>=m.target;
+    const row=document.createElement('div'); row.className='mrow'+(done?' done':'');
+    row.innerHTML=`<div class="mtop"><span class="mname">${m.icon} ${m.name}</span><span class="mxp">+${m.xp} XP</span></div>
+      <div class="mbar-bg"><div class="mbar" style="width:${Math.round(p/m.target*100)}%"></div></div>
+      <div style="font-size:11px;opacity:0.8;margin-top:3px;">${Math.min(p,m.target)} / ${m.target}</div>
+      <button class="mclaim" ${ready?'':'disabled'} onclick="claimMission('${m.id}')">${done?'✅ Resgatado':ready?'🎁 RESGATAR XP':'Em progresso'}</button>`;
+    list.appendChild(row);
+  }
+}
+window.toggleMissions=()=>{
+  const p=document.getElementById('missions-panel');
+  const open=p.style.display==='none'; p.style.display=open?'block':'none';
+  if(open) renderMissions();
+};
+
+// ---------- LEVEL UNLOCKS ----------
+const LEVEL_UNLOCKS=[
+  {lvl:1,  icon:'🚜', name:'Trator + plantio (trigo, milho, batata)'},
+  {lvl:2,  icon:'🌾', name:'Novo campo desbloqueado'},
+  {lvl:3,  icon:'🍅', name:'Culturas: Tomate e Soja'},
+  {lvl:5,  icon:'🐔', name:'Loja de Animais (galinha, vaca, ovelha, porco)'},
+  {lvl:7,  icon:'🪴', name:'Construção: Estufa e Torre d\'Água'},
+  {lvl:8,  icon:'🚚', name:'Caminhão (transporte rápido)'},
+  {lvl:10, icon:'🥩', name:'Açougue (vender animais) + Cabra e Pato'},
+  {lvl:12, icon:'🍉', name:'Culturas: Melancia, Abóbora, Uva'},
+  {lvl:15, icon:'🏭', name:'Produção: Moinho e Padaria (pão!)'},
+  {lvl:18, icon:'🏎️', name:'Carro esportivo na garagem'},
+  {lvl:20, icon:'☀️', name:'Painel Solar + Coelho e Abelhas'},
+  {lvl:25, icon:'🍎', name:'Árvores frutíferas (maçã, laranja)'},
+  {lvl:30, icon:'🏆', name:'Mega Trator Dourado liberado'},
+];
+function levelBonus(lvl){ return 200+lvl*50; } // money each level
+window.toggleLevelPanel=()=>{
+  const p=document.getElementById('level-panel');
+  const open=p.style.display==='none'; p.style.display=open?'block':'none';
+  if(open){
+    document.getElementById('level-panel-cur').innerHTML=`Você está no <b>Nível ${state.level}</b> · ${state.xp}/${state.xpToNext} XP para o próximo`;
+    const list=document.getElementById('level-list'); list.innerHTML='';
+    for(const u of LEVEL_UNLOCKS){
+      const reached=state.level>=u.lvl, current=state.level===u.lvl;
+      const row=document.createElement('div'); row.className='lrow'+(current?' current':reached?' reached':' locked');
+      row.innerHTML=`<div class="lvln">${reached?'✓':'🔒'} Nv ${u.lvl}</div><div class="lvld">${u.icon} ${u.name}</div>`;
+      list.appendChild(row);
     }
   }
 };
@@ -1456,7 +1578,7 @@ function saveGame(){
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
       tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
-      stats:state.stats, achievements:state.achievements,
+      stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData
     }));
   }catch(e){}
@@ -1476,6 +1598,7 @@ function loadGame(){
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
     if(d.achievements) Object.assign(state.achievements, d.achievements);
+    if(d.missionsClaimed) Object.assign(state.missionsClaimed, d.missionsClaimed);
     // Recreate unlocked plots
     const target = d.plotsUnlocked || 1;
     while(state.plotsUnlocked < target){ unlockNewPlot(); }
@@ -1831,33 +1954,38 @@ const feeders=[];          // breed animals
 const hiveZones=[];        // {x,z,r} crops grow 1.5x
 let waterTowerTimer=0, producerTimer=0;
 const BUILDINGS=[
-  {id:'greenhouse',name:'🪴 Estufa',          price:2500, desc:'FUNÇÃO: plantações dentro crescem 3× rápido'},
-  {id:'watertower',name:'🚰 Torre d\'Água',   price:1500, desc:'FUNÇÃO: rega o campo perto sozinha'},
-  {id:'fueldepot', name:'⛽ Tanque Combust.', price:1800, desc:'FUNÇÃO: abasteça [R] perto dele'},
-  {id:'solar',     name:'☀️ Painel Solar',    price:2000, desc:'FUNÇÃO: gera dinheiro sozinho'},
-  {id:'composter', name:'🌰 Composteira',      price:1400, desc:'FUNÇÃO: produz fertilizante sozinho'},
-  {id:'seedshed',  name:'🌱 Galpão Sementes',  price:1600, desc:'FUNÇÃO: produz sementes sozinho'},
-  {id:'hive',      name:'🐝 Colmeia Polin.',   price:1800, desc:'FUNÇÃO: plantações perto crescem +50%'},
-  {id:'market2',   name:'🏪 Banca de Mercado', price:1200, desc:'FUNÇÃO: abra a loja [B] perto dela'},
-  {id:'butcher',   name:'🥩 Açougue',          price:1700, desc:'FUNÇÃO: venda seus animais [B] perto dele'},
-  {id:'feeder',    name:'🍽️ Comedouro',        price:1500, desc:'FUNÇÃO: alimenta e reproduz os animais'},
-  {id:'mill',      name:'🏭 Moinho',           price:2200, desc:'FUNÇÃO: transforma Trigo em 🌬️ Farinha'},
-  {id:'bakery',    name:'🥖 Padaria',          price:3000, desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
+  {id:'watertower',name:'🚰 Torre d\'Água',   price:1500, req:1, desc:'FUNÇÃO: rega o campo perto sozinha'},
+  {id:'fueldepot', name:'⛽ Tanque Combust.', price:1800, req:1, desc:'FUNÇÃO: abasteça [R] perto dele'},
+  {id:'composter', name:'🌰 Composteira',      price:1400, req:1, desc:'FUNÇÃO: produz fertilizante sozinho'},
+  {id:'market2',   name:'🏪 Banca de Mercado', price:1200, req:3, desc:'FUNÇÃO: abra a loja [B] perto dela'},
+  {id:'greenhouse',name:'🪴 Estufa',          price:2500, req:7, desc:'FUNÇÃO: plantações dentro crescem 3× rápido'},
+  {id:'seedshed',  name:'🌱 Galpão Sementes',  price:1600, req:7, desc:'FUNÇÃO: produz sementes sozinho'},
+  {id:'butcher',   name:'🥩 Açougue',          price:1700, req:10,desc:'FUNÇÃO: venda seus animais [B] perto dele'},
+  {id:'feeder',    name:'🍽️ Comedouro',        price:1500, req:10,desc:'FUNÇÃO: alimenta e reproduz os animais'},
+  {id:'hive',      name:'🐝 Colmeia Polin.',   price:1800, req:12,desc:'FUNÇÃO: plantações perto crescem +50%'},
+  {id:'mill',      name:'🏭 Moinho',           price:2200, req:15,desc:'FUNÇÃO: transforma Trigo em 🌬️ Farinha'},
+  {id:'bakery',    name:'🥖 Padaria',          price:3000, req:15,desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
+  {id:'solar',     name:'☀️ Painel Solar',    price:2000, req:20,desc:'FUNÇÃO: gera dinheiro sozinho'},
 ];
 function toggleBuildMenu(){
   const m=document.getElementById('build-menu');
   if(m.style.display==='block'){ m.style.display='none'; return; }
   const grid=document.getElementById('build-grid'); grid.innerHTML='';
   BUILDINGS.forEach(b=>{
+    const locked=state.level<(b.req||1);
     const el=document.createElement('div');
-    el.style.cssText='background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;';
-    el.innerHTML=`<div style="font-weight:700;color:#ffd54f;">${b.name}</div><div style="font-size:11px;opacity:0.85;margin:4px 0;">${b.desc}</div><button onclick="placeBuilding('${b.id}',${b.price})" style="width:100%;padding:5px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">$${b.price}</button>`;
+    el.style.cssText='background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;'+(locked?'opacity:0.6;':'');
+    const btn=locked?`<button disabled style="width:100%;padding:5px;background:#555;color:#aaa;border:none;border-radius:6px;font-weight:700;">🔒 Nível ${b.req}</button>`
+      :`<button onclick="placeBuilding('${b.id}',${b.price})" style="width:100%;padding:5px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">$${b.price}</button>`;
+    el.innerHTML=`<div style="font-weight:700;color:#ffd54f;">${b.name}</div><div style="font-size:11px;opacity:0.85;margin:4px 0;">${b.desc}</div>${btn}`;
     grid.appendChild(el);
   });
   m.style.display='block';
 }
 window.toggleBuildMenu=toggleBuildMenu;
 window.placeBuilding=(id,price)=>{
+  const bdef=BUILDINGS.find(b=>b.id===id);
+  if(bdef && state.level<(bdef.req||1)){ showMessage(`🔒 Precisa do Nível ${bdef.req} pra construir isso!`,1800); return; }
   if(state.money<price){ showMessage('❌ Dinheiro insuficiente!',1500); return; }
   // Place 14 units in front of the active vehicle
   const veh = activeVeh==='tractor'?tractor:truck;
@@ -2146,7 +2274,7 @@ function scheduleMusic(){
   if(!musicNode) return;
   const ctx=musicNode.ctx;
   while(musicNode.next < ctx.currentTime+0.4){
-    if(musicOn){
+    if(soundOn && musicOn){
       const n=MELODY[musicNode.step%MELODY.length];
       const freq=261.63*Math.pow(2,n/12)/2; // one octave down, softer
       const o=ctx.createOscillator(), g=ctx.createGain();
@@ -2160,7 +2288,10 @@ function scheduleMusic(){
   }
   setTimeout(scheduleMusic,200);
 }
-window.toggleMusic=()=>{ musicOn=!musicOn; if(musicOn) startMusic(); showMessage(musicOn?'🎵 Música ligada':'🔇 Música desligada',1200); };
+// 🎵 button = MASTER mute: silences music, engine AND effects
+window.toggleMusic=()=>{ soundOn=!soundOn; if(soundOn){ musicOn=true; startMusic(); }
+  const btn=document.getElementById('music-btn'); if(btn) btn.textContent=soundOn?'🎵':'🔇';
+  showMessage(soundOn?'🔊 Som ligado':'🔇 Som desligado (tudo)',1200); };
 function startEngine(){
   try{ const ctx=getAudio(); if(engineOsc) return;
     engineOsc=ctx.createOscillator(); engineGain=ctx.createGain();
@@ -2173,7 +2304,7 @@ function updateEngine(){
   if(!engineGain) return;
   const vs=(activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
   const sp=Math.abs(vs.speed);
-  try{ engineOsc.frequency.value=40+sp*6; engineGain.gain.value=musicOn? Math.min(0.05,0.012+sp*0.004):0; }catch(e){}
+  try{ engineOsc.frequency.value=40+sp*6; engineGain.gain.value=soundOn? Math.min(0.05,0.012+sp*0.004):0; }catch(e){}
 }
 
 // ---------- STATS PANEL ----------
