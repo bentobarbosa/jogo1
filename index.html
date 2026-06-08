@@ -1910,6 +1910,7 @@ function advanceSeason(){
   // Winter = snow falling (reuse rain as snow)
   if(state.season===3){ rain.material.color.setHex(0xffffff); rain.material.size=0.4; rain.visible=true; }
   else if(state.weather!=='rain'){ rain.material.color.setHex(0xaaccee); rain.material.size=0.25; rain.visible=false; }
+  if(typeof applyFestive==='function') applyFestive(); // festive decorations per season
 }
 
 // ---------- DAY/NIGHT ----------
@@ -2041,6 +2042,7 @@ const BUILDINGS=[
   {id:'bakery',    name:'🥖 Padaria',          price:3000, req:15,desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
   {id:'solar',     name:'☀️ Painel Solar',    price:2000, req:20,desc:'FUNÇÃO: gera dinheiro sozinho'},
   {id:'worker',    name:'👨‍🌾 Casa do Trabalhador',price:6000, req:8, desc:'FUNÇÃO: ara, planta e colhe sozinho no campo!'},
+  {id:'airfield',  name:'✈️ Pista de Pouso',   price:8000, req:18,desc:'FUNÇÃO: avião rega e aduba os campos voando!'},
   {id:'deco_fountain',name:'⛲ Fonte',         price:400,  req:1, decor:true, desc:'🎨 Decoração'},
   {id:'deco_gnome',   name:'🧙 Anão de Jardim',price:150,  req:1, decor:true, desc:'🎨 Decoração'},
   {id:'deco_statue',  name:'🗿 Estátua',       price:800,  req:1, decor:true, desc:'🎨 Decoração'},
@@ -2201,6 +2203,15 @@ function constructBuilding(id,bx,bz){
     g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
     bakeries.push({x:bx,z:bz}); showMessage('🥖 Padaria! Transforma farinha em pão.',2500);
   }
+  else if(id==='airfield'){
+    const g=new THREE.Group();
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(6,0.15,14),new THREE.MeshLambertMaterial({color:0x546e7a}));strip.position.y=0.08;g.add(strip);
+    for(let i=-6;i<=6;i+=3){const d=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.16,1.2),new THREE.MeshLambertMaterial({color:0xffeb3b}));d.position.set(0,0.1,i);g.add(d);}
+    const hangar=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,5,12,1,false,0,Math.PI),new THREE.MeshLambertMaterial({color:0x90a4ae,flatShading:true}));hangar.rotation.z=Math.PI/2;hangar.position.set(0,2,-6);g.add(hangar);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
+    spawnPlane(bx,bz);
+    showMessage('✈️ Pista pronta! O avião vai regar e adubar os campos voando.',2800);
+  }
   else if(id==='worker'){
     const g=new THREE.Group();
     const body=new THREE.Mesh(new THREE.BoxGeometry(4,3,4),new THREE.MeshLambertMaterial({color:0xc8a165,flatShading:true}));body.position.y=1.5;body.castShadow=true;g.add(body);
@@ -2264,6 +2275,71 @@ function updateWaterTowers(dt){
   }
 }
 // Passive producers: solar=$, composter=fertilizer, seedshed=seeds, feeder=breeding
+// ---------- CROP DUSTER PLANE (auto waters + fertilizes flying) ----------
+const planes=[];
+function makePlane(){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.25,3,8),new THREE.MeshLambertMaterial({color:0xffeb3b,flatShading:true}));body.rotation.x=Math.PI/2;g.add(body);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(4.5,0.12,0.8),new THREE.MeshLambertMaterial({color:0xf57f17}));wing.position.y=0.1;g.add(wing);
+  const tailW=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.1,0.5),new THREE.MeshLambertMaterial({color:0xf57f17}));tailW.position.set(0,0.1,1.3);g.add(tailW);
+  const fin=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.6,0.6),new THREE.MeshLambertMaterial({color:0xf57f17}));fin.position.set(0,0.4,1.3);g.add(fin);
+  const prop=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.4,0.1),new THREE.MeshLambertMaterial({color:0x333}));prop.position.z=-1.5;g.add(prop);g.userData.prop=prop;
+  scene.add(g); return g;
+}
+function spawnPlane(hx,hz){
+  const mesh=makePlane();
+  // patrol the central field area
+  planes.push({mesh,t:Math.random()*100,cx:0,cz:-66,range:60});
+}
+function updatePlanes(dt){
+  for(const pl of planes){
+    pl.t+=dt;
+    // figure-8-ish sweep over the fields
+    const x=Math.sin(pl.t*0.4)*pl.range;
+    const z=pl.cz + Math.cos(pl.t*0.18)*50;
+    const y=16;
+    const prevx=pl.mesh.position.x, prevz=pl.mesh.position.z;
+    pl.mesh.position.set(x,y,z);
+    const dx=x-prevx, dz=z-prevz; if(Math.abs(dx)+Math.abs(dz)>0.001) pl.mesh.rotation.y=Math.atan2(dx,dz)+Math.PI;
+    if(pl.mesh.userData.prop) pl.mesh.userData.prop.rotation.z+=dt*40;
+    // spray: water+fertilize tiles under the plane
+    for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+      if((t.state==='planted'||t.state==='tilled') && Math.abs(t.x-x)<8 && Math.abs(t.z-z)<8){
+        t.water=1; t.waterUntil=performance.now()/1000+12; t.fertilized=true;
+      }
+    }
+  }
+}
+
+// ---------- HOT AIR BALLOONS (ambiance) + FESTIVE SEASONAL PROPS ----------
+const balloons=[];
+function makeBalloon(x,z){
+  const g=new THREE.Group();
+  const env=new THREE.Mesh(new THREE.SphereGeometry(4,12,12),new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(Math.random(),0.7,0.55),flatShading:true}));env.position.y=6;env.scale.y=1.3;g.add(env);
+  const basket=new THREE.Mesh(new THREE.BoxGeometry(1.2,1,1.2),new THREE.MeshLambertMaterial({color:0x6d4c41}));basket.position.y=0.5;g.add(basket);
+  g.position.set(x,32+Math.random()*22,z);scene.add(g);
+  balloons.push({mesh:g,t:Math.random()*100,baseY:g.position.y});
+}
+const festiveProps=[];
+function updateFestive(dt){
+  for(const b of balloons){ b.t+=dt*0.1; b.mesh.position.x+=Math.sin(b.t)*2*dt; b.mesh.position.y=b.baseY+Math.sin(b.t*0.5)*3; b.mesh.rotation.y+=dt*0.05; }
+}
+function applyFestive(){
+  for(const p of festiveProps) scene.remove(p); festiveProps.length=0;
+  const s=state.season;
+  function place(mesh){ const a=Math.random()*Math.PI*2,d=90+Math.random()*40; mesh.position.set(Math.cos(a)*d,0,Math.sin(a)*d); scene.add(mesh); festiveProps.push(mesh); }
+  if(s===3){
+    for(let i=0;i<5;i++){ const g=new THREE.Group(); for(let j=0;j<3;j++){const ball=new THREE.Mesh(new THREE.SphereGeometry(0.6-j*0.15,8,8),new THREE.MeshLambertMaterial({color:0xffffff}));ball.position.y=0.5+j*0.7;g.add(ball);} const nose=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.3,5),new THREE.MeshLambertMaterial({color:0xff9800}));nose.rotation.x=Math.PI/2;nose.position.set(0,1.9,0.4);g.add(nose); place(g); }
+    for(let i=0;i<3;i++){ const g=new THREE.Group(); const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.4,1,6),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=0.5;g.add(trunk); for(let l=0;l<3;l++){const c=new THREE.Mesh(new THREE.ConeGeometry(2-l*0.5,2,8),new THREE.MeshLambertMaterial({color:0x2e7d32}));c.position.y=1.5+l*1.2;g.add(c);} for(let k=0;k<8;k++){const o=new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6),new THREE.MeshBasicMaterial({color:[0xff0000,0xffeb3b,0x2196f3][k%3]}));o.position.set((Math.random()-0.5)*3,1.5+Math.random()*3,(Math.random()-0.5)*3);g.add(o);} place(g); }
+  } else if(s===2){
+    for(let i=0;i<8;i++){ const g=new THREE.Group(); const p=new THREE.Mesh(new THREE.SphereGeometry(0.6,10,8),new THREE.MeshLambertMaterial({color:0xfb8c00,emissive:0x331100,emissiveIntensity:0.3}));p.scale.y=0.8;p.position.y=0.5;g.add(p); const eye=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshBasicMaterial({color:0xffeb3b}));eye.position.set(0,0.6,0.5);g.add(eye); place(g); }
+  } else if(s===0){
+    for(let i=0;i<10;i++){ const g=new THREE.Group(); for(let k=0;k<6;k++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.18,6,5),new THREE.MeshLambertMaterial({color:[0xff5252,0xffeb3b,0xff80ab,0xb388ff][k%4]}));f.position.set((Math.random()-0.5)*1.5,0.4,(Math.random()-0.5)*1.5);g.add(f);} place(g); }
+  } else {
+    for(let i=0;i<6;i++){ const g=new THREE.Group(); const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.5,5),new THREE.MeshLambertMaterial({color:0x795548}));pole.position.y=1.25;g.add(pole); const top=new THREE.Mesh(new THREE.ConeGeometry(1.5,0.8,12),new THREE.MeshLambertMaterial({color:[0xff5252,0x2196f3,0xffeb3b][i%3]}));top.position.y=2.5;g.add(top); place(g); }
+  }
+}
+
 // ---------- FARMHAND WORKER (auto-farms a plot) ----------
 const workers=[];
 function makeWorkerNPC(x,z){
@@ -2389,6 +2465,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateProducers(dt);
   updateMarket(dt);
   updateWorkers(dt);
+  updatePlanes(dt);
+  updateFestive(dt);
   drawMinimap(dt);
   updateEngine();
   updateFireworks(dt);
@@ -2592,6 +2670,8 @@ function updateDog(dt){
 function startGame(fresh){document.getElementById('start').style.display='none';state.running=true;
   state.sessionId=Date.now();
   startMusic(); startEngine(); setupTouch();
+  for(let i=0;i<5;i++) makeBalloon((Math.random()-0.5)*200,(Math.random()-0.5)*200); // ambiance balloons
+  applyFestive(); // initial seasonal decorations
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
   if(fresh){
