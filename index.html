@@ -967,7 +967,10 @@ function workTile(t){ if(!t)return;
     updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       addCropMarker(t, CROPS[state.selectedCrop].emoji); sndPlant(); } else { notifyNoSeed(); } } }
-  else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop; state.inventory[cropKey]=(state.inventory[cropKey]||0)+1;
+  else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop;
+    const yield_ = t.golden?5:1; state.inventory[cropKey]=(state.inventory[cropKey]||0)+yield_;
+    if(t.golden){ floatText(t.x,t.z,'✨ DOURADO ×5!',0xffd700); beep(1000,0.1); }
+    if(t.goldMark){ scene.remove(t.goldMark); t.goldMark=null; } t.golden=false;
     if(t.plant){scene.remove(t.plant);t.plant=null;}
     // Quality calc: 1-5 stars based on care
     let q=2;
@@ -1097,7 +1100,12 @@ function updateCrops(now){
       const growTime = (cropDef.tree && t.regrowing) ? cropDef.regrow : cropDef.growTime;
       const ratio = t.growProgress / growTime;
       if(t.plant) t.plant.scale.y = Math.min(2.6, 0.5+ratio*2.3);
-      if(ratio>=1){ t.state='grown'; if(t.plant)scene.remove(t.plant); t.plant=buildCrop(t.crop,t); scene.add(t.plant); if(!cropDef.tree) t.mesh.material=grownDirtMat(); t.regrowing=false; }
+      if(ratio>=1){ t.state='grown'; if(t.plant)scene.remove(t.plant);
+        t.golden = Math.random()<0.06; // rare golden crop (5x value!)
+        t.plant=buildCrop(t.crop,t);
+        if(t.golden){ t.plant.traverse(o=>{ if(o.material&&o.material.color) o.material=new THREE.MeshLambertMaterial({color:0xffd700,emissive:0xaa8800,emissiveIntensity:0.4}); });
+          const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:getEmojiTex('✨'),transparent:true})); sp.scale.set(1.2,1.2,1); sp.position.set(t.x,2.6,t.z); scene.add(sp); t.goldMark=sp; }
+        scene.add(t.plant); if(!cropDef.tree) t.mesh.material=grownDirtMat(); t.regrowing=false; }
     }
   }
 }
@@ -1550,7 +1558,7 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
     grid.appendChild(wrap);
   }
   else {
-    Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const price=Math.round(c.sell*bonus); const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · Qualidade média: <b>${avg}⭐</b></p><p>$${price} cada (com bônus qualidade)</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
+    Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const mm=getPriceMult(key); const price=Math.round(c.sell*bonus*mm); const arrow=mm>1.08?'<span style="color:#69f0ae">↑ alta</span>':mm<0.92?'<span style="color:#ff8a80">↓ baixa</span>':'<span style="opacity:0.6">→ normal</span>'; const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · ${avg}⭐ · Mercado: ${arrow}</p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
     // Animal products
     Object.values(ANIMAL_TYPES).forEach(a=>{const key=a.product;const have=state.inventory[key]||0;const price=a.productSell;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${a.productName}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
     // Processed goods (production chain)
@@ -2032,6 +2040,7 @@ const BUILDINGS=[
   {id:'mill',      name:'🏭 Moinho',           price:2200, req:15,desc:'FUNÇÃO: transforma Trigo em 🌬️ Farinha'},
   {id:'bakery',    name:'🥖 Padaria',          price:3000, req:15,desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
   {id:'solar',     name:'☀️ Painel Solar',    price:2000, req:20,desc:'FUNÇÃO: gera dinheiro sozinho'},
+  {id:'worker',    name:'👨‍🌾 Casa do Trabalhador',price:6000, req:8, desc:'FUNÇÃO: ara, planta e colhe sozinho no campo!'},
   {id:'deco_fountain',name:'⛲ Fonte',         price:400,  req:1, decor:true, desc:'🎨 Decoração'},
   {id:'deco_gnome',   name:'🧙 Anão de Jardim',price:150,  req:1, decor:true, desc:'🎨 Decoração'},
   {id:'deco_statue',  name:'🗿 Estátua',       price:800,  req:1, decor:true, desc:'🎨 Decoração'},
@@ -2192,6 +2201,17 @@ function constructBuilding(id,bx,bz){
     g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
     bakeries.push({x:bx,z:bz}); showMessage('🥖 Padaria! Transforma farinha em pão.',2500);
   }
+  else if(id==='worker'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(4,3,4),new THREE.MeshLambertMaterial({color:0xc8a165,flatShading:true}));body.position.y=1.5;body.castShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(3.2,1.6,4),new THREE.MeshLambertMaterial({color:0x6d4c41}));roof.rotation.y=Math.PI/4;roof.position.y=3.8;g.add(roof);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.8,0.2),new THREE.MeshLambertMaterial({color:0x2e7d32,emissive:0x114400,emissiveIntensity:0.3}));sign.position.set(0,2.4,2.05);g.add(sign);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.2,2.2);
+    // find nearest plot and spawn a worker NPC
+    let best=null,bd=1e9; for(const p of allPlots){ const d=Math.hypot(p.centerX-bx,p.centerZ-bz); if(d<bd){bd=d;best=p;} }
+    if(best){ const npc=makeWorkerNPC(best.centerX,best.centerZ); workers.push({mesh:npc,plot:best,tile:null}); }
+    showMessage('👨‍🌾 Trabalhador contratado! Ele cuida do campo perto sozinho.',2800);
+  }
   else if(id==='deco_fountain'){
     const g=new THREE.Group();
     const base=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.8,0.6,16),new THREE.MeshLambertMaterial({color:0xbdbdbd}));base.position.y=0.3;g.add(base);
@@ -2244,6 +2264,47 @@ function updateWaterTowers(dt){
   }
 }
 // Passive producers: solar=$, composter=fertilizer, seedshed=seeds, feeder=breeding
+// ---------- FARMHAND WORKER (auto-farms a plot) ----------
+const workers=[];
+function makeWorkerNPC(x,z){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.9,0.35),new THREE.MeshLambertMaterial({color:0x1565c0,flatShading:true}));body.position.y=0.75;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),new THREE.MeshLambertMaterial({color:0xffccbc}));head.position.y=1.32;g.add(head);
+  const hat=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.22,12),new THREE.MeshLambertMaterial({color:0xffca28}));hat.position.y=1.5;g.add(hat);
+  for(const s of[-1,1]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.5,0.16),new THREE.MeshLambertMaterial({color:0x3e2723}));leg.position.set(s*0.13,0.25,0);g.add(leg);}
+  g.position.set(x,0,z);scene.add(g);return g;
+}
+function updateWorkers(dt){
+  const now=performance.now()/1000;
+  for(const w of workers){
+    if(!w.tile){ const cand=[]; for(const row of w.plot.tiles) for(const t of row){ if(t.state==='grass'||t.state==='tilled'||t.state==='grown') cand.push(t); } w.tile=cand.length?cand[Math.floor(Math.random()*cand.length)]:null; if(!w.tile) continue; }
+    const t=w.tile; const dx=t.x-w.mesh.position.x, dz=t.z-w.mesh.position.z, d=Math.hypot(dx,dz);
+    if(d>1){ w.mesh.position.x+=dx/d*4*dt; w.mesh.position.z+=dz/d*4*dt; w.mesh.rotation.y=Math.atan2(dx,dz); w.mesh.position.y=Math.abs(Math.sin(now*8))*0.08; }
+    else {
+      if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; }
+      else if(t.state==='tilled'){ if((state.inventory.wheat_seed||0)>0) state.inventory.wheat_seed--;
+        t.state='planted'; t.crop='wheat'; t.growProgress=0; t.lastUpdate=now;
+        const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z);scene.add(sprout);t.plant=sprout; addCropMarker(t,'🌾'); }
+      else if(t.state==='grown'){ const ck=t.crop; state.inventory[ck]=(state.inventory[ck]||0)+(t.golden?5:1); if(t.plant){scene.remove(t.plant);t.plant=null;} if(t.goldMark){scene.remove(t.goldMark);t.goldMark=null;} t.golden=false; removeCropMarker(t); t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; state.stats.harvested++; }
+      w.tile=null;
+    }
+  }
+}
+
+// ---------- DYNAMIC MARKET PRICES ----------
+const marketMult={}, marketTarget={};
+let marketTimer=0;
+function getPriceMult(c){ return marketMult[c]||1; }
+function updateMarket(dt){
+  marketTimer-=dt;
+  if(marketTimer<=0){ marketTimer=18+Math.random()*14;
+    for(const c of Object.keys(CROPS)) marketTarget[c]=0.65+Math.random()*0.85; // 0.65..1.5
+  }
+  for(const c of Object.keys(CROPS)){
+    const cur=marketMult[c]||1, tgt=marketTarget[c]||1;
+    marketMult[c]=cur+(tgt-cur)*Math.min(1,dt*0.5);
+  }
+}
 function updateProducers(dt){
   producerTimer-=dt; if(producerTimer>0) return; producerTimer=8; // every 8s
   let gained=false;
@@ -2326,6 +2387,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWeeds(dt);
   updateWaterTowers(dt);
   updateProducers(dt);
+  updateMarket(dt);
+  updateWorkers(dt);
   drawMinimap(dt);
   updateEngine();
   updateFireworks(dt);
