@@ -66,18 +66,23 @@
       box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
     #chop-btn:hover { transform:translateY(206px) scale(1.08); }
     #chop-btn::after { content:'Cortar árvore'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #spray-btn { position:fixed; right:20px; top:50%; transform:translateY(270px); width:58px; height:58px; border-radius:50%;
+      background:linear-gradient(135deg,#9ccc65,#558b2f); border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
+    #spray-btn:hover { transform:translateY(270px) scale(1.08); }
+    #spray-btn::after { content:'Pulverizar campo'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
     #plot-btn:hover { transform:translateY(72px) scale(1.05); }
-    #foot-btn { position:fixed; left:16px; top:50%; transform:translateY(120px); z-index:50; padding:9px 15px; border-radius:24px;
+    #foot-btn { position:fixed; left:16px; top:50%; transform:translateY(76px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#42a5f5,#1565c0); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
-    #foot-btn:hover { transform:translateY(120px) scale(1.05); }
-    #boneco-btn { position:fixed; left:16px; top:50%; transform:translateY(166px); z-index:50; padding:9px 15px; border-radius:24px;
+    #foot-btn:hover { transform:translateY(76px) scale(1.05); }
+    #boneco-btn { position:fixed; left:16px; top:50%; transform:translateY(122px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#ab47bc,#6a1b9a); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
-    #boneco-btn:hover { transform:translateY(166px) scale(1.05); }
+    #boneco-btn:hover { transform:translateY(122px) scale(1.05); }
     .bn-row { margin:9px 0; }
     .bn-label { font-size:13px; font-weight:700; color:#ffe082; margin-bottom:5px; }
     .bn-swatches { display:flex; gap:7px; flex-wrap:wrap; }
@@ -277,7 +282,7 @@
 <button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-110px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
 <button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
 <button id="chop-btn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
-<button id="plot-btn" onclick="buyPlot()" style="display:none;">🌾 Comprar Área <span id="plot-cost">$1.000</span></button>
+<button id="spray-btn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
 <button id="foot-btn" onclick="toggleOnFoot()" title="Descer/subir do trator (tecla C)">🚶 Descer</button>
 <button id="boneco-btn" onclick="toggleBonecoPanel()" title="Montar seu boneco">🧍 Boneco</button>
 
@@ -386,7 +391,7 @@
     <div class="help-line"><span class="key">Q</span> Semente &nbsp; <span class="key">B</span> Loja &nbsp; <span class="key">H</span> 🔊 Buzina &nbsp; <span class="key">L</span> 💡 Faróis</div>
     <div class="help-line"><span class="key">R</span> Abastecer &nbsp; <span class="key">F</span> 🚚 Trocar veículo &nbsp; <span class="key">G</span> 🏗️ Construir</div>
     <div class="help-line"><span class="key">T</span> 🚜 Trocar de trator (entre os que você tem)</div>
-    <div class="help-line"><span class="key">C</span> 🚶 Descer/subir do trator &nbsp; · &nbsp; 🧍 Boneco: botão na lateral</div>
+    <div class="help-line"><span class="key">C</span> 🚶 Descer/subir &nbsp; <span class="key">V</span> 🌾 Comprar área (perto do verde) &nbsp; · 🧍 Boneco: botão</div>
     <div class="divider"></div>
     <div class="help-line">💡 Ligue a ferramenta e <b>dirija por cima do campo!</b></div>
   </div>
@@ -493,6 +498,7 @@ const state = {
   season:0,       // 0 spring, 1 summer, 2 autumn, 3 winter
   dayCount:0,
   onFoot:false,   // walking around as your character?
+  contractIdx:0,  // chronological contract progression (trigo -> abacate)
   boneco:{ skin:0xffccaa, shirt:0x1565c0, pants:0x3e2723, hat:0xd32f2f, hatType:1 }, // character look
 };
 // On-foot walking character physics
@@ -695,15 +701,30 @@ function unlockNewPlot(){
 // First $1.000 ... last $1.000.000 (8 extra areas, harder each time).
 const PLOT_COSTS = [1000, 3000, 8000, 20000, 50000, 140000, 375000, 1000000];
 function nextPlotCost(){ const i = state.plotsUnlocked - 1; if(i<0 || i>=PLOT_COSTS.length) return null; return PLOT_COSTS[i]; }
-function updatePlotButton(){
-  const b=document.getElementById('plot-btn'); if(!b) return;
-  if(state.visiting){ b.style.display='none'; return; }
+// World marker at the next buyable area — drive/walk near it and press [V] to buy.
+const plotGhost=new THREE.Group();
+const ghostPlane=new THREE.Mesh(new THREE.PlaneGeometry(PLOT_SIZE*TILE, PLOT_SIZE*TILE), new THREE.MeshBasicMaterial({color:0x66bb6a,transparent:true,opacity:0.22,side:THREE.DoubleSide}));
+ghostPlane.rotation.x=-Math.PI/2; ghostPlane.position.y=0.06; plotGhost.add(ghostPlane);
+for(const [cx,cz] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ const post=new THREE.Mesh(new THREE.BoxGeometry(0.3,1.4,0.3),new THREE.MeshLambertMaterial({color:0xffd54f})); post.position.set(cx*(PLOT_SIZE*TILE/2-0.5),0.7,cz*(PLOT_SIZE*TILE/2-0.5)); plotGhost.add(post); }
+const plotSignCv=document.createElement('canvas'); plotSignCv.width=512; plotSignCv.height=96;
+const plotSign=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(plotSignCv),transparent:true,depthTest:false}));
+plotSign.scale.set(13,2.4,1); plotSign.position.y=6; plotSign.renderOrder=999; plotGhost.add(plotSign);
+scene.add(plotGhost); plotGhost.visible=false;
+let _plotSignTxt='';
+function drawPlotSign(text){ if(text===_plotSignTxt) return; _plotSignTxt=text;
+  const g=plotSignCv.getContext('2d'); g.clearRect(0,0,512,96);
+  g.fillStyle='rgba(20,40,20,0.85)'; if(g.roundRect){g.beginPath();g.roundRect(6,6,500,84,16);g.fill();} else g.fillRect(6,6,500,84);
+  g.fillStyle='#fff'; g.font='bold 34px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,256,48);
+  plotSign.material.map.needsUpdate=true;
+}
+function updatePlotMarker(){
   const cost=nextPlotCost();
-  if(cost==null){ b.style.display='none'; return; }
-  b.style.display='block';
-  const span=document.getElementById('plot-cost'); if(span) span.textContent='$'+cost.toLocaleString('pt-BR');
-  b.style.opacity = (state.money>=cost)?'1':'0.55';
-  b.title = `Comprar a próxima área da fazenda (${state.plotsUnlocked-1}/8 compradas)`;
+  if(cost==null || state.visiting){ plotGhost.visible=false; return; }
+  const loc=PLOT_LOCATIONS[state.plotsUnlocked-1];
+  plotGhost.visible=true; plotGhost.position.set(loc.cx,0,loc.cz);
+  const afford=state.money>=cost;
+  ghostPlane.material.color.setHex(afford?0x66bb6a:0xef5350);
+  drawPlotSign('🌾 Comprar área  $'+cost.toLocaleString('pt-BR')+'  · aperte [V]');
 }
 window.buyPlot=()=>{
   if(state.visiting){ showMessage('Você está visitando outra fazenda!',1800); return; }
@@ -714,8 +735,18 @@ window.buyPlot=()=>{
   if(typeof sndSell==='function') sndSell();
   showMessage('🌾 Nova área comprada por $'+cost.toLocaleString('pt-BR')+'! Agora você tem '+state.plotsUnlocked+' campos.',2600);
   if(typeof launchFireworks==='function' && state.running) launchFireworks();
-  updateHUD(); updatePlotButton(); saveGame();
+  updateHUD(); updatePlotMarker(); saveGame();
 };
+// Press [V] near the marked area to buy it
+function tryBuyPlotNearby(){
+  if(state.visiting) return;
+  const cost=nextPlotCost();
+  if(cost==null){ showMessage('🌾 Você já tem todas as áreas da fazenda!',1800); return; }
+  const loc=PLOT_LOCATIONS[state.plotsUnlocked-1];
+  const p=activeVehPos();
+  if(Math.hypot(p.x-loc.cx,p.z-loc.cz)>22){ showMessage('🌾 Vá até a área marcada de verde e aperte [V] (custa $'+cost.toLocaleString('pt-BR')+')',2800); return; }
+  buyPlot();
+}
 
 // ---------- DIRT PATHS (decorative grid around the neatly-arranged plots) ----------
 function pathMat(w,d){ const t=dirtTex(false); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(Math.max(1,w/3.2),Math.max(1,d/3.2)); return new THREE.MeshLambertMaterial({map:t}); }
@@ -760,6 +791,27 @@ function makePump(x,z){const g=new THREE.Group();
   const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
 const pumpPos=new THREE.Vector3(42,0,24); makePump(pumpPos.x,pumpPos.z);
+// Fuel forecourt AREA — drive/park inside this paved zone to refuel (auto-fills for free)
+const FUEL_AREA={x:pumpPos.x, z:pumpPos.z, r:9};
+function makeFuelArea(x,z){
+  const pad=new THREE.Mesh(new THREE.PlaneGeometry(16,16), new THREE.MeshLambertMaterial({color:0x555a5e}));
+  pad.rotation.x=-Math.PI/2; pad.position.set(x,0.042,z); pad.receiveShadow=true; scene.add(pad);
+  // yellow border + center "⛽" markings
+  const mk=new THREE.MeshBasicMaterial({color:0xffd54f});
+  for(const [w,d,oz] of [[16,0.4,-7.6],[16,0.4,7.6],[0.4,16,-7.6],[0.4,16,7.6]]){ const ln=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mk); ln.rotation.x=-Math.PI/2; ln.position.set(x+(d>w?oz:0),0.05,z+(w>d?oz:0)); scene.add(ln); }
+  const ring=new THREE.Mesh(new THREE.RingGeometry(2.2,2.8,24), new THREE.MeshBasicMaterial({color:0xffeb3b,side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(x,0.05,z+0.01); scene.add(ring);
+}
+makeFuelArea(pumpPos.x,pumpPos.z);
+let _fuelMsg=0;
+function updateFuelArea(dt){
+  if(state.visiting) return;
+  const p=activeVehPos();
+  if(Math.hypot(p.x-FUEL_AREA.x,p.z-FUEL_AREA.z)<FUEL_AREA.r){
+    if(state.fuel<state.maxFuel){ state.fuel=Math.min(state.maxFuel, state.fuel+dt*40); // auto-refuel, free
+      const now=performance.now()/1000; if(now-_fuelMsg>3 && state.fuel<state.maxFuel){ _fuelMsg=now; }
+    }
+  }
+}
 // Floating beacon sign helper so player can find key buildings
 function beaconSign(x,z,text){
   const c=document.createElement('canvas');c.width=256;c.height=80;const g=c.getContext('2d');
@@ -804,7 +856,7 @@ function makeAnimalShop(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.6,0.2),new THREE.MeshLambertMaterial({color:0x3e2723}));door.position.set(0,1.3,3.55);g.add(door);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,3.3,3.3);}
 const animalShopPos=new THREE.Vector3(14,0,24); makeAnimalShop(animalShopPos.x,animalShopPos.z);
-beaconSign(pumpPos.x,pumpPos.z,'⛽ POSTO');
+beaconSign(pumpPos.x,pumpPos.z,'⛽ ÁREA DE COMBUSTÍVEL');
 beaconSign(shopPos.x,shopPos.z,'🏪 MERCADO');
 beaconSign(garagePos.x,garagePos.z,'🚜 GARAGEM');
 beaconSign(animalShopPos.x,animalShopPos.z,'🐄 LOJA DE ANIMAIS');
@@ -1159,6 +1211,27 @@ window.chopNearestTree=()=>{
     showMessage('🪓 Chegue perto de uma árvore plantada (🍎🍊🥥🥑) e clique de novo!',2600);
   }
 };
+// Pesticide: protect a tile from pests/weeds + green tint
+function applyPesticideTint(t){
+  if(!t.pestTint){ const pt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96,TILE*0.96),new THREE.MeshBasicMaterial({color:0x4caf50,transparent:true,opacity:0.18}));
+    pt.rotation.x=-Math.PI/2; pt.position.set(t.x,0.08,t.z); scene.add(pt); t.pestTint=pt; }
+}
+function protectTile(t){ if(t.protected) return false; t.protected=true; applyPesticideTint(t);
+  if(t.pest && typeof removePest==='function') removePest(t); return true; }
+// Button: spray pesticide over the WHOLE plantation (1 pesticide per plant)
+window.sprayAllField=()=>{
+  if(state.visiting){ showMessage('Você está visitando outra fazenda!',1600); return; }
+  const cands=[]; for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){ if((t.state==='planted'||t.state==='grown') && !t.protected) cands.push(t); }
+  if(!cands.length){ showMessage('🪲 Não há plantas pra pulverizar (ou já estão protegidas)!',2200); return; }
+  let avail=state.inventory.pesticide||0;
+  if(avail<=0){ showMessage('🪲 Sem pesticida! Compre na aba 🧪 INSUMOS do mercado (B).',2800); return; }
+  let done=0;
+  for(const t of cands){ if(avail<=0) break; if(protectTile(t)){ state.inventory.pesticide--; avail--; done++; } }
+  if(typeof sndSell==='function') sndSell();
+  const ranOut = avail<=0 && done<cands.length;
+  showMessage('🪲 Pulverizei '+done+' planta(s)!'+(ranOut?(' Faltou pesticida pra '+(cands.length-done)+'. Compre mais.'):' Campo protegido!'),3000);
+  updateHUD(); saveGame();
+};
 // Throttled countdown updater — only near the player for performance
 let _timerAcc=0;
 function updateTimers(dt){
@@ -1190,6 +1263,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyR'){ tryRefuel(); }
   if(e.code==='KeyF'){ if(state.onFoot) toggleOnFoot(); else toggleVehicle(); }
   if(e.code==='KeyC'){ toggleOnFoot(); }
+  if(e.code==='KeyV'){ tryBuyPlotNearby(); }
   if(e.code==='KeyG'){ toggleBuildMenu(); }
   if(e.code==='KeyT'){ cycleTractor(); }
 });
@@ -1233,11 +1307,8 @@ function workTile(t){ if(!t)return;
       const ft=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96,TILE*0.96),new THREE.MeshBasicMaterial({color:0x9c27b0,transparent:true,opacity:0.18}));
       ft.rotation.x=-Math.PI/2; ft.position.set(t.x,0.075,t.z); scene.add(ft); t.fertilTint=ft;
     }
-    // Auto-apply pesticide if available — prevents weeds
-    if(state.inventory.pesticide>0){ state.inventory.pesticide--; t.protected=true;
-      const pt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96,TILE*0.96),new THREE.MeshBasicMaterial({color:0x4caf50,transparent:true,opacity:0.18}));
-      pt.rotation.x=-Math.PI/2; pt.position.set(t.x,0.08,t.z); scene.add(pt); t.pestTint=pt;
-    }
+    // Auto-apply pesticide if available — prevents weeds & pests
+    if(state.inventory.pesticide>0){ state.inventory.pesticide--; t.protected=true; applyPesticideTint(t); }
     updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       addCropMarker(t, CROPS[state.selectedCrop].emoji); sndPlant(); } else { notifyNoSeed(); } } }
@@ -1393,7 +1464,7 @@ function updateCrops(now){
 // ---------- HUD ----------
 function updateHUD(){
   document.getElementById('money').textContent='💰 $'+state.money;
-  if(typeof updatePlotButton==='function') updatePlotButton();
+  if(typeof updatePlotMarker==='function') updatePlotMarker();
   document.getElementById('lvl-num').textContent=state.level;
   document.getElementById('xp-cur').textContent=state.xp;
   document.getElementById('xp-need').textContent=state.xpToNext;
@@ -1475,10 +1546,14 @@ function updateObjective(){
 
 // ---------- CONTRACTS / MISSIONS ----------
 let contract=null;
+// Contracts follow a fixed chronological order: cheapest (trigo) up to the priciest (abacate)
+const CONTRACT_ORDER = Object.keys(CROPS).slice().sort((a,b)=>CROPS[a].sell-CROPS[b].sell);
 function generateContract(){
-  const crops=Object.keys(CROPS).filter(c=>!CROPS[c].tree); // crops only (not trees)
-  const c=crops[Math.floor(Math.random()*crops.length)];
-  const qty=5+Math.floor(Math.random()*16);
+  const idx=(state.contractIdx||0);
+  const c=CONTRACT_ORDER[idx % CONTRACT_ORDER.length];
+  state.contractIdx=idx+1;
+  const base=4+Math.floor(Math.random()*7);
+  const qty=Math.max(2, Math.round(base * (60/Math.max(60,CROPS[c].sell)))); // fewer of the slow/expensive crops
   const rewardMoney=Math.round(CROPS[c].sell*qty*1.7);
   const rewardXp=qty*8;
   contract={crop:c,qty,rewardMoney,rewardXp};
@@ -1734,7 +1809,7 @@ setTimeout(()=>{ const inp=document.getElementById('ai-input'); if(inp){ inp.add
 // ---------- STATIONS (separate places, each opened with [B]) ----------
 function nearAny(list,d){ const p=(activeVeh==='tractor'?tractor:truck).position; for(const m of list){ if(distXZ(p,m)<d) return true; } return false; }
 const STATIONS={
-  market:  { title:'🏪 MERCADO',          sub:'Compre sementes • Venda colheita e comida', tabs:[['buy','🛒 SEMENTES'],['sell','💵 VENDER']] },
+  market:  { title:'🏪 MERCADO',          sub:'Sementes • Insumos • Venda',            tabs:[['buy','🛒 SEMENTES'],['supplies','🧪 INSUMOS'],['sell','💵 VENDER']] },
   garage:  { title:'🚜 GARAGEM',          sub:'Compre, troque [T] e pinte seus tratores',  tabs:[['tractors','🚜 TRATORES'],['paint','🎨 PINTAR']] },
   animals: { title:'🐄 LOJA DE ANIMAIS',  sub:'Compre animais • Venda no açougue',          tabs:[['animals','🐄 COMPRAR'],['butcher','🥩 VENDER']] },
 };
@@ -1771,14 +1846,16 @@ window.showTab=(tab)=>{state.shopTab=tab;renderTabs();renderShop();};
 function renderShop(){const grid=document.getElementById('shop-grid');grid.innerHTML='';
   if(state.shopTab==='buy'){
     Object.entries(CROPS).forEach(([ck,c])=>{const key=ck+'_seed';const el=document.createElement('div');el.className='shop-item';const treeNote=c.tree?` · Rebrota em ${c.regrow}s`:'';el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${c.sell}${treeNote}</p><p>Preço: <b>$${c.seed}</b></p><button onclick="buySeed('${key}',${c.seed})">x1 ($${c.seed})</button><button onclick="buySeed('${key}',${c.seed*10},10)">x10 ($${c.seed*10})</button>`;grid.appendChild(el);});
+  }
+  else if(state.shopTab==='supplies'){
+    // Pesticide (now its own tab, pricier)
+    const pEl=document.createElement('div'); pEl.className='shop-item';
+    pEl.innerHTML=`<h4>🪲 Pesticida</h4><p>Tem: <b>${state.inventory.pesticide}</b></p><p>Protege a planta de PRAGAS e mato</p><p>Aplicado ao plantar OU use o botão 🪲 pra pulverizar o campo todo</p><p>Preço: <b>$80</b></p><button onclick="buyPest(80,1)">x1 ($80)</button><button onclick="buyPest(700,10)">x10 ($700)</button>`;
+    grid.appendChild(pEl);
     // Fertilizer
     const fEl=document.createElement('div'); fEl.className='shop-item';
-    fEl.innerHTML=`<h4>🧪 Fertilizante</h4><p>Aplicado automático ao plantar</p><p>+50% velocidade · +2⭐ qualidade</p><p>Preço: <b>$15</b></p><button onclick="buyFert(15,1)">x1 ($15)</button><button onclick="buyFert(120,10)">x10 ($120)</button>`;
+    fEl.innerHTML=`<h4>🧪 Fertilizante</h4><p>Tem: <b>${state.inventory.fertilizer}</b></p><p>Aplicado automático ao plantar</p><p>+50% velocidade · +2⭐ qualidade</p><p>Preço: <b>$15</b></p><button onclick="buyFert(15,1)">x1 ($15)</button><button onclick="buyFert(120,10)">x10 ($120)</button>`;
     grid.appendChild(fEl);
-    // Pesticide
-    const pEl=document.createElement('div'); pEl.className='shop-item';
-    pEl.innerHTML=`<h4>🪲 Pesticida</h4><p>Aplicado automático ao plantar</p><p>Previne mato/erva daninha</p><p>Preço: <b>$12</b></p><button onclick="buyPest(12,1)">x1 ($12)</button><button onclick="buyPest(100,10)">x10 ($100)</button>`;
-    grid.appendChild(pEl);
     // Jerrycan (emergency fuel)
     const jEl=document.createElement('div'); jEl.className='shop-item';
     jEl.innerHTML=`<h4>🛢️ Galão de Combustível</h4><p>Tem: <b>${state.inventory.jerrycan}</b></p><p>Aperte R em qualquer lugar = +50 combustível</p><p>Preço: <b>$40</b></p><button onclick="buyJerry(40,1)">x1 ($40)</button><button onclick="buyJerry(150,5)">x5 ($150)</button>`;
@@ -1894,7 +1971,7 @@ function saveGame(){
       if(t.state!=='grass') tilesData.push({p:pi,c,r,st:t.state,cr:t.crop,gp:t.growProgress||0,w:t.water?1:0,fz:t.fertilized?1:0,rg:t.regrowing?1:0}); } });
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
-      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
+      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective, contractIdx:state.contractIdx,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
@@ -1913,6 +1990,7 @@ function loadGame(){
     state.xp = d.xp ?? 0;
     state.xpToNext = d.xpToNext ?? 50;
     state.objective = d.objective ?? 0;
+    state.contractIdx = d.contractIdx ?? 0;
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
@@ -2805,6 +2883,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWeeds(dt);
   updatePests(dt);
   updateTimers(dt);
+  updateFuelArea(dt);
   updateWaterTowers(dt);
   updateProducers(dt);
   updateMarket(dt);
