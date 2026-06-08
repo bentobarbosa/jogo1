@@ -409,8 +409,10 @@ const state = {
   money:500,
   inventory:{ wheat_seed:10, corn_seed:5, potato_seed:5, tomato_seed:0, soy_seed:0, melon_seed:0, sunflower_seed:0, apple_seed:0, orange_seed:0,
     carrot_seed:0, strawberry_seed:0, pumpkin_seed:0, grape_seed:0, rice_seed:0, cotton_seed:0,
+    pineapple_seed:0, chili_seed:0, eggplant_seed:0, coconut_seed:0, dragon_seed:0,
     wheat:0, corn:0, potato:0, tomato:0, soy:0, melon:0, sunflower:0, apple:0, orange:0,
     carrot:0, strawberry:0, pumpkin:0, grape:0, rice:0, cotton:0,
+    pineapple:0, chili:0, eggplant:0, coconut:0, dragon:0,
     fertilizer:0, pesticide:0, jerrycan:0, milk:0, egg:0, wool:0, truffle:0, cheese:0, feather:0, fur:0, honey:0, flour:0, bread:0 },
   selectedCrop:'wheat',
   running:false, shopOpen:false, shopTab:'buy',
@@ -443,7 +445,7 @@ const SEASONS = [
   { name:'Outono',    emoji:'🍂', grass:0xa1887f, tree:0xff8f00, growMult:1.2 },
   { name:'Inverno',   emoji:'❄️', grass:0xe0e0e0, tree:0x90a4ae, growMult:1.6 },  // grows slower
 ];
-const XP_PER_HARVEST = { wheat:5, corn:10, potato:18, tomato:14, soy:12, melon:25, sunflower:20, apple:30, orange:35, carrot:9, strawberry:15, pumpkin:24, grape:22, rice:10, cotton:20 };
+const XP_PER_HARVEST = { wheat:5, corn:10, potato:18, tomato:14, soy:12, melon:25, sunflower:20, apple:30, orange:35, carrot:9, strawberry:15, pumpkin:24, grape:22, rice:10, cotton:20, pineapple:30, chili:16, eggplant:19, coconut:35, dragon:45 };
 
 const TRACTORS = [
   { name:'🚜 Tratorzinho',   speed:14, fuelCap:100, price:0,     color:0x2e7d32, scale:1.0 },
@@ -470,6 +472,11 @@ const CROPS = {
   grape:    { emoji:'🍇', name:'Uva',       growTime:48, sell:95, seed:20, top:0x8e24aa },
   rice:     { emoji:'🌾', name:'Arroz',     growTime:32, sell:48, seed:9,  top:0xcddc39 },
   cotton:   { emoji:'☁️', name:'Algodão',   growTime:50, sell:90, seed:16, top:0xfafafa },
+  pineapple:{ emoji:'🍍', name:'Abacaxi',   growTime:60, sell:130,seed:28, top:0xffca28 },
+  chili:    { emoji:'🌶️', name:'Pimenta',   growTime:34, sell:75, seed:14, top:0xd32f2f },
+  eggplant: { emoji:'🍆', name:'Berinjela', growTime:42, sell:88, seed:17, top:0x6a1b9a },
+  coconut:  { emoji:'🥥', name:'Coco (árvore)', growTime:65, sell:150, seed:90, top:0x8d6e63, tree:true, regrow:45 },
+  dragon:   { emoji:'🐉', name:'Pitaya',    growTime:75, sell:200,seed:50, top:0xe91e63 },
 };
 
 // ---------- AUDIO ----------
@@ -506,6 +513,17 @@ const skyMat=new THREE.ShaderMaterial({ side:THREE.BackSide,
   vertexShader:`varying vec3 vP; void main(){vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
   fragmentShader:`varying vec3 vP; uniform vec3 top; uniform vec3 bottom; void main(){float h=pow(clamp(normalize(vP).y*0.5+0.5,0.0,1.0),0.7); gl_FragColor=vec4(mix(bottom,top,h),1.0);}`});
 scene.add(new THREE.Mesh(skyGeo,skyMat));
+// Stars (visible at night)
+const starGeo=new THREE.BufferGeometry();
+const STAR_N=400, starPos=new Float32Array(STAR_N*3);
+for(let i=0;i<STAR_N;i++){ const a=Math.random()*Math.PI*2, e=Math.random()*0.5+0.1, rr=380;
+  starPos[i*3]=Math.cos(a)*Math.cos(e)*rr; starPos[i*3+1]=Math.sin(e)*rr+40; starPos[i*3+2]=Math.sin(a)*Math.cos(e)*rr; }
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:1.6,transparent:true,opacity:0,sizeAttenuation:false}));
+scene.add(stars);
+// Moon
+const moon=new THREE.Mesh(new THREE.SphereGeometry(7,16,16),new THREE.MeshBasicMaterial({color:0xf5f3e0,transparent:true,opacity:0}));
+moon.position.set(-80,90,-120); scene.add(moon);
 scene.fog=new THREE.Fog(0xc8e8ff,200,520);
 
 const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,700);
@@ -1055,6 +1073,11 @@ function buildCrop(crop,t){const g=new THREE.Group();
   else if(crop==='grape'){for(let i=0;i<3;i++){const post=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.4,5),new THREE.MeshLambertMaterial({color:0x6d4c41}));post.position.set((Math.random()-0.5)*1.6,0.7,(Math.random()-0.5)*1.6);g.add(post);for(let j=0;j<8;j++){const grape=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshLambertMaterial({color:0x8e24aa}));grape.position.set(post.position.x+(Math.random()-0.5)*0.4,0.4+Math.random()*0.8,post.position.z+(Math.random()-0.5)*0.4);g.add(grape);}}}
   else if(crop==='rice'){for(let i=0;i<9;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.1,4),new THREE.MeshLambertMaterial({color:0xcddc39}));s.position.set((Math.random()-0.5)*1.7,0.55,(Math.random()-0.5)*1.7);s.rotation.z=(Math.random()-0.5)*0.3;g.add(s);}}
   else if(crop==='cotton'){for(let i=0;i<5;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.8,4),new THREE.MeshLambertMaterial({color:0x558b2f}));stem.position.set((Math.random()-0.5)*1.6,0.4,(Math.random()-0.5)*1.6);g.add(stem);const ball=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,7),new THREE.MeshLambertMaterial({color:0xfafafa}));ball.position.set(stem.position.x,0.85,stem.position.z);g.add(ball);}}
+  else if(crop==='pineapple'){for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.32,0.7,10),new THREE.MeshLambertMaterial({color:0xffca28,flatShading:true}));f.position.set((Math.random()-0.5)*1.5,0.55,(Math.random()-0.5)*1.5);g.add(f);for(let j=0;j<5;j++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.5,4),new THREE.MeshLambertMaterial({color:0x2e7d32}));leaf.position.set(f.position.x+(Math.random()-0.5)*0.2,1.0,f.position.z+(Math.random()-0.5)*0.2);g.add(leaf);}}}
+  else if(crop==='chili'){for(let i=0;i<5;i++){const bush=new THREE.Mesh(new THREE.SphereGeometry(0.3,7,6),new THREE.MeshLambertMaterial({color:0x2e7d32}));bush.position.set((Math.random()-0.5)*1.6,0.4,(Math.random()-0.5)*1.6);g.add(bush);for(let j=0;j<3;j++){const p=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.3,5),new THREE.MeshLambertMaterial({color:0xd32f2f}));p.position.set(bush.position.x+(Math.random()-0.5)*0.3,0.3,bush.position.z+(Math.random()-0.5)*0.3);p.rotation.x=Math.PI;g.add(p);}}}
+  else if(crop==='eggplant'){for(let i=0;i<4;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.7,5),new THREE.MeshLambertMaterial({color:0x33691e}));stem.position.set((Math.random()-0.5)*1.6,0.35,(Math.random()-0.5)*1.6);g.add(stem);const e=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:0x6a1b9a}));e.scale.y=1.5;e.position.set(stem.position.x,0.4,stem.position.z);g.add(e);}}
+  else if(crop==='coconut'){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,3,6),new THREE.MeshLambertMaterial({color:0x8d6e63}));trunk.position.y=1.5;trunk.rotation.z=0.1;g.add(trunk);for(let l=0;l<6;l++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.25,2,4),new THREE.MeshLambertMaterial({color:0x388e3c}));const a=(l/6)*Math.PI*2;leaf.position.set(Math.cos(a)*0.8,3.2,Math.sin(a)*0.8);leaf.rotation.z=Math.cos(a)*1.1;leaf.rotation.x=Math.sin(a)*1.1;g.add(leaf);}for(let i=0;i<3;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshLambertMaterial({color:0x5d4037}));c.position.set((Math.random()-0.5)*0.5,2.8,(Math.random()-0.5)*0.5);g.add(c);}}
+  else if(crop==='dragon'){for(let i=0;i<3;i++){const stalk=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.4,6),new THREE.MeshLambertMaterial({color:0x2e7d32}));stalk.position.set((Math.random()-0.5)*1.5,0.7,(Math.random()-0.5)*1.5);g.add(stalk);const f=new THREE.Mesh(new THREE.SphereGeometry(0.28,8,8),new THREE.MeshLambertMaterial({color:0xe91e63,flatShading:true}));f.position.set(stalk.position.x,1.4,stalk.position.z);g.add(f);for(let j=0;j<5;j++){const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.2,4),new THREE.MeshLambertMaterial({color:0x76ff03}));const a=(j/5)*Math.PI*2;sp.position.set(f.position.x+Math.cos(a)*0.28,1.4+Math.sin(a)*0.2,f.position.z+Math.sin(a)*0.28);g.add(sp);}}}
   g.position.set(t.x,0.1,t.z);return g;}
 function updateCrops(now){
   for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
@@ -1577,7 +1600,7 @@ window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.invento
 // ---------- SAVE / LOAD (#33 autosave) ----------
 const SAVE_KEY='bentofarm_save_v1';
 function saveGame(){
-  try{ if(typeof updateRecords==='function') updateRecords(); }catch(e){}
+  try{ if(typeof updateRecords==='function') updateRecords(); if(typeof recordLeaderboard==='function') recordLeaderboard(); }catch(e){}
   try{
     // Serialize plantation tiles (only non-grass ones)
     const tilesData=[];
@@ -1901,6 +1924,10 @@ function updateDayNight(){
     }
     if(skyMat && skyMat.uniforms){ skyMat.uniforms.top.value = top; skyMat.uniforms.bottom.value = bot; }
     if(scene.fog) scene.fog.color = bot;
+    // Stars + moon fade in at night (low daylight)
+    const nightAmt=Math.max(0,1-day*1.8);
+    if(stars) stars.material.opacity=nightAmt;
+    if(moon){ moon.material.opacity=nightAmt; }
     const hours=Math.floor(t*24), mins=Math.floor((t*24-hours)*60);
     const el=document.getElementById('time-text'); if(el) el.textContent = String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
   } catch(err){ console.error('updateDayNight error:', err); }
@@ -2005,6 +2032,11 @@ const BUILDINGS=[
   {id:'mill',      name:'🏭 Moinho',           price:2200, req:15,desc:'FUNÇÃO: transforma Trigo em 🌬️ Farinha'},
   {id:'bakery',    name:'🥖 Padaria',          price:3000, req:15,desc:'FUNÇÃO: transforma Farinha em 🍞 Pão (vende caro!)'},
   {id:'solar',     name:'☀️ Painel Solar',    price:2000, req:20,desc:'FUNÇÃO: gera dinheiro sozinho'},
+  {id:'deco_fountain',name:'⛲ Fonte',         price:400,  req:1, decor:true, desc:'🎨 Decoração'},
+  {id:'deco_gnome',   name:'🧙 Anão de Jardim',price:150,  req:1, decor:true, desc:'🎨 Decoração'},
+  {id:'deco_statue',  name:'🗿 Estátua',       price:800,  req:1, decor:true, desc:'🎨 Decoração'},
+  {id:'deco_lamp',    name:'💡 Poste de Luz',  price:300,  req:1, decor:true, desc:'🎨 Decoração'},
+  {id:'deco_flowers', name:'🌷 Canteiro de Flores',price:200,req:1, decor:true, desc:'🎨 Decoração'},
 ];
 function toggleBuildMenu(){
   const m=document.getElementById('build-menu');
@@ -2159,6 +2191,42 @@ function constructBuilding(id,bx,bz){
     const sign=new THREE.Mesh(new THREE.BoxGeometry(3.4,1,0.2),new THREE.MeshLambertMaterial({color:0xff7043,emissive:0x552200,emissiveIntensity:0.3}));sign.position.set(0,3,2.55);g.add(sign);
     g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,2.6,2.6);
     bakeries.push({x:bx,z:bz}); showMessage('🥖 Padaria! Transforma farinha em pão.',2500);
+  }
+  else if(id==='deco_fountain'){
+    const g=new THREE.Group();
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.8,0.6,16),new THREE.MeshLambertMaterial({color:0xbdbdbd}));base.position.y=0.3;g.add(base);
+    const water=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,0.2,16),new THREE.MeshLambertMaterial({color:0x4fc3f7}));water.position.y=0.6;g.add(water);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1.2,8),new THREE.MeshLambertMaterial({color:0x9e9e9e}));post.position.y=1.1;g.add(post);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.15,12),new THREE.MeshLambertMaterial({color:0x4fc3f7}));top.position.y=1.7;g.add(top);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,1.6,1.6); showMessage('⛲ Fonte colocada!',1500);
+  }
+  else if(id==='deco_gnome'){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.6,8),new THREE.MeshLambertMaterial({color:0x1565c0}));body.position.y=0.3;g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:0xffccbc}));head.position.y=0.65;g.add(head);
+    const hat=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.4,8),new THREE.MeshLambertMaterial({color:0xd32f2f}));hat.position.y=0.95;g.add(hat);
+    const beard=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.3,8),new THREE.MeshLambertMaterial({color:0xffffff}));beard.position.set(0,0.5,0.1);beard.rotation.x=Math.PI;g.add(beard);
+    g.position.set(bx,0,bz);scene.add(g); showMessage('🧙 Anão de jardim!',1500);
+  }
+  else if(id==='deco_statue'){
+    const g=new THREE.Group();
+    const ped=new THREE.Mesh(new THREE.BoxGeometry(1.2,1,1.2),new THREE.MeshLambertMaterial({color:0x9e9e9e}));ped.position.y=0.5;g.add(ped);
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.45,2,8),new THREE.MeshLambertMaterial({color:0xbdbdbd,flatShading:true}));body.position.y=2;g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.35,10,10),new THREE.MeshLambertMaterial({color:0xcfd8dc}));head.position.y=3.2;g.add(head);
+    g.position.set(bx,0,bz);scene.add(g);addCol(bx,bz,0.9,0.9); showMessage('🗿 Estátua majestosa!',1500);
+  }
+  else if(id==='deco_lamp'){
+    const g=new THREE.Group();
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,4,6),new THREE.MeshLambertMaterial({color:0x37474f}));post.position.y=2;g.add(post);
+    const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.35,10,10),new THREE.MeshBasicMaterial({color:0xfff59d}));lamp.position.y=4;g.add(lamp);
+    g.position.set(bx,0,bz);scene.add(g); showMessage('💡 Poste de luz!',1500);
+  }
+  else if(id==='deco_flowers'){
+    const g=new THREE.Group();
+    const bed=new THREE.Mesh(new THREE.BoxGeometry(2,0.3,1.2),new THREE.MeshLambertMaterial({color:0x6d4c41}));bed.position.y=0.15;g.add(bed);
+    const cols=[0xff5252,0xffeb3b,0xff80ab,0xb388ff,0x40c4ff];
+    for(let i=0;i<10;i++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,5),new THREE.MeshLambertMaterial({color:cols[i%5]}));f.position.set((Math.random()-0.5)*1.6,0.45,(Math.random()-0.5)*0.9);g.add(f);}
+    g.position.set(bx,0,bz);scene.add(g); showMessage('🌷 Canteiro de flores!',1500);
   }
 }
 const extraWindmills=[];
@@ -2349,6 +2417,21 @@ function updateEngine(){
 }
 
 // ---------- STATS PANEL ----------
+// Leaderboard (top runs, local)
+function runScore(){ return state.money + state.level*2000 + (state.stats.harvested||0)*20; }
+function recordLeaderboard(){
+  try{
+    let lb=JSON.parse(localStorage.getItem('bentofarm_leaderboard')||'[]');
+    const sc=runScore();
+    const i=lb.findIndex(e=>e.id===state.sessionId);
+    const entry={id:state.sessionId, score:sc, level:state.level, money:state.money};
+    if(i>=0) lb[i]=entry; else lb.push(entry);
+    lb.sort((a,b)=>b.score-a.score); lb=lb.slice(0,5);
+    localStorage.setItem('bentofarm_leaderboard',JSON.stringify(lb));
+    return lb;
+  }catch(e){ return []; }
+}
+function getLeaderboard(){ try{ return JSON.parse(localStorage.getItem('bentofarm_leaderboard')||'[]'); }catch(e){ return []; } }
 // Records (best ever, persisted separately)
 function getRecords(){ try{ return JSON.parse(localStorage.getItem('bentofarm_records')||'{}'); }catch(e){ return {}; } }
 function updateRecords(){
@@ -2379,7 +2462,11 @@ window.toggleStats=()=>{
       `<div style="color:#ffd54f;font-weight:800;">🏅 RECORDES</div>`+
       `💰 Maior fortuna: <b>$${r.bestMoney||0}</b><br>`+
       `🎖️ Maior nível: <b>${r.bestLevel||1}</b><br>`+
-      `🌾 Recorde de colheita: <b>${r.bestHarvested||0}</b>`;
+      `🌾 Recorde de colheita: <b>${r.bestHarvested||0}</b>`+
+      `<div style="border-top:1px solid rgba(255,255,255,0.15);margin:8px 0;"></div>`+
+      `<div style="color:#81d4fa;font-weight:800;">🏆 PLACAR (melhores partidas)</div>`+
+      (function(){ const lb=recordLeaderboard(); if(!lb.length) return '<i style="opacity:0.7">Jogue para entrar no placar!</i>';
+        return lb.map((e,i)=>`${['🥇','🥈','🥉','4º','5º'][i]} <b>${e.score.toLocaleString()}</b> pts (Nv ${e.level} · $${e.money})`).join('<br>'); })();
   }
 };
 
@@ -2440,6 +2527,7 @@ function updateDog(dt){
 }
 
 function startGame(fresh){document.getElementById('start').style.display='none';state.running=true;
+  state.sessionId=Date.now();
   startMusic(); startEngine(); setupTouch();
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
