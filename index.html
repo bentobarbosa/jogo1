@@ -61,6 +61,11 @@
       display:flex; align-items:center; justify-content:center; }
     #ai-btn:hover { transform:translateY(82px) scale(1.08); }
     #ai-btn::after { content:'Ajuda'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #chop-btn { position:fixed; right:20px; top:50%; transform:translateY(206px); width:58px; height:58px; border-radius:50%;
+      background:linear-gradient(135deg,#a1887f,#6d4c41); border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
+    #chop-btn:hover { transform:translateY(206px) scale(1.08); }
+    #chop-btn::after { content:'Cortar árvore'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #ai-panel { position:fixed; bottom:90px; right:20px; width:330px; height:440px; background:rgba(20,28,45,0.97);
       border:2px solid #42a5f5; border-radius:16px; z-index:121; display:none; flex-direction:column;
       box-shadow:0 10px 40px rgba(0,0,0,0.6); overflow:hidden; }
@@ -214,6 +219,9 @@
     #start button { margin-top:26px; padding:16px 56px; font-size:22px; background:#ffd54f; color:#2d5016;
       border:none; border-radius:50px; cursor:pointer; font-weight:800; letter-spacing:2px; box-shadow:0 6px 20px rgba(0,0,0,0.4); }
     #start button:hover { transform:scale(1.05); }
+    #start button.btn-secondary { margin-top:14px; padding:8px 26px; font-size:14px; background:rgba(255,255,255,0.16);
+      color:#fff; border:2px solid rgba(255,255,255,0.55); letter-spacing:1px; box-shadow:none; font-weight:700; opacity:0.9; }
+    #start button.btn-secondary:hover { transform:scale(1.03); opacity:1; }
   </style>
 </head>
 <body>
@@ -229,11 +237,15 @@
     <p>🌱 <b>Dirija por cima do campo</b> com a ferramenta ligada — ela trabalha sozinha!</p>
     <p>🌾 Troque a semente: <span class="key">Q</span> · 🏪 Loja no mercado: <span class="key">B</span></p>
   </div>
+  <button id="btn-continue" onclick="startGame(false)" style="display:none;">▶ CONTINUAR NA MINHA FAZENDA <span id="continue-lvl"></span></button>
   <button id="btn-new" onclick="startGame(true)">🆕 NOVO JOGO (do zero)</button>
-  <button id="btn-continue" onclick="startGame(false)" style="display:none;margin-top:10px;padding:12px 40px;font-size:16px;background:rgba(255,255,255,0.25);color:#fff;border:2px solid #fff;border-radius:30px;cursor:pointer;font-weight:700;">▶ CONTINUAR <span id="continue-lvl"></span></button>
   <script>
-    // Show "Continuar" only if a save exists
-    (function(){ try{ var s=localStorage.getItem('bentofarm_save_v2'); if(s){ var d=JSON.parse(s); var b=document.getElementById('btn-continue'); b.style.display='inline-block'; document.getElementById('continue-lvl').textContent='(Nível '+(d.level||1)+')'; document.getElementById('btn-new').textContent='🆕 COMEÇAR DO ZERO'; } }catch(e){} })();
+    // If a save exists: CONTINUAR is the big main button, "começar do zero" becomes the small secondary one
+    (function(){ try{ var s=localStorage.getItem('bentofarm_save_v2'); if(s){ var d=JSON.parse(s);
+      var c=document.getElementById('btn-continue'); c.style.display='inline-block';
+      document.getElementById('continue-lvl').textContent='(Nível '+(d.level||1)+')';
+      var n=document.getElementById('btn-new'); n.classList.add('btn-secondary'); n.textContent='↩️ Começar do zero';
+    } }catch(e){} })();
   </script>
 </div>
 
@@ -246,6 +258,7 @@
 <!-- Music + Stats buttons -->
 <button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-110px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
 <button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
+<button id="chop-btn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
 
 <!-- Stats panel -->
 <div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;max-height:86vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
@@ -969,6 +982,22 @@ function clearTileToGrass(t){
   t.state='grass'; t.mesh.material=grassTileMat(); t.mesh.position.y=0.05;
   t.crop=null; t.growProgress=0; t.golden=false; t.water=0; t.waterUntil=0; t.fertilized=false; t.protected=false; t.regrowing=false;
 }
+// One-click button: chop down the closest planted tree (apple/orange/coconut/avocado)
+window.chopNearestTree=()=>{
+  const p=(typeof activeVehPos==='function')?activeVehPos():tractor.position;
+  let best=null, bd=1e9;
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+    if((t.state==='planted'||t.state==='grown') && t.crop && CROPS[t.crop] && CROPS[t.crop].tree){
+      const d=Math.hypot(t.x-p.x, t.z-p.z); if(d<bd){ bd=d; best=t; }
+    }
+  }
+  if(best && bd<16){ const nm=CROPS[best.crop].name; clearTileToGrass(best);
+    floatText(best.x,best.z,'🪓 '+nm+' removida',0x8d6e63); if(typeof sndPlow==='function')sndPlow();
+    showMessage('🪓 Árvore removida!',1200);
+  } else {
+    showMessage('🪓 Chegue perto de uma árvore plantada (🍎🍊🥥🥑) e clique de novo!',2600);
+  }
+};
 // Throttled countdown updater — only near the player for performance
 let _timerAcc=0;
 function updateTimers(dt){
