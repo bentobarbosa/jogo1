@@ -2670,7 +2670,6 @@ function updateDog(dt){
 function startGame(fresh){document.getElementById('start').style.display='none';state.running=true;
   state.sessionId=Date.now();
   startMusic(); startEngine(); setupTouch();
-  for(let i=0;i<5;i++) makeBalloon((Math.random()-0.5)*200,(Math.random()-0.5)*200); // ambiance balloons
   applyFestive(); // initial seasonal decorations
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
