@@ -270,6 +270,7 @@
   </div>
 </div>
 <div id="rain-overlay"></div>
+<div id="lightning" style="position:fixed;inset:0;pointer-events:none;z-index:6;background:rgba(255,255,255,0);transition:background 0.08s;"></div>
 
 <!-- Trophies -->
 <button id="trophy-btn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
@@ -450,6 +451,8 @@ const TRACTORS = [
   { name:'🚜 Trator Vermelho',  speed:23, fuelCap:200, price:15000, color:0xc62828, scale:1.15 },
   { name:'🚜 Trator Azul Turbo', speed:28, fuelCap:250, price:30000, color:0x1565c0, scale:1.2 },
   { name:'🚜 Mega Trator Dourado', speed:36, fuelCap:350, price:80000, color:0xffd700, scale:1.3 },
+  { name:'👹 Trator Monstro', speed:46, fuelCap:500, price:150000, color:0x4a148c, scale:1.6 },
+  { name:'🌾 Colheitadeira Gigante', speed:40, fuelCap:600, price:250000, color:0xff6f00, scale:1.9 },
 ];
 const CROPS = {
   apple:    { emoji:'🍎', name:'Maçã (árvore)', growTime:50, sell:120, seed:60, top:0xe53935, tree:true, regrow:35 },
@@ -1574,6 +1577,7 @@ window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.invento
 // ---------- SAVE / LOAD (#33 autosave) ----------
 const SAVE_KEY='bentofarm_save_v1';
 function saveGame(){
+  try{ if(typeof updateRecords==='function') updateRecords(); }catch(e){}
   try{
     // Serialize plantation tiles (only non-grass ones)
     const tilesData=[];
@@ -1763,13 +1767,15 @@ setTimeout(()=>{ try{
     buildPen(at.pen, at.name.split(' ')[0], at.name.split(' ')[1].toUpperCase(), at.tint, PEN_ROOFS[type]||0x8d6e63);
   }
 }catch(e){console.error('pen build',e);} },0);
-function spawnAnimal(type){
+function spawnAnimal(type,baby){
   const at=ANIMAL_TYPES[type]; const p=at.pen;
   const x=p.cx+(Math.random()-0.5)*(p.sx*2-3);
   const z=p.cz+(Math.random()-0.5)*(p.sz*2-3);
   const made=at.make(x,z);
   const mesh = made.isObject3D ? made : made.mesh;
-  farmAnimals.push({mesh,type,target:new THREE.Vector3(x,0,z),speed:at.speed,wander:Math.random()*4,prod:Math.random()*at.prodTime});
+  const a={mesh,type,target:new THREE.Vector3(x,0,z),speed:at.speed*(baby?1.4:1),wander:Math.random()*4,prod:Math.random()*at.prodTime,baby:!!baby,grow:baby?0.45:1};
+  if(baby){ mesh.scale.setScalar(0.45); floatText(x,z,'🐣 filhote!',0xfff176); }
+  farmAnimals.push(a);
 }
 function updateFarmAnimals(dt){
   const now=performance.now()/1000;
@@ -1783,8 +1789,10 @@ function updateFarmAnimals(dt){
       if(d>0.4){to.normalize();a.mesh.position.addScaledVector(to,a.speed*dt);a.mesh.lookAt(a.target.x,a.mesh.position.y,a.target.z);}
       a.mesh.position.y=Math.abs(Math.sin(now*4+a.mesh.position.x))*0.05;
     }
+    // Babies grow up to full size
+    if(a.baby){ a.grow=Math.min(1,a.grow+dt*0.04); a.mesh.scale.setScalar(a.grow); if(a.grow>=1){ a.baby=false; a.speed=at.speed; } }
     a.prod+=dt;
-    if(a.prod>=at.prodTime){a.prod=0;state.inventory[at.product]=(state.inventory[at.product]||0)+1;
+    if(!a.baby && a.prod>=at.prodTime){a.prod=0;state.inventory[at.product]=(state.inventory[at.product]||0)+1;
       floatText(a.mesh.position.x,a.mesh.position.z,'+1 '+at.productName.split(' ')[0],0xffffff);}
   }
 }
@@ -1899,9 +1907,30 @@ function updateDayNight(){
 }
 
 // ---------- WEATHER ----------
+// Rainbow (3D arc, appears after rain)
+let rainbow=null, rainbowLife=0, lightningTimer=0;
+function showRainbow(){
+  if(rainbow) scene.remove(rainbow);
+  const g=new THREE.Group();
+  const cols=[0xff3b30,0xff9500,0xffcc00,0x34c759,0x007aff,0x5856d6,0xaf52de];
+  cols.forEach((c,i)=>{ const r=40-i*1.4;
+    const arc=new THREE.Mesh(new THREE.TorusGeometry(r,0.7,8,40,Math.PI),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.5}));
+    g.add(arc);
+  });
+  const v=curVeh ? curVeh() : tractor;
+  g.position.set(v.position.x-30, 0, v.position.z-70); g.rotation.y=0.3;
+  scene.add(g); rainbow=g; rainbowLife=14;
+}
+function lightningFlash(){
+  const el=document.getElementById('lightning'); if(el){ el.style.background='rgba(255,255,255,0.6)'; setTimeout(()=>{el.style.background='rgba(255,255,255,0)';},90);
+    setTimeout(()=>{el.style.background='rgba(255,255,255,0.35)';},150); setTimeout(()=>{el.style.background='rgba(255,255,255,0)';},230); }
+  // thunder rumble
+  try{ const ctx=getAudio(); const o=ctx.createOscillator(),gn=ctx.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(70,ctx.currentTime); o.frequency.exponentialRampToValueAtTime(25,ctx.currentTime+0.7); gn.gain.setValueAtTime(soundOn?0.35:0,ctx.currentTime); gn.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.9); o.connect(gn); gn.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.9);}catch(e){}
+}
 function updateWeather(dt){
   state.weatherTimer-=dt;
   if(state.weatherTimer<=0){
+    const prev=state.weather;
     const r=Math.random();
     state.weather = r<0.6?'sun': r<0.85?'cloudy':'rain';
     state.weatherTimer = 60+Math.random()*60;
@@ -1909,11 +1938,11 @@ function updateWeather(dt){
     document.getElementById('rain-overlay').classList.toggle('on', state.weather==='rain');
     rain.visible = state.weather==='rain';
     showMessage(state.weather==='rain'?'🌧️ Começou a chover!': state.weather==='cloudy'?'☁️ Nublado':'☀️ Sol forte!', 1500);
+    // Rainbow after rain ends into sun
+    if(prev==='rain' && state.weather==='sun'){ showRainbow(); showMessage('🌈 Um arco-íris apareceu!',2500); }
   }
   if(state.weather==='rain'){
-    // Rain follows camera
     rain.position.x=tractor.position.x; rain.position.z=tractor.position.z;
-    // Animate rain falling
     const pos=rain.geometry.attributes.position;
     for(let i=0;i<RAIN_COUNT;i++){
       let y=pos.getY(i)-30*dt;
@@ -1921,11 +1950,16 @@ function updateWeather(dt){
       pos.setY(i,y);
     }
     pos.needsUpdate=true;
-    // Auto-water all planted tiles
     for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
       if((t.state==='planted'||t.state==='tilled') && !t.water){ t.water=1; t.waterUntil=performance.now()/1000+30; }
     }
+    // Occasional lightning
+    lightningTimer-=dt; if(lightningTimer<=0){ lightningTimer=6+Math.random()*10; lightningFlash(); }
   }
+  // Fade rainbow
+  if(rainbow){ rainbowLife-=dt; const op=Math.max(0,Math.min(0.5,rainbowLife/4*0.5));
+    rainbow.children.forEach(a=>a.material.opacity=op);
+    if(rainbowLife<=0){ scene.remove(rainbow); rainbow=null; } }
 }
 
 // ---------- WEEDS ----------
@@ -2156,8 +2190,8 @@ function updateProducers(dt){
       // breed: pick a random owned animal type that has at least 1, spawn a baby
       const ownedTypes=[...new Set(farmAnimals.map(a=>a.type))];
       const bt=ownedTypes[Math.floor(Math.random()*ownedTypes.length)];
-      spawnAnimal(bt);
-      showMessage(`🐣 Um novo ${ANIMAL_TYPES[bt].name} nasceu! (comeu ${CROPS[fc].emoji})`,1800);
+      spawnAnimal(bt,true); // baby!
+      showMessage(`🐣 Nasceu um filhote de ${ANIMAL_TYPES[bt].name}! (comeu ${CROPS[fc].emoji})`,1800);
       gained=true;
     } else {
       // no crops to feed — hint occasionally
@@ -2315,12 +2349,22 @@ function updateEngine(){
 }
 
 // ---------- STATS PANEL ----------
+// Records (best ever, persisted separately)
+function getRecords(){ try{ return JSON.parse(localStorage.getItem('bentofarm_records')||'{}'); }catch(e){ return {}; } }
+function updateRecords(){
+  const r=getRecords();
+  r.bestMoney=Math.max(r.bestMoney||0, state.money);
+  r.bestLevel=Math.max(r.bestLevel||0, state.level);
+  r.bestHarvested=Math.max(r.bestHarvested||0, state.stats.harvested||0);
+  try{ localStorage.setItem('bentofarm_records',JSON.stringify(r)); }catch(e){}
+  return r;
+}
 window.toggleStats=()=>{
   const p=document.getElementById('stats-panel');
   const open=p.style.display==='none';
   p.style.display=open?'block':'none';
   if(open){
-    const s=state.stats;
+    const s=state.stats; const r=updateRecords();
     document.getElementById('stats-body').innerHTML=
       `🌾 Total colhido: <b>${s.harvested||0}</b><br>`+
       `📋 Contratos: <b>${s.contractsDone||0}</b><br>`+
@@ -2330,7 +2374,12 @@ window.toggleStats=()=>{
       `💰 Dinheiro: <b>$${state.money}</b><br>`+
       `🌍 Campos: <b>${state.plotsUnlocked}/9</b><br>`+
       `🚜 Tratores: <b>${state.tractorsOwned.length}</b><br>`+
-      `🏆 Conquistas: <b>${Object.keys(state.achievements).length}/${ACHIEVEMENTS.length}</b>`;
+      `🏆 Conquistas: <b>${Object.keys(state.achievements).length}/${ACHIEVEMENTS.length}</b>`+
+      `<div style="border-top:1px solid rgba(255,255,255,0.15);margin:8px 0;"></div>`+
+      `<div style="color:#ffd54f;font-weight:800;">🏅 RECORDES</div>`+
+      `💰 Maior fortuna: <b>$${r.bestMoney||0}</b><br>`+
+      `🎖️ Maior nível: <b>${r.bestLevel||1}</b><br>`+
+      `🌾 Recorde de colheita: <b>${r.bestHarvested||0}</b>`;
   }
 };
 
