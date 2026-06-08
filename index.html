@@ -248,9 +248,14 @@
 <button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
 
 <!-- Stats panel -->
-<div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
+<div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;max-height:86vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
   <h2 style="text-align:center;color:#9fa8ff;margin-bottom:12px;">📊 ESTATÍSTICAS</h2>
   <div id="stats-body" style="font-size:14px;line-height:1.9;"></div>
+  <div style="border-top:2px solid rgba(255,255,255,0.15);margin:12px 0;"></div>
+  <div style="text-align:center;color:#80d8ff;font-weight:800;margin-bottom:6px;">🌐 PLACAR ONLINE</div>
+  <div id="online-list" style="font-size:13px;line-height:1.7;min-height:30px;"></div>
+  <button id="online-submit" onclick="submitOnlineScore()" style="display:block;width:100%;margin-top:10px;padding:9px;background:#0288d1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:800;">📤 Enviar minha pontuação</button>
+  <button onclick="renderOnlineBoard()" style="display:block;width:100%;margin-top:6px;padding:6px;background:rgba(255,255,255,0.12);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Atualizar</button>
   <button onclick="toggleStats()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 
@@ -2558,6 +2563,51 @@ function updateEngine(){
 }
 
 // ---------- STATS PANEL ----------
+// ===== ONLINE LEADERBOARD (shared via ntfy.sh — free, no signup, CORS-enabled) =====
+const NTFY_URL='https://ntfy.sh/bentofarm_world_lb_k3x9p';
+function getPlayerName(){ return localStorage.getItem('bentofarm_name')||''; }
+function setPlayerName(n){ localStorage.setItem('bentofarm_name',n); }
+async function fetchOnlineScores(){
+  try{
+    const r=await fetch(NTFY_URL+'/json?poll=1',{cache:'no-store'});
+    if(!r.ok) return null;
+    const txt=await r.text();
+    const lines=txt.trim().split('\n').filter(Boolean);
+    let latest=[];
+    for(const ln of lines){ try{ const o=JSON.parse(ln); if(typeof o.message==='string' && o.message.startsWith('LB:')){ latest=JSON.parse(o.message.slice(3)); } }catch(e){} }
+    return (Array.isArray(latest)?latest:[]).sort((a,b)=>b.score-a.score).slice(0,20);
+  }catch(e){ return null; }
+}
+async function submitOnlineScore(){
+  let name=getPlayerName();
+  if(!name){ name=(prompt('Seu nome para o placar mundial (máx 14):')||'').trim().slice(0,14); if(!name) return; setPlayerName(name); }
+  const myScore=runScore();
+  const btn=document.getElementById('online-submit'); if(btn){ btn.textContent='Enviando...'; btn.disabled=true; }
+  try{
+    let list=await fetchOnlineScores(); if(!Array.isArray(list)) list=[];
+    const i=list.findIndex(e=>e.name===name);
+    if(i>=0){ if(myScore>list[i].score) list[i]={name,score:myScore,level:state.level}; }
+    else list.push({name,score:myScore,level:state.level});
+    list.sort((a,b)=>b.score-a.score); list=list.slice(0,50);
+    const resp=await fetch(NTFY_URL,{method:'POST',body:'LB:'+JSON.stringify(list)});
+    showMessage(resp.ok?'🌐 Pontuação enviada ao placar mundial!':'❌ Falha ao enviar',2000);
+  }catch(e){ showMessage('❌ Sem internet para o placar online',2000); }
+  renderOnlineBoard();
+}
+async function renderOnlineBoard(){
+  const el=document.getElementById('online-list'); if(!el) return;
+  el.innerHTML='<i style="opacity:0.7">Carregando...</i>';
+  const list=await fetchOnlineScores();
+  const btn=document.getElementById('online-submit'); if(btn){ btn.textContent='📤 Enviar minha pontuação'; btn.disabled=false; }
+  if(list===null){ el.innerHTML='<i style="opacity:0.7">Sem conexão. Tente de novo.</i>'; return; }
+  if(!list.length){ el.innerHTML='<i style="opacity:0.7">Seja o primeiro no placar!</i>'; return; }
+  const me=getPlayerName();
+  el.innerHTML=list.slice(0,10).map((e,i)=>{
+    const medal=['🥇','🥈','🥉'][i]||(i+1)+'º';
+    const mine=e.name===me?'background:rgba(255,213,79,0.18);border-radius:6px;':'';
+    return `<div style="display:flex;justify-content:space-between;padding:3px 6px;${mine}"><span>${medal} ${e.name} <span style="opacity:0.6">(Nv ${e.level||'?'})</span></span><b style="color:#ffd54f">${e.score.toLocaleString()}</b></div>`;
+  }).join('');
+}
 // Leaderboard (top runs, local)
 function runScore(){ return state.money + state.level*2000 + (state.stats.harvested||0)*20; }
 function recordLeaderboard(){
@@ -2608,6 +2658,7 @@ window.toggleStats=()=>{
       `<div style="color:#81d4fa;font-weight:800;">🏆 PLACAR (melhores partidas)</div>`+
       (function(){ const lb=recordLeaderboard(); if(!lb.length) return '<i style="opacity:0.7">Jogue para entrar no placar!</i>';
         return lb.map((e,i)=>`${['🥇','🥈','🥉','4º','5º'][i]} <b>${e.score.toLocaleString()}</b> pts (Nv ${e.level} · $${e.money})`).join('<br>'); })();
+    renderOnlineBoard(); // load online leaderboard
   }
 };
 
