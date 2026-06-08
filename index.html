@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>🚜 Bento Farm Simulator</title>
+  <title>🚜 Farm Simulator</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background:#87ceeb; overflow:hidden; font-family:'Segoe UI',Tahoma,sans-serif; user-select:none; }
@@ -219,7 +219,7 @@
 <body>
 
 <div id="start">
-  <h1>🚜 BENTO FARM</h1>
+  <h1>🚜 FARM SIMULATOR</h1>
   <p class="tag">Seu simulador de fazenda 3D</p>
   <div class="how">
     <h3>COMO JOGAR</h3>
@@ -961,6 +961,7 @@ function notifyNoSeed(){
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
   if(t.weed){ const w=t.weed; t.weed=null; scene.remove(w); if(w.geometry)w.geometry.dispose(); if(w.material)w.material.dispose(); }
+  if(t.pest){ removePest(t); floatText(t.x,t.z,'✅ praga destruída!',0x66bb6a); }
   if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; sndPlow(); } }
   else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--;
     // Auto-apply fertilizer if available
@@ -1103,6 +1104,7 @@ function updateCrops(now){
       if(inGreenhouse(t)) speedMult *= 3; // greenhouse bonus
       for(const h of hiveZones){ if(Math.hypot(t.x-h.x,t.z-h.z)<h.r){ speedMult *= 1.5; break; } } // hive pollination
       if(t.weed) speedMult = 0; // halt
+      if(t.pest) speedMult = 0; // pests halt growth too
       t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
       t.lastUpdate = now;
       const cropDef = CROPS[t.crop];
@@ -1383,11 +1385,7 @@ const EVENTS=[
   },
 ];
 function updateEvents(dt){
-  state.eventTimer-=dt;
-  if(state.eventTimer<=0){
-    state.eventTimer=60+Math.random()*40; // every 60-100s
-    EVENTS[Math.floor(Math.random()*EVENTS.length)]();
-  }
+  // Bonus events removed by request — no more random rewards.
 }
 
 // ---------- AI ASSISTANT (offline knowledge base) ----------
@@ -2026,6 +2024,49 @@ function updateWeeds(dt){
   }
 }
 
+// ---------- PESTS / PRAGAS (locust bugs that eat crops!) ----------
+function spawnPest(t){
+  if(t.pest) return;
+  const g=new THREE.Group();
+  for(let i=0;i<4;i++){ const bug=new THREE.Mesh(new THREE.SphereGeometry(0.13,6,6),new THREE.MeshLambertMaterial({color:0x4caf50,emissive:0x113300,emissiveIntensity:0.4}));
+    bug.scale.z=1.6; bug.position.set((Math.random()-0.5)*1.4,0.4+Math.random()*0.3,(Math.random()-0.5)*1.4); g.add(bug); }
+  g.position.set(t.x,0,t.z); scene.add(g); t.pest=g; t.pestSpawn=performance.now()/1000;
+  // warning marker
+  const mk=new THREE.Sprite(new THREE.SpriteMaterial({map:getEmojiTex('⚠️'),transparent:true})); mk.scale.set(1.2,1.2,1); mk.position.set(t.x,2.8,t.z); scene.add(mk); t.pestMark=mk;
+}
+function removePest(t){
+  if(t.pest){ scene.remove(t.pest); t.pest.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();}); t.pest=null; }
+  if(t.pestMark){ scene.remove(t.pestMark); if(t.pestMark.material)t.pestMark.material.dispose(); t.pestMark=null; }
+}
+let pestTimer=0, pestWarned=0;
+function updatePests(dt){
+  const now=performance.now()/1000;
+  // Spawn new pests occasionally on planted/grown crops (not if protected by pesticide)
+  pestTimer-=dt;
+  if(pestTimer<=0){ pestTimer=20+Math.random()*15;
+    const cands=[]; for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){ if((t.state==='planted'||t.state==='grown') && !t.pest && !t.protected) cands.push(t); }
+    if(cands.length){ const t=cands[Math.floor(Math.random()*cands.length)]; spawnPest(t);
+      if(now-pestWarned>8){ pestWarned=now; showMessage('🐛 PRAGA no campo! Passe por cima com o trator pra destruir!',2600); }
+    }
+  }
+  // Pests that linger too long DESTROY the crop
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+    if(t.pest){
+      // animate bugs
+      t.pest.rotation.y+=dt*2; t.pest.position.y=Math.abs(Math.sin(now*6))*0.1;
+      if(now - t.pestSpawn > 18){
+        // crop destroyed!
+        removePest(t);
+        if(t.plant){scene.remove(t.plant);t.plant=null;}
+        if(t.marker){try{removeCropMarker(t);}catch(e){}}
+        if(t.goldMark){scene.remove(t.goldMark);t.goldMark=null;} t.golden=false;
+        t.state='tilled'; t.mesh.material=tilledMat(); t.crop=null; t.growProgress=0;
+        floatText(t.x,t.z,'💀 perdida!',0xd32f2f);
+      }
+    }
+  }
+}
+
 // ---------- BUILD SYSTEM (#19) ----------
 const greenhouseZones=[];  // {x,z,r} crops grow 3x inside
 const waterTowers=[];      // {x,z,r} auto-water nearby tiles
@@ -2471,6 +2512,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateDayNight();
   updateWeather(dt);
   updateWeeds(dt);
+  updatePests(dt);
   updateWaterTowers(dt);
   updateProducers(dt);
   updateMarket(dt);
@@ -2570,7 +2612,8 @@ function updateEngine(){
 // ---------- STATS PANEL ----------
 // ===== ONLINE LEADERBOARD (shared via ntfy.sh — free, no signup, CORS-enabled) =====
 const NTFY_URL='https://ntfy.sh/bentofarm_world_lb_k3x9p';
-function getPlayerName(){ return localStorage.getItem('bentofarm_name')||''; }
+// Auto-generate a name so EVERY farm is public automatically
+function getPlayerName(){ let n=localStorage.getItem('bentofarm_name'); if(!n){ n='Fazendeiro'+Math.floor(1000+Math.random()*9000); localStorage.setItem('bentofarm_name',n); } return n; }
 function setPlayerName(n){ localStorage.setItem('bentofarm_name',n); }
 async function fetchOnlineScores(){
   try{
@@ -2583,26 +2626,37 @@ async function fetchOnlineScores(){
     return (Array.isArray(latest)?latest:[]).sort((a,b)=>b.score-a.score).slice(0,20);
   }catch(e){ return null; }
 }
+// Shared publish: updates the world leaderboard + publishes my farm so it's visitable
+async function doPublish(name){
+  const myScore=runScore();
+  let list=await fetchOnlineScores(); if(!Array.isArray(list)) list=[];
+  const i=list.findIndex(e=>e.name===name);
+  if(i>=0){ list[i]={name,score:Math.max(myScore,list[i].score||0),level:state.level}; }
+  else list.push({name,score:myScore,level:state.level});
+  list.sort((a,b)=>b.score-a.score); list=list.slice(0,50);
+  await fetch(NTFY_URL,{method:'POST',body:'LB:'+JSON.stringify(list)});
+  const farm={ name, money:state.money, level:state.level, plotsUnlocked:state.plotsUnlocked,
+    tractorIdx:state.tractorIdx, tractorColor:state.tractorColor, season:state.season,
+    buildings:(state.buildings||[]).slice(0,40), animals:farmAnimals.map(a=>a.type).slice(0,40) };
+  await fetch(farmTopicURL(name),{method:'POST',body:'FARM:'+JSON.stringify(farm)});
+}
+// Auto-publish loop — keeps EVERY farm public & scores fresh, no manual action needed
+let autoPubStarted=false;
+function startAutoPublish(){
+  if(autoPubStarted) return; autoPubStarted=true;
+  const pub=()=>{ if(state.visiting||!state.running) return; doPublish(getPlayerName()).then(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }).catch(()=>{}); };
+  setTimeout(pub, 4000);      // first publish shortly after start
+  setInterval(pub, 20000);    // then every 20s (free server can't handle every second)
+}
 async function submitOnlineScore(){
   if(state.visiting){ showMessage('↩️ Volte pra sua fazenda antes de enviar!',2000); return; }
   let name=getPlayerName();
-  if(!name){ name=(prompt('Seu nome para o placar mundial (máx 14):')||'').trim().slice(0,14); if(!name) return; setPlayerName(name); }
-  const myScore=runScore();
+  // let the player pick a nicer name (pre-filled)
+  const input=prompt('Seu nome no placar mundial (máx 14):', name);
+  if(input!==null){ const nn=input.trim().slice(0,14); if(nn){ setPlayerName(nn); name=nn; } }
   const btn=document.getElementById('online-submit'); if(btn){ btn.textContent='Enviando...'; btn.disabled=true; }
-  try{
-    let list=await fetchOnlineScores(); if(!Array.isArray(list)) list=[];
-    const i=list.findIndex(e=>e.name===name);
-    if(i>=0){ if(myScore>list[i].score) list[i]={name,score:myScore,level:state.level}; }
-    else list.push({name,score:myScore,level:state.level});
-    list.sort((a,b)=>b.score-a.score); list=list.slice(0,50);
-    const resp=await fetch(NTFY_URL,{method:'POST',body:'LB:'+JSON.stringify(list)});
-    // also publish MY FARM so others can visit it
-    const farm={ name, money:state.money, level:state.level, plotsUnlocked:state.plotsUnlocked,
-      tractorIdx:state.tractorIdx, tractorColor:state.tractorColor, season:state.season,
-      buildings:(state.buildings||[]).slice(0,40), animals:farmAnimals.map(a=>a.type).slice(0,40) };
-    try{ await fetch(farmTopicURL(name),{method:'POST',body:'FARM:'+JSON.stringify(farm)}); }catch(e){}
-    showMessage(resp.ok?'🌐 Pontuação e fazenda enviadas ao mundo!':'❌ Falha ao enviar',2000);
-  }catch(e){ showMessage('❌ Sem internet para o placar online',2000); }
+  try{ await doPublish(name); showMessage('🌐 Pontuação e fazenda enviadas ao mundo!',2000); }
+  catch(e){ showMessage('❌ Sem internet para o placar online',2000); }
   renderOnlineBoard();
 }
 function safeName(n){ return n.replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20)||'anon'; }
@@ -2780,7 +2834,9 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   const vName=localStorage.getItem('bentofarm_visiting');
   if(vName){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+vName;
     document.getElementById('visit-banner').style.display='flex'; }
-  else { setInterval(saveGame, 15000); } // Autosave every 15s (not while visiting)
+  else { document.getElementById('visit-banner').style.display='none'; setInterval(saveGame, 15000); startAutoPublish(); } // autosave + auto-publish to world (not while visiting)
+  // Auto-refresh the online leaderboard while the stats panel is open
+  setInterval(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }, 20000);
 }
 window.startGame=startGame;
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
