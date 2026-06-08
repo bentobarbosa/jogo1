@@ -276,6 +276,10 @@
 </div>
 <div id="rain-overlay"></div>
 <div id="lightning" style="position:fixed;inset:0;pointer-events:none;z-index:6;background:rgba(255,255,255,0);transition:background 0.08s;"></div>
+<div id="visit-banner" style="display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:140;background:linear-gradient(135deg,#43a047,#2e7d32);color:#fff;padding:10px 18px;border-radius:30px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:2px solid #fff;display:flex;align-items:center;gap:12px;">
+  <span id="visit-text">🚜 Visitando a fazenda de ...</span>
+  <button onclick="leaveVisit()" style="background:#fff;color:#2e7d32;border:none;border-radius:20px;padding:5px 14px;font-weight:800;cursor:pointer;">↩️ Voltar pra minha fazenda</button>
+</div>
 
 <!-- Trophies -->
 <button id="trophy-btn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
@@ -1613,6 +1617,7 @@ window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.invento
 // ---------- SAVE / LOAD (#33 autosave) ----------
 const SAVE_KEY='bentofarm_save_v1';
 function saveGame(){
+  if(state.visiting) return; // don't overwrite your own save while visiting someone
   try{ if(typeof updateRecords==='function') updateRecords(); if(typeof recordLeaderboard==='function') recordLeaderboard(); }catch(e){}
   try{
     // Serialize plantation tiles (only non-grass ones)
@@ -2579,6 +2584,7 @@ async function fetchOnlineScores(){
   }catch(e){ return null; }
 }
 async function submitOnlineScore(){
+  if(state.visiting){ showMessage('↩️ Volte pra sua fazenda antes de enviar!',2000); return; }
   let name=getPlayerName();
   if(!name){ name=(prompt('Seu nome para o placar mundial (máx 14):')||'').trim().slice(0,14); if(!name) return; setPlayerName(name); }
   const myScore=runScore();
@@ -2590,10 +2596,44 @@ async function submitOnlineScore(){
     else list.push({name,score:myScore,level:state.level});
     list.sort((a,b)=>b.score-a.score); list=list.slice(0,50);
     const resp=await fetch(NTFY_URL,{method:'POST',body:'LB:'+JSON.stringify(list)});
-    showMessage(resp.ok?'🌐 Pontuação enviada ao placar mundial!':'❌ Falha ao enviar',2000);
+    // also publish MY FARM so others can visit it
+    const farm={ name, money:state.money, level:state.level, plotsUnlocked:state.plotsUnlocked,
+      tractorIdx:state.tractorIdx, tractorColor:state.tractorColor, season:state.season,
+      buildings:(state.buildings||[]).slice(0,40), animals:farmAnimals.map(a=>a.type).slice(0,40) };
+    try{ await fetch(farmTopicURL(name),{method:'POST',body:'FARM:'+JSON.stringify(farm)}); }catch(e){}
+    showMessage(resp.ok?'🌐 Pontuação e fazenda enviadas ao mundo!':'❌ Falha ao enviar',2000);
   }catch(e){ showMessage('❌ Sem internet para o placar online',2000); }
   renderOnlineBoard();
 }
+function safeName(n){ return n.replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20)||'anon'; }
+function farmTopicURL(n){ return 'https://ntfy.sh/bentofarm_farm_'+safeName(n); }
+async function fetchFarm(name){
+  try{ const r=await fetch(farmTopicURL(name)+'/json?poll=1',{cache:'no-store'}); if(!r.ok) return null;
+    const txt=await r.text(); const lines=txt.trim().split('\n').filter(Boolean); let farm=null;
+    for(const ln of lines){ try{ const o=JSON.parse(ln); if(typeof o.message==='string' && o.message.startsWith('FARM:')) farm=JSON.parse(o.message.slice(5)); }catch(e){} }
+    return farm;
+  }catch(e){ return null; }
+}
+window.visitFarm=async(name)=>{
+  showMessage('🚜 Carregando a fazenda de '+name+'...',2500);
+  const farm=await fetchFarm(name);
+  if(!farm){ showMessage('❌ Não consegui carregar essa fazenda (ainda não publicada).',2500); return; }
+  // back up my own save, then load theirs as a temporary save
+  const mine=localStorage.getItem('bentofarm_save_v1'); if(mine) localStorage.setItem('bentofarm_save_backup',mine);
+  const visitSave={ money:farm.money, level:farm.level, plotsUnlocked:farm.plotsUnlocked||1,
+    tractorIdx:farm.tractorIdx||0, tractorColor:farm.tractorColor, season:farm.season||0,
+    buildings:farm.buildings||[], animals:farm.animals||[], tiles:[], inventory:{}, objective:12 };
+  localStorage.setItem('bentofarm_save_v1', JSON.stringify(visitSave));
+  localStorage.setItem('bentofarm_visiting', name);
+  location.reload();
+};
+window.leaveVisit=()=>{
+  const bak=localStorage.getItem('bentofarm_save_backup');
+  if(bak){ localStorage.setItem('bentofarm_save_v1',bak); localStorage.removeItem('bentofarm_save_backup'); }
+  else localStorage.removeItem('bentofarm_save_v1');
+  localStorage.removeItem('bentofarm_visiting');
+  location.reload();
+};
 async function renderOnlineBoard(){
   const el=document.getElementById('online-list'); if(!el) return;
   el.innerHTML='<i style="opacity:0.7">Carregando...</i>';
@@ -2605,7 +2645,8 @@ async function renderOnlineBoard(){
   el.innerHTML=list.slice(0,10).map((e,i)=>{
     const medal=['🥇','🥈','🥉'][i]||(i+1)+'º';
     const mine=e.name===me?'background:rgba(255,213,79,0.18);border-radius:6px;':'';
-    return `<div style="display:flex;justify-content:space-between;padding:3px 6px;${mine}"><span>${medal} ${e.name} <span style="opacity:0.6">(Nv ${e.level||'?'})</span></span><b style="color:#ffd54f">${e.score.toLocaleString()}</b></div>`;
+    const visitBtn=e.name===me?'':`<button onclick="visitFarm('${e.name.replace(/'/g,"")}')" style="background:#43a047;color:#fff;border:none;border-radius:6px;font-size:10px;padding:2px 7px;cursor:pointer;margin-left:6px;">🔍 Visitar</button>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 6px;${mine}"><span>${medal} ${e.name} <span style="opacity:0.6">(Nv ${e.level||'?'})</span></span><span><b style="color:#ffd54f">${e.score.toLocaleString()}</b>${visitBtn}</span></div>`;
   }).join('');
 }
 // Leaderboard (top runs, local)
@@ -2735,12 +2776,17 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   // Spawn NPCs
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
-  // Autosave every 15s
-  setInterval(saveGame, 15000);
+  // Visiting another farm? show banner, don't autosave/submit
+  const vName=localStorage.getItem('bentofarm_visiting');
+  if(vName){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+vName;
+    document.getElementById('visit-banner').style.display='flex'; }
+  else { setInterval(saveGame, 15000); } // Autosave every 15s (not while visiting)
 }
 window.startGame=startGame;
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 renderer.render(scene,camera);
+// Auto-enter visit mode on reload if a visit is pending
+if(localStorage.getItem('bentofarm_visiting')){ setTimeout(()=>{ try{ startGame(false); }catch(e){ console.error(e); } }, 50); }
 </script>
 </body>
 </html>
