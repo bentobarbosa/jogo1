@@ -66,6 +66,24 @@
       box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
     #chop-btn:hover { transform:translateY(206px) scale(1.08); }
     #chop-btn::after { content:'Cortar árvore'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
+      background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
+      cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
+    #plot-btn:hover { transform:translateY(72px) scale(1.05); }
+    #foot-btn { position:fixed; left:16px; top:50%; transform:translateY(120px); z-index:50; padding:9px 15px; border-radius:24px;
+      background:linear-gradient(135deg,#42a5f5,#1565c0); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
+      cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
+    #foot-btn:hover { transform:translateY(120px) scale(1.05); }
+    #boneco-btn { position:fixed; left:16px; top:50%; transform:translateY(166px); z-index:50; padding:9px 15px; border-radius:24px;
+      background:linear-gradient(135deg,#ab47bc,#6a1b9a); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
+      cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
+    #boneco-btn:hover { transform:translateY(166px) scale(1.05); }
+    .bn-row { margin:9px 0; }
+    .bn-label { font-size:13px; font-weight:700; color:#ffe082; margin-bottom:5px; }
+    .bn-swatches { display:flex; gap:7px; flex-wrap:wrap; }
+    .bn-sw { width:34px; height:34px; border-radius:8px; cursor:pointer; border:3px solid rgba(255,255,255,0.25); }
+    .bn-sw.sel { border-color:#fff; box-shadow:0 0 0 2px #ffd54f; }
+    .bn-sw.txt { width:auto; padding:0 12px; height:34px; line-height:30px; font-size:12px; font-weight:800; color:#fff; background:#3949ab; text-align:center; }
     #ai-panel { position:fixed; bottom:90px; right:20px; width:330px; height:440px; background:rgba(20,28,45,0.97);
       border:2px solid #42a5f5; border-radius:16px; z-index:121; display:none; flex-direction:column;
       box-shadow:0 10px 40px rgba(0,0,0,0.6); overflow:hidden; }
@@ -259,6 +277,17 @@
 <button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-110px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
 <button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
 <button id="chop-btn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
+<button id="plot-btn" onclick="buyPlot()" style="display:none;">🌾 Comprar Área <span id="plot-cost">$1.000</span></button>
+<button id="foot-btn" onclick="toggleOnFoot()" title="Descer/subir do trator (tecla C)">🚶 Descer</button>
+<button id="boneco-btn" onclick="toggleBonecoPanel()" title="Montar seu boneco">🧍 Boneco</button>
+
+<!-- Character (boneco) customizer -->
+<div id="boneco-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:16px;z-index:160;padding:20px;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <h2 style="text-align:center;color:#ffd54f;margin-bottom:4px;">🧍 MONTE SEU BONECO</h2>
+  <div style="text-align:center;font-size:12px;color:#90caf9;margin-bottom:14px;">Escolha as cores e o chapéu. Aperte 🚶 Descer pra se ver na fazenda!</div>
+  <div id="boneco-rows"></div>
+  <button onclick="toggleBonecoPanel()" style="display:block;margin:16px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
 
 <!-- Stats panel -->
 <div id="stats-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;max-height:86vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #5c6bc0;border-radius:16px;z-index:130;padding:20px;color:#fff;">
@@ -340,7 +369,7 @@
     <div id="xp-bar-bg"><div id="xp-bar"></div></div>
     <div id="xp-text"><span id="xp-cur">0</span>/<span id="xp-need">50</span> XP</div>
   </div>
-  <div id="level-up"><div>🎉 NÍVEL <span id="lu-num">2</span>!</div><div class="lu-sub">+ NOVO CAMPO LIBERADO</div></div>
+  <div id="level-up"><div>🎉 NÍVEL <span id="lu-num">2</span>!</div><div class="lu-sub">+ bônus de dinheiro!</div></div>
   <div id="toasts"></div>
   <div id="event-banner"></div>
   <div id="inventory">
@@ -357,6 +386,7 @@
     <div class="help-line"><span class="key">Q</span> Semente &nbsp; <span class="key">B</span> Loja &nbsp; <span class="key">H</span> 🔊 Buzina &nbsp; <span class="key">L</span> 💡 Faróis</div>
     <div class="help-line"><span class="key">R</span> Abastecer &nbsp; <span class="key">F</span> 🚚 Trocar veículo &nbsp; <span class="key">G</span> 🏗️ Construir</div>
     <div class="help-line"><span class="key">T</span> 🚜 Trocar de trator (entre os que você tem)</div>
+    <div class="help-line"><span class="key">C</span> 🚶 Descer/subir do trator &nbsp; · &nbsp; 🧍 Boneco: botão na lateral</div>
     <div class="divider"></div>
     <div class="help-line">💡 Ligue a ferramenta e <b>dirija por cima do campo!</b></div>
   </div>
@@ -462,7 +492,11 @@ const state = {
   buildings:[],
   season:0,       // 0 spring, 1 summer, 2 autumn, 3 winter
   dayCount:0,
+  onFoot:false,   // walking around as your character?
+  boneco:{ skin:0xffccaa, shirt:0x1565c0, pants:0x3e2723, hat:0xd32f2f, hatType:1 }, // character look
 };
+// On-foot walking character physics
+const PLAYER = { speed:0, maxF:7.5, maxR:6, accel:18, brake:24, turn:3.4, heading:0 };
 const SEASONS = [
   { name:'Primavera', emoji:'🌸', grass:0x66bb6a, tree:0x4caf50, growMult:1.0 },
   { name:'Verão',     emoji:'☀️', grass:0x7cb342, tree:0x388e3c, growMult:0.8 },  // grows faster
@@ -657,6 +691,31 @@ function unlockNewPlot(){
   createPlot(loc.cols, loc.rows, loc.cx, loc.cz);
   state.plotsUnlocked++;
 }
+// New areas are BOUGHT with money — price climbs with how many you already own.
+// First $1.000 ... last $1.000.000 (8 extra areas, harder each time).
+const PLOT_COSTS = [1000, 3000, 8000, 20000, 50000, 140000, 375000, 1000000];
+function nextPlotCost(){ const i = state.plotsUnlocked - 1; if(i<0 || i>=PLOT_COSTS.length) return null; return PLOT_COSTS[i]; }
+function updatePlotButton(){
+  const b=document.getElementById('plot-btn'); if(!b) return;
+  if(state.visiting){ b.style.display='none'; return; }
+  const cost=nextPlotCost();
+  if(cost==null){ b.style.display='none'; return; }
+  b.style.display='block';
+  const span=document.getElementById('plot-cost'); if(span) span.textContent='$'+cost.toLocaleString('pt-BR');
+  b.style.opacity = (state.money>=cost)?'1':'0.55';
+  b.title = `Comprar a próxima área da fazenda (${state.plotsUnlocked-1}/8 compradas)`;
+}
+window.buyPlot=()=>{
+  if(state.visiting){ showMessage('Você está visitando outra fazenda!',1800); return; }
+  const cost=nextPlotCost();
+  if(cost==null){ showMessage('🌾 Você já comprou TODAS as áreas da fazenda!',2200); return; }
+  if(state.money<cost){ showMessage('❌ Falta dinheiro! Esta área custa $'+cost.toLocaleString('pt-BR'),2400); beep(180,0.2,'square',0.3); return; }
+  state.money-=cost; unlockNewPlot();
+  if(typeof sndSell==='function') sndSell();
+  showMessage('🌾 Nova área comprada por $'+cost.toLocaleString('pt-BR')+'! Agora você tem '+state.plotsUnlocked+' campos.',2600);
+  if(typeof launchFireworks==='function' && state.running) launchFireworks();
+  updateHUD(); updatePlotButton(); saveGame();
+};
 
 // ---------- DIRT PATHS (decorative grid around the neatly-arranged plots) ----------
 function pathMat(w,d){ const t=dirtTex(false); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(Math.max(1,w/3.2),Math.max(1,d/3.2)); return new THREE.MeshLambertMaterial({map:t}); }
@@ -911,13 +970,115 @@ const carSpoiler=new THREE.Mesh(new THREE.BoxGeometry(2,0.1,0.5),new THREE.MeshL
 car.position.set(-40,0,16); scene.add(car);
 const CAR={speed:0,maxF:30,maxR:9,accel:24,brake:28,turn:2.3,heading:0};
 
+// ---------- PLAYER CHARACTER (boneco) — walk around on foot ----------
+let player=null;
+function buildPlayer(){
+  if(player){ scene.remove(player); player.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); }
+  const b=state.boneco;
+  const g=new THREE.Group();
+  const skinMat=new THREE.MeshLambertMaterial({color:b.skin});
+  const shirtMat=new THREE.MeshLambertMaterial({color:b.shirt});
+  const pantsMat=new THREE.MeshLambertMaterial({color:b.pants});
+  // legs (share pants material)
+  const legL=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.95,0.3),pantsMat); legL.position.set(-0.2,0.5,0);
+  const legR=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.95,0.3),pantsMat); legR.position.set(0.2,0.5,0);
+  // shoes
+  for(const s of [-0.2,0.2]){ const shoe=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.22,0.5),new THREE.MeshLambertMaterial({color:0x2e2e2e})); shoe.position.set(s,0.11,0.08); g.add(shoe); }
+  // torso (shirt)
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.9,0.45),shirtMat); torso.position.y=1.42;
+  // arms (share shirt material)
+  const armL=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.85,0.22),shirtMat); armL.position.set(-0.5,1.42,0);
+  const armR=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.85,0.22),shirtMat); armR.position.set(0.5,1.42,0);
+  // hands
+  for(const s of [-0.5,0.5]){ const hand=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,6),skinMat); hand.position.set(s,1.0,0); g.add(hand); }
+  // head
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.34,14,12),skinMat); head.position.y=2.15;
+  // eyes
+  for(const s of [-0.13,0.13]){ const eye=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6),new THREE.MeshBasicMaterial({color:0x222222})); eye.position.set(s,2.18,-0.3); g.add(eye); }
+  // hat (depends on hatType)
+  let hat=null;
+  if(b.hatType>0){
+    hat=new THREE.Group();
+    const hatCol=new THREE.MeshLambertMaterial({color:b.hat});
+    if(b.hatType===1){ // boné / cap
+      const crown=new THREE.Mesh(new THREE.SphereGeometry(0.36,12,8,0,Math.PI*2,0,Math.PI/2),hatCol); crown.position.y=2.42; hat.add(crown);
+      const brim=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.06,0.4),hatCol); brim.position.set(0,2.42,-0.34); hat.add(brim);
+    } else if(b.hatType===2){ // chapéu de palha (straw/farmer)
+      const top=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.3,0.26,14),hatCol); top.position.y=2.55; hat.add(top);
+      const brim=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.05,16),hatCol); brim.position.y=2.42; hat.add(brim);
+    } else { // caubói / cowboy
+      const top=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.34,0.32,14),hatCol); top.position.y=2.56; hat.add(top);
+      const brim=new THREE.Mesh(new THREE.CylinderGeometry(0.66,0.66,0.05,16),hatCol); brim.position.y=2.4; brim.scale.z=0.8; hat.add(brim);
+    }
+    g.add(hat);
+  }
+  g.add(legL,legR,torso,armL,armR,head);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.userData={legL,legR,armL,armR,torso,head,hat};
+  g.visible=false; g.position.set(0,0,10);
+  scene.add(g); player=g;
+}
+buildPlayer();
+function rebuildPlayer(){ const pos=player?player.position.clone():new THREE.Vector3(0,0,10); const head=PLAYER.heading; const vis=player?player.visible:false; buildPlayer(); player.position.copy(pos); player.rotation.y=head; player.visible=vis; }
+// ----- Boneco customizer -----
+const BN_SKIN =[0xffe0bd,0xffccaa,0xe6b07a,0xc68642,0x8d5524,0x5a3a22];
+const BN_SHIRT=[0x1565c0,0xc62828,0x2e7d32,0xfbc02d,0x6a1b9a,0xff7043,0xffffff,0x222222];
+const BN_PANTS=[0x3e2723,0x1a237e,0x37474f,0x4e342e,0x000000,0x795548];
+const BN_HATC =[0xd32f2f,0x1565c0,0x2e7d32,0x6d4c41,0xffd54f,0x222222];
+const BN_HATS =[[0,'Sem chapéu'],[1,'🧢 Boné'],[2,'👒 Palha'],[3,'🤠 Caubói']];
+let bonecoPreview=false;
+function setBoneco(part,val){ state.boneco[part]=val; rebuildPlayer(); renderBonecoPanel(); if(typeof saveGame==='function')saveGame(); }
+function renderBonecoPanel(){
+  const host=document.getElementById('boneco-rows'); if(!host) return; const b=state.boneco;
+  const swatch=(arr,part,cur)=>arr.map(c=>`<div class="bn-sw ${c===cur?'sel':''}" style="background:#${c.toString(16).padStart(6,'0')}" onclick="setBoneco('${part}',${c})"></div>`).join('');
+  let h='';
+  h+=`<div class="bn-row"><div class="bn-label">🧑 Pele</div><div class="bn-swatches">${swatch(BN_SKIN,'skin',b.skin)}</div></div>`;
+  h+=`<div class="bn-row"><div class="bn-label">👕 Camisa</div><div class="bn-swatches">${swatch(BN_SHIRT,'shirt',b.shirt)}</div></div>`;
+  h+=`<div class="bn-row"><div class="bn-label">👖 Calça</div><div class="bn-swatches">${swatch(BN_PANTS,'pants',b.pants)}</div></div>`;
+  h+=`<div class="bn-row"><div class="bn-label">🎩 Chapéu</div><div class="bn-swatches">${BN_HATS.map(([t,nm])=>`<div class="bn-sw txt ${b.hatType===t?'sel':''}" onclick="setBoneco('hatType',${t})">${nm}</div>`).join('')}</div></div>`;
+  if(b.hatType>0) h+=`<div class="bn-row"><div class="bn-label">🎨 Cor do chapéu</div><div class="bn-swatches">${swatch(BN_HATC,'hat',b.hat)}</div></div>`;
+  host.innerHTML=h;
+}
+window.setBoneco=setBoneco;
+window.toggleBonecoPanel=()=>{
+  const p=document.getElementById('boneco-panel'); const open=(p.style.display==='none'||!p.style.display);
+  p.style.display=open?'block':'none';
+  if(open){ renderBonecoPanel();
+    if(!state.onFoot && player){ const v=curVehObj(); player.position.set(v.position.x+2.6,0,v.position.z); player.rotation.y=Math.PI*0.5; player.visible=true; bonecoPreview=true; }
+  } else { if(bonecoPreview && !state.onFoot && player){ player.visible=false; } bonecoPreview=false; }
+};
+
 let activeVeh='tractor';
 const VEH_ORDER=['tractor','truck','car'];
 const VEH_NAMES={tractor:'🚜 TRATOR',truck:'🚚 CAMINHÃO',car:'🏎️ CARRO'};
 function toggleVehicle(){
+  if(state.onFoot){ showMessage('Você está a pé! Suba num veículo primeiro (🚜).',1800); return; }
   activeVeh = VEH_ORDER[(VEH_ORDER.indexOf(activeVeh)+1)%VEH_ORDER.length];
   showMessage('Controlando: '+VEH_NAMES[activeVeh], 1500);
 }
+function curVehObj(){ return activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car; }
+// Get off / get on the tractor (walk around as your boneco)
+window.toggleOnFoot=()=>{
+  if(state.visiting){ showMessage('Você está visitando outra fazenda!',1600); return; }
+  if(!state.onFoot){
+    // step out beside the current vehicle
+    const v=curVehObj(); const vs=activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR;
+    const ox=Math.cos(vs.heading)*2.6, oz=-Math.sin(vs.heading)*2.6; // step to the side
+    player.position.set(v.position.x+ox,0,v.position.z+oz);
+    PLAYER.heading=vs.heading; PLAYER.speed=0; player.rotation.y=vs.heading; player.visible=true;
+    state.onFoot=true;
+    showMessage('🚶 Você desceu! Ande com W A S D. Aperte 🚜 (ou F) pra subir num veículo perto.',2800);
+  } else {
+    // get back in — board the nearest vehicle within range
+    let best=null,bd=1e9,bk=null;
+    for(const [k,v] of [['tractor',tractor],['truck',truck],['car',car]]){ const d=Math.hypot(v.position.x-player.position.x,v.position.z-player.position.z); if(d<bd){bd=d;best=v;bk=k;} }
+    if(bd>14){ showMessage('🚜 Chegue perto de um veículo pra subir!',2200); return; }
+    activeVeh=bk; state.onFoot=false; player.visible=false;
+    showMessage('🚜 Você subiu no '+VEH_NAMES[bk]+'!',1600);
+  }
+  updateFootButton();
+};
+function updateFootButton(){ const b=document.getElementById('foot-btn'); if(!b) return; b.textContent = state.onFoot?'🚜 Subir':'🚶 Descer'; }
 
 // ---------- FLOATING TEXT (capped + disposed to prevent memory leak/freeze) ----------
 const floaters=[];
@@ -1027,7 +1188,8 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
   if(e.code==='KeyL'){ state.headlights=!state.headlights; const v=state.headlights?2.5:0; headLight1.intensity=v; headLight2.intensity=v; showMessage(state.headlights?'💡 Faróis LIGADOS':'💡 Faróis DESLIGADOS',900); }
   if(e.code==='KeyR'){ tryRefuel(); }
-  if(e.code==='KeyF'){ toggleVehicle(); }
+  if(e.code==='KeyF'){ if(state.onFoot) toggleOnFoot(); else toggleVehicle(); }
+  if(e.code==='KeyC'){ toggleOnFoot(); }
   if(e.code==='KeyG'){ toggleBuildMenu(); }
   if(e.code==='KeyT'){ cycleTractor(); }
 });
@@ -1125,7 +1287,7 @@ function gainXP(amount){
   while(state.xp >= state.xpToNext){
     state.xp -= state.xpToNext; state.level++;
     state.xpToNext = 50 + (state.level-1)*40;
-    unlockNewPlot();
+    // Plots are now BOUGHT with money (see buyPlot), not unlocked by level.
     // Level-up money bonus
     const bonus=200+state.level*50; state.money+=bonus;
     const lu=document.getElementById('level-up');
@@ -1231,6 +1393,7 @@ function updateCrops(now){
 // ---------- HUD ----------
 function updateHUD(){
   document.getElementById('money').textContent='💰 $'+state.money;
+  if(typeof updatePlotButton==='function') updatePlotButton();
   document.getElementById('lvl-num').textContent=state.level;
   document.getElementById('xp-cur').textContent=state.xp;
   document.getElementById('xp-need').textContent=state.xpToNext;
@@ -1281,7 +1444,7 @@ let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('mes
 function distXZ(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
 
 // ---------- OBJECTIVES ----------
-function activeVehPos(){ return (activeVeh==='tractor'?tractor:truck).position; }
+function activeVehPos(){ return (state.onFoot&&player)?player.position:(activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car).position; }
 function totalCrops(){ let s=0; for(const k of Object.keys(CROPS)) s+=(state.inventory[k]||0); return s; }
 function nearAnyPlot(d){ const p=activeVehPos(); for(const plot of allPlots){ if(distXZ(p,{x:plot.centerX,z:plot.centerZ})<d) return true; } return false; }
 const OBJ=[
@@ -1442,7 +1605,7 @@ window.toggleMissions=()=>{
 // ---------- LEVEL UNLOCKS ----------
 const LEVEL_UNLOCKS=[
   {lvl:1,  icon:'🚜', name:'Trator + plantio (trigo, milho, batata)'},
-  {lvl:2,  icon:'🌾', name:'Novo campo desbloqueado'},
+  {lvl:2,  icon:'🌾', name:'Compre novas áreas com 💰 (preço sobe: $1.000 → $1.000.000)'},
   {lvl:3,  icon:'🍅', name:'Culturas: Tomate e Soja'},
   {lvl:5,  icon:'🐔', name:'Loja de Animais (galinha, vaca, ovelha, porco)'},
   {lvl:7,  icon:'🪴', name:'Construção: Estufa e Torre d\'Água'},
@@ -1735,7 +1898,7 @@ function saveGame(){
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
-      savedAt: Date.now()
+      boneco: state.boneco, savedAt: Date.now()
     }));
   }catch(e){}
 }
@@ -1753,6 +1916,7 @@ function loadGame(){
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
+    if(d.boneco){ Object.assign(state.boneco, d.boneco); if(typeof rebuildPlayer==='function') rebuildPlayer(); }
     if(d.achievements) Object.assign(state.achievements, d.achievements);
     if(d.missionsClaimed) Object.assign(state.missionsClaimed, d.missionsClaimed);
     // Recreate unlocked plots
@@ -2588,16 +2752,17 @@ const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
 function animate(){if(!state.running)return;requestAnimationFrame(animate);
   try {
   let dt=clock.getDelta();if(dt>0.05)dt=0.05;const now=performance.now()/1000;
-  // Active vehicle selection
-  const isTractor = activeVeh==='tractor';
-  const veh = activeVeh==='tractor'?tractor : activeVeh==='truck'?truck : car;
-  const vs  = activeVeh==='tractor'?T : activeVeh==='truck'?TRK : CAR;
+  // Active vehicle selection (or on-foot character)
+  const onFoot = state.onFoot;
+  const isTractor = !onFoot && activeVeh==='tractor';
+  const veh = onFoot ? player : (activeVeh==='tractor'?tractor : activeVeh==='truck'?truck : car);
+  const vs  = onFoot ? PLAYER : (activeVeh==='tractor'?T : activeVeh==='truck'?TRK : CAR);
   if(!state.shopOpen){
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
     const hasFuel=state.fuel>0;
     // Limp mode: even with no fuel you can crawl slowly so you always reach a pump
-    const maxF=hasFuel?vs.maxF*(sprint?1.6:1):6;
-    const accel=hasFuel?vs.accel:8;
+    const maxF = onFoot ? vs.maxF*(sprint?1.5:1) : (hasFuel?vs.maxF*(sprint?1.6:1):6);
+    const accel = onFoot ? vs.accel : (hasFuel?vs.accel:8);
     if(keys['KeyW'])vs.speed+=accel*dt; else if(keys['KeyS'])vs.speed-=accel*dt;
     else{const f=Math.sign(vs.speed)*vs.brake*0.4*dt;if(Math.abs(f)>Math.abs(vs.speed))vs.speed=0;else vs.speed-=f;}
     vs.speed=Math.max(-vs.maxR,Math.min(maxF,vs.speed));
@@ -2609,13 +2774,20 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     else vs.speed=0;
     veh.rotation.y=vs.heading;
     const spin=vs.speed*dt*1.4;
-    if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
+    if(onFoot){ // walk cycle: swing legs & arms
+      const u=player.userData; const sw=Math.sin(now*9)*Math.min(1,Math.abs(vs.speed)/3)*0.6;
+      if(u.legL){ u.legL.rotation.x=sw; u.legR.rotation.x=-sw; u.armL.rotation.x=-sw; u.armR.rotation.x=sw; }
+      player.position.y=Math.abs(Math.sin(now*9))*0.06*Math.min(1,Math.abs(vs.speed)/3);
+    }
+    else if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
     else if(activeVeh==='truck'){ for(const w of truckWheels) w.rotation.x+=spin; }
     else { for(const w of carWheels) w.rotation.x+=spin; }
-    // Fuel decay
+    // Fuel decay (vehicles only — walking is free)
+    if(!onFoot){
     // Slower fuel drain so you don't run dry constantly
     if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?0.4:0.22));
     if(isTractor && state.tool!==0 && Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.1);
+    }
     // Low fuel warning
     if(state.fuel>0 && state.fuel<20 && !state._lowFuelWarned){ state._lowFuelWarned=true; showMessage('⚠️ Combustível baixo! Vá ao posto (⛽) ou use 🛢️ galão (R)',2500); }
     if(state.fuel>=20) state._lowFuelWarned=false;
@@ -2662,7 +2834,7 @@ let miniTimer=0;
 function drawMinimap(dt){
   if(!miniCtx) return; miniTimer-=dt; if(miniTimer>0) return; miniTimer=0.2;
   const W=124,H=124,SC=0.45, cx=W/2, cy=H/2;
-  const veh=(activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car);
+  const veh=curVeh();
   const px=veh.position.x, pz=veh.position.z;
   miniCtx.clearRect(0,0,W,H);
   miniCtx.fillStyle='rgba(74,140,69,0.6)'; miniCtx.fillRect(0,0,W,H);
@@ -2677,7 +2849,7 @@ function drawMinimap(dt){
   const dots=[[shopPos,'#ffd54f'],[garagePos,'#90caf9'],[animalShopPos,'#a5d6a7'],[pumpPos,'#ef5350']];
   for(const [p,col] of dots){ const [mx,my]=toMap(p.x,p.z); miniCtx.fillStyle=col; miniCtx.beginPath(); miniCtx.arc(mx,my,3,0,7); miniCtx.fill(); }
   // player arrow
-  const vs=(activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
+  const vs=(state.onFoot?PLAYER:activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
   miniCtx.save(); miniCtx.translate(cx,cy); miniCtx.rotate(-vs.heading+Math.PI);
   miniCtx.fillStyle='#fff'; miniCtx.beginPath(); miniCtx.moveTo(0,-6); miniCtx.lineTo(4,5); miniCtx.lineTo(-4,5); miniCtx.closePath(); miniCtx.fill();
   miniCtx.restore();
@@ -2906,7 +3078,7 @@ function setupTouch(){
 
 // ---------- FIREWORKS (level-up celebration) ----------
 const fireworks=[];
-function curVeh(){ return activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car; }
+function curVeh(){ return (state.onFoot&&player)?player:activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car; }
 function launchFireworks(){
   const v=curVeh();
   for(let b=0;b<3;b++){
@@ -2966,6 +3138,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   }
   // Spawn NPCs
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
+  state.onFoot=false; if(player) player.visible=false; updateFootButton();
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
   // Visiting another farm? show banner, don't autosave/submit
   if(_visit){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+_visit.name;
