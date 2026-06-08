@@ -233,7 +233,7 @@
   <button id="btn-continue" onclick="startGame(false)" style="display:none;margin-top:10px;padding:12px 40px;font-size:16px;background:rgba(255,255,255,0.25);color:#fff;border:2px solid #fff;border-radius:30px;cursor:pointer;font-weight:700;">▶ CONTINUAR <span id="continue-lvl"></span></button>
   <script>
     // Show "Continuar" only if a save exists
-    (function(){ try{ var s=localStorage.getItem('bentofarm_save_v1'); if(s){ var d=JSON.parse(s); var b=document.getElementById('btn-continue'); b.style.display='inline-block'; document.getElementById('continue-lvl').textContent='(Nível '+(d.level||1)+')'; document.getElementById('btn-new').textContent='🆕 COMEÇAR DO ZERO'; } }catch(e){} })();
+    (function(){ try{ var s=localStorage.getItem('bentofarm_save_v2'); if(s){ var d=JSON.parse(s); var b=document.getElementById('btn-continue'); b.style.display='inline-block'; document.getElementById('continue-lvl').textContent='(Nível '+(d.level||1)+')'; document.getElementById('btn-new').textContent='🆕 COMEÇAR DO ZERO'; } }catch(e){} })();
   </script>
 </div>
 
@@ -271,6 +271,7 @@
     <button class="tact" onclick="setTool(state.tool===1?0:1)">🚜</button>
     <button class="tact" onclick="setTool(state.tool===2?0:2)">🌱</button>
     <button class="tact" onclick="setTool(state.tool===3?0:3)">🌾</button>
+    <button class="tact" onclick="setTool(state.tool===5?0:5)">🪓</button>
     <button class="tact" onclick="toggleShopIfNear()">🏪</button>
   </div>
 </div>
@@ -353,6 +354,7 @@
     <div class="tool" data-tool="2"><div class="tool-icon">🌱</div><div class="tool-name">Plantadeira</div><div class="tool-sub" id="tool-crop">🌾 Trigo</div><div class="tool-key">2</div></div>
     <div class="tool" data-tool="3"><div class="tool-icon">🌾</div><div class="tool-name">Colheitadeira</div><div class="tool-key">3</div></div>
     <div class="tool" data-tool="4"><div class="tool-icon">💧</div><div class="tool-name">Irrigador</div><div class="tool-sub">Cresce 2× mais rápido</div><div class="tool-key">4</div></div>
+    <div class="tool" data-tool="5"><div class="tool-icon">🪓</div><div class="tool-name">Machado</div><div class="tool-sub">Remove árvores</div><div class="tool-key">5</div></div>
   </div>
   <div id="fuel-box">
     <div class="fuel-label">⛽ COMBUSTÍVEL</div>
@@ -464,6 +466,12 @@ const TRACTORS = [
   { name:'🚜 Mega Trator Dourado', speed:36, fuelCap:350, price:80000, color:0xffd700, scale:1.3 },
   { name:'👹 Trator Monstro', speed:46, fuelCap:500, price:150000, color:0x4a148c, scale:1.6 },
   { name:'🌾 Colheitadeira Gigante', speed:40, fuelCap:600, price:250000, color:0xff6f00, scale:1.9 },
+  // ----- CARROS VELOZES (rápidos para correr pela fazenda) -----
+  { name:'🚙 SUV Turbo',        speed:50, fuelCap:300, price:60000,  color:0x263238, scale:1.0 },
+  { name:'🚗 Buggy Veloz',      speed:58, fuelCap:320, price:110000, color:0xffea00, scale:0.95 },
+  { name:'🏎️ Carro Esportivo',  speed:66, fuelCap:340, price:220000, color:0xff1744, scale:0.9 },
+  { name:'🏎️ Fórmula Fazenda',  speed:74, fuelCap:380, price:400000, color:0x00e5ff, scale:0.88 },
+  { name:'🚀 Foguete da Roça',  speed:84, fuelCap:450, price:750000, color:0xd500f9, scale:1.05 },
 ];
 const CROPS = {
   apple:    { emoji:'🍎', name:'Maçã (árvore)', growTime:50, sell:120, seed:60, top:0xe53935, tree:true, regrow:35 },
@@ -486,7 +494,13 @@ const CROPS = {
   eggplant: { emoji:'🍆', name:'Berinjela', growTime:42, sell:88, seed:17, top:0x6a1b9a },
   coconut:  { emoji:'🥥', name:'Coco (árvore)', growTime:65, sell:150, seed:90, top:0x8d6e63, tree:true, regrow:45 },
   dragon:   { emoji:'🐉', name:'Pitaya',    growTime:75, sell:200,seed:50, top:0xe91e63 },
+  avocado:  { emoji:'🥑', name:'Abacate (árvore)', growTime:600, sell:450, seed:300, top:0x558b2f, tree:true, regrow:300 },
 };
+// Grow times scaled by price: cheapest (wheat $25) = 30s, most expensive (avocado $450) = 600s (10 min)
+(function(){ const minP=25,maxP=450; for(const k in CROPS){ const c=CROPS[k];
+  let gt=Math.round(30 + (c.sell-minP)/(maxP-minP)*(600-30)); gt=Math.max(30,Math.min(600,gt));
+  c.growTime=gt; if(c.tree) c.regrow=Math.round(gt*0.6);
+} })();
 
 // ---------- AUDIO ----------
 let actx;
@@ -631,6 +645,17 @@ function unlockNewPlot(){
   state.plotsUnlocked++;
 }
 
+// ---------- DIRT PATHS (decorative grid around the neatly-arranged plots) ----------
+function pathMat(w,d){ const t=dirtTex(false); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(Math.max(1,w/3.2),Math.max(1,d/3.2)); return new THREE.MeshLambertMaterial({map:t}); }
+function addPath(cx,cz,w,d){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d), pathMat(w,d)); m.rotation.x=-Math.PI/2; m.position.set(cx,0.04,cz); m.receiveShadow=true; scene.add(m); }
+(function buildPaths(){
+  // Horizontal avenues: shop street, field-front, and the gaps between plot rows
+  for(const z of [24, -8, -47, -85, -120]) addPath(0, z, 120, 5.5);
+  // Vertical lanes: central entrance + the gaps between the 3 plot columns
+  for(const x of [-19, 19]) addPath(x, -55, 5.5, 165);
+  addPath(0, 8, 5.5, 38); // entrance lane from the start area up to the first field row
+})();
+
 // ---------- BUILDINGS ----------
 function makeBarn(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(11,7,15),new THREE.MeshLambertMaterial({color:0xc0392b}));b.position.y=3.5;b.castShadow=true;g.add(b);
@@ -647,7 +672,7 @@ function makeShop(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(2,3.2,0.2),new THREE.MeshLambertMaterial({color:0x4e342e}));door.position.set(0,1.6,4.6);g.add(door);
   const awn=new THREE.Mesh(new THREE.BoxGeometry(9.5,0.3,2.5),new THREE.MeshLambertMaterial({color:0xd32f2f}));awn.position.set(0,3.5,5.2);awn.rotation.x=-0.25;g.add(awn);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,4,4);}
-const shopPos=new THREE.Vector3(58,0,4); makeShop(shopPos.x,shopPos.z);
+const shopPos=new THREE.Vector3(-42,0,24); makeShop(shopPos.x,shopPos.z);
 
 // Gas pump building
 function makePump(x,z){const g=new THREE.Group();
@@ -662,7 +687,7 @@ function makePump(x,z){const g=new THREE.Group();
   // Sign
   const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
-const pumpPos=new THREE.Vector3(58,0,22); makePump(pumpPos.x,pumpPos.z);
+const pumpPos=new THREE.Vector3(42,0,24); makePump(pumpPos.x,pumpPos.z);
 // Floating beacon sign helper so player can find key buildings
 function beaconSign(x,z,text){
   const c=document.createElement('canvas');c.width=256;c.height=80;const g=c.getContext('2d');
@@ -698,7 +723,7 @@ function makeGarage(x,z){const g=new THREE.Group();
   const cols=[0x2e7d32,0xc62828,0x1565c0];
   for(let i=0;i<3;i++){const mt=makeMiniTractor(cols[i]);mt.position.set((i-1)*W/3,0,-0.5);mt.rotation.y=Math.PI;g.add(mt);}
   g.position.set(x,0,z);g.rotation.y=Math.PI;scene.add(g);addCol(x,z,7,2.2);}
-const garagePos=new THREE.Vector3(-32,0,16); makeGarage(garagePos.x,garagePos.z);
+const garagePos=new THREE.Vector3(-14,0,24); makeGarage(garagePos.x,garagePos.z);
 // Animal shop building (between the pens) — buy/sell animals here
 function makeAnimalShop(x,z){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(7,4,7),new THREE.MeshLambertMaterial({color:0xa1674a,flatShading:true}));body.position.y=2;body.castShadow=true;g.add(body);
@@ -706,7 +731,7 @@ function makeAnimalShop(x,z){const g=new THREE.Group();
   const sign=new THREE.Mesh(new THREE.BoxGeometry(4.5,1,0.2),new THREE.MeshLambertMaterial({color:0x8bc34a,emissive:0x224400,emissiveIntensity:0.3}));sign.position.set(0,3.4,3.55);g.add(sign);
   const door=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.6,0.2),new THREE.MeshLambertMaterial({color:0x3e2723}));door.position.set(0,1.3,3.55);g.add(door);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,3.3,3.3);}
-const animalShopPos=new THREE.Vector3(-4,0,56); makeAnimalShop(animalShopPos.x,animalShopPos.z);
+const animalShopPos=new THREE.Vector3(14,0,24); makeAnimalShop(animalShopPos.x,animalShopPos.z);
 beaconSign(pumpPos.x,pumpPos.z,'⛽ POSTO');
 beaconSign(shopPos.x,shopPos.z,'🏪 MERCADO');
 beaconSign(garagePos.x,garagePos.z,'🚜 GARAGEM');
@@ -718,7 +743,7 @@ function makeHouse(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(1.4,2.8,0.2),new THREE.MeshLambertMaterial({color:0x3e2723}));door.position.set(0,1.4,4.6);g.add(door);
   for(const s of[-1,1]){const w=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,0.15),new THREE.MeshLambertMaterial({color:0x88ccff,emissive:0x224466,emissiveIntensity:0.3}));w.position.set(s*2.3,2.6,4.6);g.add(w);}
   g.position.set(x,0,z);scene.add(g);addCol(x,z,4,4.5);}
-makeHouse(46,-8);
+makeHouse(72,10);
 
 function makeSilo(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.CylinderGeometry(2,2,11,18),new THREE.MeshLambertMaterial({color:0xcfd8dc}));b.position.y=5.5;b.castShadow=true;g.add(b);
@@ -835,7 +860,7 @@ for(let i=-3;i<=3;i++){const noz=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.3,
   const spray=new THREE.Mesh(new THREE.ConeGeometry(0.5,1.5,8,1,true),new THREE.MeshBasicMaterial({color:0x66ccff,transparent:true,opacity:0.45,side:THREE.DoubleSide})); spray.position.set(i*1.2,-0.4,0.3); sprays.push(spray); irrigator.add(spray);}
 irrigator.position.set(0,0,3); tractor.add(irrigator);
 
-function showImplement(){ plow.visible=state.tool===1; seeder.visible=state.tool===2; harvester.visible=state.tool===3; irrigator.visible=state.tool===4; hitch.visible=state.tool!==0; }
+function showImplement(){ plow.visible=state.tool===1; seeder.visible=state.tool===2; harvester.visible=state.tool===3; irrigator.visible=state.tool===4; hitch.visible=state.tool>=1&&state.tool<=4; }
 plow.visible=seeder.visible=harvester.visible=irrigator.visible=hitch.visible=false;
 
 tractor.position.set(0,0,10); tractor.rotation.y=0;
@@ -856,7 +881,7 @@ for(const [wx,wz] of [[-1.3,-2.3],[1.3,-2.3],[-1.3,1],[1.3,1],[-1.3,2.5],[1.3,2.
 }
 // Headlights
 for(const s of [-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),new THREE.MeshBasicMaterial({color:0xffffcc}));hl.position.set(s*0.7,1.3,-3.5);truck.add(hl);}
-truck.position.set(-16,0,22); truck.rotation.y=0;
+truck.position.set(-34,0,16); truck.rotation.y=0;
 scene.add(truck);
 const TRK={speed:0,maxF:20,maxR:7,accel:18,brake:24,turn:2.0,heading:0};
 TRK.heading=0;
@@ -870,7 +895,7 @@ const carWheels=[];
 for(const[wx,wz] of [[-1,-1.3],[1,-1.3],[-1,1.3],[1,1.3]]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.3,14),new THREE.MeshLambertMaterial({color:0x111}));w.rotation.z=Math.PI/2;w.position.set(wx,0.45,wz);w.castShadow=true;car.add(w);carWheels.push(w);}
 for(const s of[-1,1]){const hl=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,8),new THREE.MeshBasicMaterial({color:0xffffcc}));hl.position.set(s*0.6,0.7,-2);car.add(hl);}
 const carSpoiler=new THREE.Mesh(new THREE.BoxGeometry(2,0.1,0.5),new THREE.MeshLambertMaterial({color:0x111}));carSpoiler.position.set(0,1.2,2);car.add(carSpoiler);
-car.position.set(-20,0,22); scene.add(car);
+car.position.set(-40,0,16); scene.add(car);
 const CAR={speed:0,maxF:30,maxR:9,accel:24,brake:28,turn:2.3,heading:0};
 
 let activeVeh='tractor';
@@ -913,6 +938,54 @@ function addCropMarker(t,emoji){
   sp.scale.set(1.4,1.4,1); sp.position.set(t.x,2.2,t.z); scene.add(sp); t.marker=sp;
 }
 function removeCropMarker(t){ if(t.marker){ scene.remove(t.marker); if(t.marker.material)t.marker.material.dispose(); t.marker=null; } }
+// Countdown label floating above a growing tile (shows time left to finish)
+function ensureTimeLabel(t){
+  if(t.timeLabel) return t.timeLabel;
+  const cv=document.createElement('canvas'); cv.width=160; cv.height=56;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
+  sp.scale.set(2.6,0.9,1); sp.position.set(t.x,3.15,t.z); sp.renderOrder=998; sp.userData.cv=cv; sp.userData.txt='';
+  scene.add(sp); t.timeLabel=sp; return sp;
+}
+function drawTimeLabel(sp,text){
+  if(sp.userData.txt===text) return; sp.userData.txt=text;
+  const cv=sp.userData.cv,g=cv.getContext('2d'); g.clearRect(0,0,160,56);
+  g.fillStyle='rgba(0,0,0,0.66)'; g.beginPath();
+  if(g.roundRect) g.roundRect(8,10,144,36,10); else g.rect(8,10,144,36);
+  g.fill();
+  g.fillStyle='#fff'; g.font='bold 30px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(text,80,29); sp.material.map.needsUpdate=true;
+}
+function removeTimeLabel(t){ if(t.timeLabel){ scene.remove(t.timeLabel); if(t.timeLabel.material){ if(t.timeLabel.material.map)t.timeLabel.material.map.dispose(); t.timeLabel.material.dispose(); } t.timeLabel=null; } }
+function fmtTime(s){ s=Math.max(0,Math.ceil(s)); if(s>=60){ const m=Math.floor(s/60), ss=s%60; return m+':'+(ss<10?'0':'')+ss; } return s+'s'; }
+// Fully reset a tile back to empty grass, cleaning up every visual it owns
+function clearTileToGrass(t){
+  if(t.plant){ scene.remove(t.plant); t.plant=null; }
+  removeCropMarker(t); removeTimeLabel(t);
+  if(t.goldMark){ scene.remove(t.goldMark); t.goldMark=null; }
+  if(t.waterTint){ scene.remove(t.waterTint); t.waterTint=null; }
+  if(t.fertilTint){ scene.remove(t.fertilTint); t.fertilTint=null; }
+  if(t.pestTint){ scene.remove(t.pestTint); t.pestTint=null; }
+  if(t.pest && typeof removePest==='function') removePest(t);
+  t.state='grass'; t.mesh.material=grassTileMat(); t.mesh.position.y=0.05;
+  t.crop=null; t.growProgress=0; t.golden=false; t.water=0; t.waterUntil=0; t.fertilized=false; t.protected=false; t.regrowing=false;
+}
+// Throttled countdown updater — only near the player for performance
+let _timerAcc=0;
+function updateTimers(dt){
+  _timerAcc-=dt; if(_timerAcc>0) return; _timerAcc=0.5;
+  const pv=(typeof activeVehPos==='function')?activeVehPos():tractor.position;
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+    const growing = t.state==='planted';
+    if(growing){
+      if(Math.hypot(t.x-pv.x,t.z-pv.z)>48){ if(t.timeLabel) removeTimeLabel(t); continue; }
+      const cropDef=CROPS[t.crop]; if(!cropDef){ if(t.timeLabel)removeTimeLabel(t); continue; }
+      const growTime=(cropDef.tree && t.regrowing)?cropDef.regrow:cropDef.growTime;
+      const remain=growTime-(t.growProgress||0);
+      const sp=ensureTimeLabel(t); sp.position.set(t.x,3.15,t.z);
+      drawTimeLabel(sp, t.pest?'🐛': (t.weed?'🌿': fmtTime(remain)));
+    } else if(t.timeLabel){ removeTimeLabel(t); }
+  }
+}
 
 // ---------- INPUT ----------
 const keys={};
@@ -920,7 +993,7 @@ addEventListener('keydown',e=>{
   // Ignore game controls while typing in a text input (AI chat)
   if(document.activeElement && document.activeElement.tagName==='INPUT'){ return; }
   keys[e.code]=true;
-  if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4);
+  if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4); if(e.code==='Digit5')setTool(5);
   if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
   if(e.code==='KeyL'){ state.headlights=!state.headlights; const v=state.headlights?2.5:0; headLight1.intensity=v; headLight2.intensity=v; showMessage(state.headlights?'💡 Faróis LIGADOS':'💡 Faróis DESLIGADOS',900); }
@@ -939,7 +1012,7 @@ canvas.addEventListener('wheel',e=>{ cam.dist=Math.max(7,Math.min(40,cam.dist+e.
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 function setTool(t){ state.tool=t; document.querySelectorAll('.tool').forEach(el=>el.classList.toggle('active',+el.dataset.tool===t)); showImplement();
-  const n=['Ferramenta guardada','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada','💧 Irrigador ligado']; showMessage(n[t],900); }
+  const n=['Ferramenta guardada','🚜 Arado ligado','🌱 Plantadeira ligada','🌾 Colheitadeira ligada','💧 Irrigador ligado','🪓 Machado ligado — passe por cima da árvore p/ remover']; showMessage(n[t],900); }
 function cycleCrop(){const o=Object.keys(CROPS);state.selectedCrop=o[(o.indexOf(state.selectedCrop)+1)%o.length];document.getElementById('tool-crop').textContent=`${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`;showMessage(`Semente: ${CROPS[state.selectedCrop].emoji} ${CROPS[state.selectedCrop].name}`,900);}
 
 // ---------- FARMING ----------
@@ -1011,6 +1084,11 @@ function workTile(t){ if(!t)return;
     if(!t.waterTint){ const wt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97,TILE*0.97), new THREE.MeshBasicMaterial({color:0x4fc3f7,transparent:true,opacity:0.25}));
       wt.rotation.x=-Math.PI/2; wt.position.set(t.x,0.07,t.z); scene.add(wt); t.waterTint=wt; }
   } }
+  else if(state.tool===5){ // axe — chop down planted trees
+    if((t.state==='planted'||t.state==='grown') && t.crop && CROPS[t.crop] && CROPS[t.crop].tree){
+      clearTileToGrass(t); floatText(t.x,t.z,'🪓 árvore removida',0x8d6e63); sndPlow();
+    }
+  }
 }
 
 function gainXP(amount){
@@ -1613,7 +1691,7 @@ function cycleTractor(){
 window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=Math.round(q*u*state.sellMultiplier);sndSell();updateHUD();renderShop();saveGame();};
 
 // ---------- SAVE / LOAD (#33 autosave) ----------
-const SAVE_KEY='bentofarm_save_v1';
+const SAVE_KEY='bentofarm_save_v2'; // bumped -> resets ALL old games, everyone starts from zero
 function saveGame(){
   if(state.visiting) return; // don't overwrite your own save while visiting someone
   try{ if(typeof updateRecords==='function') updateRecords(); if(typeof recordLeaderboard==='function') recordLeaderboard(); }catch(e){}
@@ -1627,7 +1705,8 @@ function saveGame(){
       tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
-      buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData
+      buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
+      savedAt: Date.now()
     }));
   }catch(e){}
 }
@@ -1666,6 +1745,17 @@ function loadGame(){
     if(Array.isArray(d.animals)){ for(const t of d.animals){ if(ANIMAL_TYPES[t]) try{ spawnAnimal(t); }catch(e){} } }
     // Restore plantation tiles
     if(Array.isArray(d.tiles)){ for(const td of d.tiles){ try{ restoreTile(td); }catch(e){} } }
+    // OFFLINE GROWTH — crops keep growing while the game is closed
+    if(!state.visiting){
+      const offline=Math.min(43200, Math.max(0,(Date.now()-(d.savedAt||Date.now()))/1000)); // cap 12h
+      if(offline>2){
+        let grew=false;
+        for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
+          if(t.state==='planted' && t.crop){ t.growProgress=(t.growProgress||0)+offline; grew=true; }
+        }
+        if(grew && offline>90 && typeof showMessage==='function') setTimeout(()=>showMessage('🌙 Enquanto você esteve fora, as plantações cresceram!',2800),1300);
+      }
+    }
     return true;
   }catch(e){ console.error('load',e); return false; }
 }
@@ -2513,6 +2603,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWeather(dt);
   updateWeeds(dt);
   updatePests(dt);
+  updateTimers(dt);
   updateWaterTowers(dt);
   updateProducers(dt);
   updateMarket(dt);
@@ -2611,7 +2702,7 @@ function updateEngine(){
 
 // ---------- STATS PANEL ----------
 // ===== ONLINE LEADERBOARD (shared via ntfy.sh — free, no signup, CORS-enabled) =====
-const NTFY_URL='https://ntfy.sh/bentofarm_world_lb_k3x9p';
+const NTFY_URL='https://ntfy.sh/farmsim_world_lb_r2026a_q7w';
 // Auto-generate a name so EVERY farm is public automatically
 function getPlayerName(){ let n=localStorage.getItem('bentofarm_name'); if(!n){ n='Fazendeiro'+Math.floor(1000+Math.random()*9000); localStorage.setItem('bentofarm_name',n); } return n; }
 function setPlayerName(n){ localStorage.setItem('bentofarm_name',n); }
@@ -2660,7 +2751,7 @@ async function submitOnlineScore(){
   renderOnlineBoard();
 }
 function safeName(n){ return n.replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20)||'anon'; }
-function farmTopicURL(n){ return 'https://ntfy.sh/bentofarm_farm_'+safeName(n); }
+function farmTopicURL(n){ return 'https://ntfy.sh/farmsim_farm_r2026a_'+safeName(n); }
 async function fetchFarm(name){
   try{ const r=await fetch(farmTopicURL(name)+'/json?poll=1',{cache:'no-store'}); if(!r.ok) return null;
     const txt=await r.text(); const lines=txt.trim().split('\n').filter(Boolean); let farm=null;
@@ -2668,23 +2759,37 @@ async function fetchFarm(name){
     return farm;
   }catch(e){ return null; }
 }
+// Robust visit token: only a FRESH visit (JSON {name,at} < 10min old) counts.
+// Anything stale or old-format auto-heals: restores your backup and clears the flag,
+// so the "Voltar pra minha fazenda" banner can never get stuck when you're not visiting.
+function getVisitInfo(){
+  const raw=localStorage.getItem('bentofarm_visiting'); if(!raw) return null;
+  let info=null; try{ info=JSON.parse(raw); }catch(e){ info=null; }
+  if(!info || !info.name || !info.at || (Date.now()-info.at > 600000)){
+    const bak=localStorage.getItem('bentofarm_save_backup');
+    if(bak){ localStorage.setItem(SAVE_KEY,bak); localStorage.removeItem('bentofarm_save_backup'); }
+    localStorage.removeItem('bentofarm_visiting');
+    return null;
+  }
+  return info;
+}
 window.visitFarm=async(name)=>{
   showMessage('🚜 Carregando a fazenda de '+name+'...',2500);
   const farm=await fetchFarm(name);
   if(!farm){ showMessage('❌ Não consegui carregar essa fazenda (ainda não publicada).',2500); return; }
   // back up my own save, then load theirs as a temporary save
-  const mine=localStorage.getItem('bentofarm_save_v1'); if(mine) localStorage.setItem('bentofarm_save_backup',mine);
+  const mine=localStorage.getItem(SAVE_KEY); if(mine) localStorage.setItem('bentofarm_save_backup',mine);
   const visitSave={ money:farm.money, level:farm.level, plotsUnlocked:farm.plotsUnlocked||1,
     tractorIdx:farm.tractorIdx||0, tractorColor:farm.tractorColor, season:farm.season||0,
     buildings:farm.buildings||[], animals:farm.animals||[], tiles:[], inventory:{}, objective:12 };
-  localStorage.setItem('bentofarm_save_v1', JSON.stringify(visitSave));
-  localStorage.setItem('bentofarm_visiting', name);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(visitSave));
+  localStorage.setItem('bentofarm_visiting', JSON.stringify({name, at:Date.now()}));
   location.reload();
 };
 window.leaveVisit=()=>{
   const bak=localStorage.getItem('bentofarm_save_backup');
-  if(bak){ localStorage.setItem('bentofarm_save_v1',bak); localStorage.removeItem('bentofarm_save_backup'); }
-  else localStorage.removeItem('bentofarm_save_v1');
+  if(bak){ localStorage.setItem(SAVE_KEY,bak); localStorage.removeItem('bentofarm_save_backup'); }
+  else localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem('bentofarm_visiting');
   location.reload();
 };
@@ -2819,6 +2924,9 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   applyFestive(); // initial seasonal decorations
   cam.yaw=0;cam.pitch=0.45;cam.dist=16;
   camPos.set(tractor.position.x,9,tractor.position.z+16);camera.position.copy(camPos);camLook.copy(tractor.position);
+  // Determine visit BEFORE loading so offline-growth & autosave behave correctly
+  const _visit = fresh ? null : getVisitInfo();
+  state.visiting = !!_visit;
   if(fresh){
     // NEW GAME from zero — wipe any save and keep default state (level 1, $500)
     try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
@@ -2831,18 +2939,17 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
   // Visiting another farm? show banner, don't autosave/submit
-  const vName=localStorage.getItem('bentofarm_visiting');
-  if(vName){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+vName;
+  if(_visit){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+_visit.name;
     document.getElementById('visit-banner').style.display='flex'; }
-  else { document.getElementById('visit-banner').style.display='none'; setInterval(saveGame, 15000); startAutoPublish(); } // autosave + auto-publish to world (not while visiting)
+  else { state.visiting=false; document.getElementById('visit-banner').style.display='none'; setInterval(saveGame, 15000); startAutoPublish(); } // autosave + auto-publish to world (not while visiting)
   // Auto-refresh the online leaderboard while the stats panel is open
   setInterval(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }, 20000);
 }
 window.startGame=startGame;
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 renderer.render(scene,camera);
-// Auto-enter visit mode on reload if a visit is pending
-if(localStorage.getItem('bentofarm_visiting')){ setTimeout(()=>{ try{ startGame(false); }catch(e){ console.error(e); } }, 50); }
+// Auto-enter visit mode on reload ONLY if a fresh visit token is pending (self-heals stale ones)
+if(getVisitInfo()){ setTimeout(()=>{ try{ startGame(false); }catch(e){ console.error(e); } }, 50); }
 </script>
 </body>
 </html>
