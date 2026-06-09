@@ -914,6 +914,67 @@ for(let i=0;i<12;i++){
   scene.add(cl);
 }
 
+// ---------- AMBIENT LIFE (sun, butterflies, pollen, fireflies) — pure eye-candy ----------
+let dayFactor=1;
+// Glowing sun disc that tracks the light + a soft halo
+function makeGlowTex(inner,outer){
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const grd=g.createRadialGradient(64,64,4,64,64,64); grd.addColorStop(0,inner); grd.addColorStop(0.4,outer); grd.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=grd; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+}
+const sunSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:makeGlowTex('rgba(255,255,245,1)','rgba(255,224,150,0.8)'),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+sunSprite.scale.set(46,46,1); scene.add(sunSprite);
+// Butterflies — colorful flutterers wandering low over the farm
+const butterflies=[];
+const BFLY_COLORS=[0xff7043,0xffd54f,0x42a5f5,0xab47bc,0xff80ab,0xffffff];
+function makeButterfly(){
+  const g=new THREE.Group(); const col=BFLY_COLORS[Math.floor(Math.random()*BFLY_COLORS.length)];
+  const mat=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide,emissive:col,emissiveIntensity:0.15});
+  const wL=new THREE.Mesh(new THREE.CircleGeometry(0.32,8),mat); const wR=new THREE.Mesh(new THREE.CircleGeometry(0.32,8),mat);
+  wL.position.x=-0.16; wR.position.x=0.16; wL.scale.set(0.7,1,1); wR.scale.set(0.7,1,1);
+  g.add(wL,wR); g.userData={wL,wR};
+  const a=Math.random()*Math.PI*2, d=20+Math.random()*55;
+  g.position.set(Math.cos(a)*d, 2+Math.random()*3, Math.sin(a)*d);
+  g.userData.t=Math.random()*99; g.userData.spd=0.5+Math.random()*0.6;
+  scene.add(g); butterflies.push(g);
+}
+for(let i=0;i<10;i++) makeButterfly();
+// Floating pollen motes drifting in the air
+const pollenN=140, pollenGeo=new THREE.BufferGeometry(), pollenPos=new Float32Array(pollenN*3);
+for(let i=0;i<pollenN;i++){ pollenPos[i*3]=(Math.random()-0.5)*150; pollenPos[i*3+1]=1+Math.random()*10; pollenPos[i*3+2]=(Math.random()-0.5)*150; }
+pollenGeo.setAttribute('position',new THREE.BufferAttribute(pollenPos,3));
+const pollen=new THREE.Points(pollenGeo,new THREE.PointsMaterial({color:0xfff3c4,size:0.22,transparent:true,opacity:0.6,depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(pollen);
+// Fireflies — glow only at night
+const fireflyN=70, ffGeo=new THREE.BufferGeometry(), ffPos=new Float32Array(fireflyN*3), ffBase=[];
+for(let i=0;i<fireflyN;i++){ const x=(Math.random()-0.5)*140, y=1+Math.random()*4, z=(Math.random()-0.5)*140; ffPos[i*3]=x;ffPos[i*3+1]=y;ffPos[i*3+2]=z; ffBase.push([x,y,z,Math.random()*99]); }
+ffGeo.setAttribute('position',new THREE.BufferAttribute(ffPos,3));
+const fireflies=new THREE.Points(ffGeo,new THREE.PointsMaterial({color:0xfff176,size:0.5,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(fireflies);
+function updateAmbient(dt,now){
+  // Sun sprite follows the directional light, fades near night
+  sunSprite.position.copy(sun.position).multiplyScalar(2.6); sunSprite.position.y=Math.max(60,sunSprite.position.y);
+  sunSprite.material.opacity=Math.min(1,dayFactor*1.4);
+  // Butterflies flutter + gentle wander
+  for(const b of butterflies){ const u=b.userData; u.t+=dt;
+    const flap=Math.sin(now*16+u.t)*0.9; u.wL.rotation.y=flap; u.wR.rotation.y=-flap;
+    b.position.x+=Math.sin(u.t*u.spd)*dt*1.6; b.position.z+=Math.cos(u.t*u.spd*0.7)*dt*1.6;
+    b.position.y=2.2+Math.sin(now*1.5+u.t)*0.7; b.rotation.y=Math.atan2(Math.cos(u.t*u.spd*0.7),Math.sin(u.t*u.spd));
+    b.visible=dayFactor>0.25;
+  }
+  // Pollen drifts slowly (day only)
+  pollen.material.opacity=0.6*dayFactor;
+  const pa=pollen.geometry.attributes.position;
+  for(let i=0;i<pollenN;i++){ pa.array[i*3]+=Math.sin(now*0.3+i)*dt*0.25; pa.array[i*3+1]+=dt*0.18; if(pa.array[i*3+1]>11) pa.array[i*3+1]=1; }
+  pa.needsUpdate=true;
+  // Fireflies glow + blink at night
+  const nf=Math.max(0,1-dayFactor*1.6); fireflies.material.opacity=nf*0.9;
+  if(nf>0.05){ const fa=fireflies.geometry.attributes.position;
+    for(let i=0;i<fireflyN;i++){ const b=ffBase[i]; fa.array[i*3]=b[0]+Math.sin(now*0.6+b[3])*2.2; fa.array[i*3+1]=b[1]+Math.sin(now*0.9+b[3]*2)*0.8; fa.array[i*3+2]=b[2]+Math.cos(now*0.5+b[3])*2.2; }
+    fa.needsUpdate=true;
+  }
+}
+
 // ---------- TRACTOR ----------
 const tractor=new THREE.Group();
 const matGreen=new THREE.MeshLambertMaterial({color:0x2e7d32});
@@ -1732,36 +1793,66 @@ function updateEvents(dt){
 
 // ---------- AI ASSISTANT (offline knowledge base) ----------
 const AI_KB=[
-  {kw:['oi','ola','olá','eai','e ai','bom dia','boa tarde','boa noite','hello'], a:'Oi! 👋 Sou o assistente da sua fazenda. Posso te ajudar com plantio, colheita, dinheiro, missões, animais e muito mais. O que quer saber?'},
-  {kw:['obrigad','valeu','vlw','thanks'], a:'De nada! 😄 Boa colheita! Se precisar é só perguntar.'},
-  {kw:['plantar','plante','plant','semente','muda'], a:'🌱 Para plantar: aperte [2] (Plantadeira), escolha a semente com [Q], e dirija por cima do solo arado. Ela planta sozinha! Primeiro precisa arar com [1].'},
-  {kw:['arar','arado','arou','lavrar'], a:'🚜 Para arar: aperte [1] (Arado) e dirija por cima da grama do campo. O solo fica marrom, pronto pra plantar.'},
-  {kw:['colher','colheita','colhe','colhi'], a:'🌾 Para colher: quando a planta ficar dourada/madura, aperte [3] (Colheitadeira) e dirija por cima. A colheita vai pro inventário.'},
-  {kw:['regar','rega','irrigar','irrig','agua','molhar','molha'], a:'💧 Para regar: aperte [4] (Irrigador) e dirija por cima das plantas. Regado, cresce 2× mais rápido! A Torre d\'Água (construa com [G]) rega sozinha.'},
-  {kw:['combustivel','combustível','gasolina','posto','abastecer','abasteci','fuel','tanque'], a:'⛽ Combustível: vá até a placa 🏪/⛽ POSTO e aperte [R] pra encher. Sem grana? Compre um 🛢️ Galão na loja e aperte [R] em qualquer lugar. Mesmo vazio o trator anda devagar até o posto.'},
-  {kw:['dinheiro','grana','vender','vende','money','rico','lucro','ganhar'], a:'💰 Para ganhar dinheiro: colha e venda no mercado ([B] perto da placa 🏪, aba VENDER). Dica: melancia 🍉 e abóbora 🎃 valem mais. Cumpra contratos pra ganhar até 1.7×! E aproveite o evento "Boom no Mercado" (venda 2×).'},
-  {kw:['missao','missão','contrato','contrte','tarefa','quest'], a:'📋 Missões/Contratos: o painel azul à esquerda mostra o que entregar (ex: 11× milho). Quando você tiver a quantidade, o botão ENTREGAR acende — clique e ganhe dinheiro + XP! Um novo contrato aparece automaticamente.'},
-  {kw:['animal','animais','vaca','galinha','ovelha','porco','leite','ovo','la','lã','curral'], a:'🐄 Animais: na loja (aba ANIMAIS) compre vaca (leite), galinha (ovo), ovelha (lã) ou porco (trufa). Eles ficam no 🐄 CURRAL e produzem sozinhos. Venda os produtos na aba VENDER = renda passiva!'},
-  {kw:['nivel','nível','xp','level','subir','experiencia','experiência'], a:'⭐ Nível/XP: você ganha XP colhendo e cumprindo contratos. Cada nível libera um NOVO CAMPO (até 9). A barra dourada no topo mostra seu progresso.'},
-  {kw:['construir','construcao','construção','build','estufa','torre','silo','predio','prédio'], a:'🏗️ Construir: aperte [G] pra abrir o menu. A Estufa faz crescer 3× mais rápido, a Torre d\'Água rega sozinha, e o Tanque ⛽ abastece longe do posto. A construção aparece na frente do veículo.'},
-  {kw:['trator','tractor','veiculo','veículo','melhor trator'], a:'🚜 Tratores: na loja (aba TRATORES) você compra modelos melhores — mais rápidos e com tanque maior. O Mega Trator Dourado é o melhor ($80.000)!'},
-  {kw:['loja','mercado','shop','comprar'], a:'🏪 Loja: chegue perto da placa 🏪 MERCADO e aperte [B]. Tem 4 abas: SEMENTES, VENDER, ANIMAIS e TRATORES.'},
-  {kw:['caminhao','caminhão','truck'], a:'🚚 Caminhão: aperte [F] pra trocar entre trator e caminhão. O caminhão é mais rápido — bom pra correr até o mercado!'},
-  {kw:['estacao','estação','inverno','verao','verão','outono','primavera','season'], a:'🍂 Estações: mudam a cada dia (Primavera→Verão→Outono→Inverno). No Verão tudo cresce mais rápido; no Inverno mais devagar (e neva!). Veja no relógio.'},
-  {kw:['clima','chuva','tempo','weather','tempestade'], a:'🌧️ Clima: alterna entre sol, nublado e chuva. Quando chove, suas plantas são regadas de graça! Fica de olho no evento "Chuva Grátis".'},
-  {kw:['fertilizante','fertilizar','adubo'], a:'🧪 Fertilizante: compre na loja. É aplicado automático ao plantar (se você tiver) — cresce +50% e dá +2⭐ de qualidade (vende mais caro).'},
-  {kw:['pesticida','praga','mato','erva','daninha'], a:'🪲 Pesticida/Mato: o mato nasce nas plantações e para o crescimento. Passe com qualquer ferramenta pra arrancar, ou use Pesticida (loja) ao plantar pra prevenir.'},
-  {kw:['galao','galão','jerrycan'], a:'🛢️ Galão: combustível de emergência. Compre na loja e aperte [R] em qualquer lugar pra ganhar +50 de combustível.'},
-  {kw:['conquista','trofeu','troféu','achievement','trofeu'], a:'🏆 Conquistas: você desbloqueia troféus fazendo coisas (1ª colheita, milionário, todos os campos...). Aparecem como notificações douradas!'},
-  {kw:['evento','event'], a:'🎲 Eventos: a cada ~1 min acontece algo legal — Boom no Mercado (venda 2×), Chuva Grátis, Prêmio em dinheiro, Festival de XP ou Doação de sementes!'},
-  {kw:['salvar','save','perder','progresso'], a:'💾 O jogo salva sozinho a cada 15s e quando você vende/compra. Pode fechar e voltar que continua de onde parou!'},
-  {kw:['controle','tecla','como jog','botao','botão','ajuda','help'], a:'🎮 Controles: [W A S D] dirigir, [1] arar, [2] plantar, [3] colher, [4] irrigar, [Q] trocar semente, [B] loja, [G] construir, [F] trocar veículo, [R] abastecer, [H] buzina, [L] faróis.'},
+  {kw:['oi','ola','olá','eai','e ai','bom dia','boa tarde','boa noite','hello','hi'], a:'Oi! 👋 Sou o assistente da sua fazenda. Posso explicar tudo: plantar, colher, dinheiro, contratos, animais, construções, tratores, pragas, andar a pé, comprar áreas e muito mais.\nPergunte à vontade — ou me peça uma "dica" e eu olho sua fazenda e digo o melhor passo agora! 🌻'},
+  {kw:['obrigad','valeu','vlw','thanks','obg'], a:'De nada! 😄 Boa colheita, fazendeiro! Qualquer dúvida é só chamar.'},
+  {kw:['plantar','plante','plant','semente','sementes','muda','plantio','plantacao','plantação'], a:'🌱 PLANTAR (3 passos):\n1) Aperte [1] (Arado) e passe por cima da grama do campo cercado — vira terra marrom.\n2) Aperte [Q] pra escolher a semente (precisa ter comprado no Mercado).\n3) Aperte [2] (Plantadeira) e passe por cima da terra arada — ela planta sozinha!\nUm contador aparece em cima de cada planta mostrando o tempo pra crescer.'},
+  {kw:['arar','arado','arou','lavrar','terra','solo'], a:'🚜 ARAR: aperte [1] (Arado) e dirija por cima da grama dentro do campo cercado. O chão fica marrom = pronto pra plantar. A ferramenta trabalha sozinha enquanto você dirige por cima.'},
+  {kw:['colher','colheita','colhe','colhi','maduro','madura','colheitadeira'], a:'🌾 COLHER: quando a planta fica grande/madura (o contador zera), aperte [3] (Colheitadeira) e passe por cima. Vai pro inventário pra você vender. Plantas com ⭐ mais estrelas valem mais!\nÁrvores (🍎🍊🥥🥑) rebrotam sozinhas depois de colher.'},
+  {kw:['regar','rega','irrigar','irrig','agua','água','molhar','molha','irrigador'], a:'💧 REGAR: aperte [4] (Irrigador) e passe por cima das plantas — regado cresce 2× mais rápido! Constrói uma 🚰 Torre d\'Água com [G] que rega o campo sozinha. E quando chove, tudo é regado de graça! ☔'},
+  {kw:['combustivel','combustível','gasolina','posto','abastecer','abasteci','fuel','tanque','encher'], a:'⛽ ABASTECER: vá até a ÁREA DE COMBUSTÍVEL (piso cinza com faixas amarelas, na fila de lojas) e aperte [B]. Abre o Posto, onde você escolhe Encher METADE ou TANQUE CHEIO (paga por litro).\nLonge do posto? Compre um 🛢️ Galão na aba INSUMOS e aperte [R] em qualquer lugar (+50). Mesmo com o tanque vazio o veículo anda devagar até o posto.'},
+  {kw:['dinheiro','grana','vender','vende','venda','money','rico','lucro','ganhar','vendas'], a:'💰 GANHAR DINHEIRO:\n• Colha e venda no 🏪 Mercado (aba 💵 VENDER).\n• Cumpra CONTRATOS (painel azul) — pagam ~1,7× o valor!\n• Plantas caras valem mais: o 🥑 Abacate é a melhor ($450), seguido de pitaya 🐉 e melancia 🍉.\n• Crie animais pra renda passiva (leite, ovo, mel...).\n• Plantas com ⭐⭐⭐ (regadas + fertilizadas) vendem por mais.'},
+  {kw:['missao','missão','missoes','missões','contrato','contratos','contrte','tarefa','quest','entregar'], a:'📋 CONTRATOS (painel azul à esquerda): pedem uma quantidade de uma cultura, em ordem do mais barato (🌾 Trigo) ao mais caro (🥑 Abacate). Quando você tiver o suficiente no inventário, o botão ENTREGAR acende — clique e ganhe 💰 + ⭐XP. Aí vem o próximo da fila.\nAs MISSÕES (botão 📜) dão XP extra por metas maiores.'},
+  {kw:['animal','animais','vaca','galinha','ovelha','porco','cabra','pato','coelho','abelha','leite','ovo','la','lã','mel','curral','queijo'], a:'🐄 ANIMAIS: na 🐄 Loja de Animais (aperte [B] perto dela) compre vaca (leite), galinha (ovo), ovelha (lã), porco (trufa), cabra (queijo), pato (pena), coelho (pelo) e abelha (mel 🍯). Eles vivem nos currais e produzem SOZINHOS. Venda os produtos no Mercado = renda passiva. A abelha ainda faz as plantas perto crescerem mais rápido!'},
+  {kw:['nivel','nível','xp','level','experiencia','experiência'], a:'⭐ NÍVEL/XP: você ganha XP colhendo e cumprindo contratos. A cada nível você ganha um bônus de dinheiro e novas culturas/itens vão sendo apresentados (clique na barra 🎖️ NÍVEL pra ver a lista). Os CAMPOS novos agora são COMPRADOS com dinheiro (veja "comprar área").'},
+  {kw:['area','área','campo','campos','expandir','terreno','plantação nova','comprar area','comprar área'], a:'🌾 COMPRAR NOVA ÁREA: aparece um quadrado VERDE no chão (com placa "Comprar área $X · aperte [V]") no lugar do próximo campo. Dirija ou ande até ele e aperte [V] pra comprar. Fica VERMELHO se faltar dinheiro. O preço sobe a cada campo: começa em $1.000 e o último custa $1.000.000!'},
+  {kw:['construir','construcao','construção','build','estufa','torre','silo','predio','prédio','composteira','painel','solar','moinho','padaria'], a:'🏗️ CONSTRUIR: aperte [G] pra abrir o menu. Tem 🪴 Estufa (cresce 3× mais rápido), 🚰 Torre d\'Água (rega sozinha), ⛽ Tanque (abastece longe do posto), 🌰 Composteira (faz fertilizante), 🐝 Colmeia, 🏭 Moinho/Padaria (vira farinha e pão pra vender caro!) e decorações. A construção aparece na frente do veículo.'},
+  {kw:['trator','tractor','melhor trator','tratores'], a:'🚜 TRATORES: na 🚜 Garagem (aba TRATORES) você compra modelos melhores — mais rápidos e com tanque maior. Aperte [T] a qualquer hora pra trocar entre os que você tem, e a aba 🎨 PINTAR muda a cor. Pra correr MUITO, veja os carros velozes!'},
+  {kw:['carro','carros','esportivo','veloz','rapido','rápido','formula','foguete','buggy','suv'], a:'🏎️ CARROS VELOZES: na Garagem tem veículos super rápidos pra comprar — SUV Turbo, Buggy, Carro Esportivo, Fórmula Fazenda e o 🚀 Foguete da Roça (o mais veloz!). Quanto mais caro, mais rápido. Aperte [F] pra trocar entre seus veículos.'},
+  {kw:['loja','mercado','shop','comprar','vendedor'], a:'🏪 LOJAS: ficam todas em FILA. Chegue perto e aperte [B]:\n• 🏪 Mercado — abas SEMENTES, INSUMOS (fertilizante/pesticida/galão) e VENDER.\n• 🚜 Garagem — tratores e carros + pintura.\n• 🐄 Loja de Animais — comprar e vender bichos.\n• ⛽ Posto — abastecer.'},
+  {kw:['caminhao','caminhão','truck','transporte'], a:'🚚 CAMINHÃO: aperte [F] pra alternar entre seus veículos (trator → caminhão → carro). O caminhão é mais rápido que o trator básico — bom pra correr até o mercado.'},
+  {kw:['estacao','estação','estacoes','estações','inverno','verao','verão','outono','primavera','season','neve'], a:'🍂 ESTAÇÕES: mudam a cada dia (Primavera→Verão→Outono→Inverno). No ☀️ Verão tudo cresce mais rápido; no ❄️ Inverno mais devagar e neva! As árvores e o cenário mudam de cor. Veja a estação no relógio embaixo.'},
+  {kw:['clima','chuva','tempo','weather','tempestade','sol','nublado','raio'], a:'🌧️ CLIMA: alterna entre ☀️ sol, ☁️ nublado e 🌧️ chuva (com raios!). Quando chove, TODAS as suas plantas são regadas de graça — ótimo momento pra deixar crescendo.'},
+  {kw:['fertilizante','fertilizar','adubo'], a:'🧪 FERTILIZANTE: compre na aba INSUMOS do Mercado. É aplicado automático ao plantar (se você tiver no estoque) — a planta cresce +50% mais rápido e ganha +2⭐ de qualidade (vende mais caro). A Composteira ([G]) produz fertilizante de graça.'},
+  {kw:['pesticida','pulverizar','spray','proteger','insumo','insumos'], a:'🪲 PESTICIDA: compre na aba 🧪 INSUMOS do Mercado ($80). Protege a planta contra PRAGAS e mato. É aplicado ao plantar, OU clique no botão 🪲 (lateral direita) pra PULVERIZAR a plantação inteira de uma vez (gasta 1 por planta). Planta protegida não pega praga!'},
+  {kw:['praga','pragas','bug','inseto','gafanhoto','besouro'], a:'🐛 PRAGAS: de vez em quando uma praga (bichinhos verdes + ⚠️) aparece numa planta e PARA o crescimento. Se você não destruir em ~18s, ela mata a colheita! Pra destruir: passe POR CIMA com o trator (qualquer ferramenta ligada). Pra prevenir: use 🪲 Pesticida (botão pulverizar protege o campo todo).'},
+  {kw:['mato','erva','daninha','weed'], a:'🌿 MATO/ERVA: nasce nas plantações e para o crescimento. Passe por cima com qualquer ferramenta ligada pra arrancar. O Pesticida previne o mato também.'},
+  {kw:['arvore','árvore','arvores','cortar','machado','derrubar','maca','maçã','laranja','coco'], a:'🪓 ÁRVORES (🍎🍊🥥🥑): dão fruta e rebrotam sozinhas ao colher. Pra REMOVER uma árvore: use o botão 🪓 "Cortar árvore" (lateral direita) perto dela, ou ligue o Machado [5] e passe por cima. O Abacate 🥑 é a árvore mais valiosa do jogo!'},
+  {kw:['abacate','avocado'], a:'🥑 ABACATE: é a MELHOR semente do jogo — vende por $450! Cresce numa árvore e leva 10 minutos (o mais demorado). Vale muito a pena pra ficar rico. Compre a semente no Mercado.'},
+  {kw:['dourado','dourada','golden','brilhante','especial'], a:'✨ COLHEITA DOURADA: raramente (~6%) uma planta fica DOURADA ao amadurecer — colher ela rende 5× a quantidade! Fique de olho no brilho ✨ em cima das plantas.'},
+  {kw:['qualidade','estrela','estrelas','star'], a:'⭐ QUALIDADE: cada colheita ganha de 1 a 5 estrelas. Regar (💧), fertilizar (🧪) e não deixar mato aumentam as estrelas — e mais estrelas = vende por mais dinheiro!'},
+  {kw:['galao','galão','jerrycan'], a:'🛢️ GALÃO: combustível de emergência. Compre na aba INSUMOS e aperte [R] em qualquer lugar pra ganhar +50 de combustível na hora. Bom pra não ficar parado longe do posto.'},
+  {kw:['conquista','conquistas','trofeu','troféu','achievement'], a:'🏆 CONQUISTAS (botão 🏆): troféus que você desbloqueia jogando — 1ª colheita, milionário 💰, todos os campos, nível 100... Aparecem como notificações douradas. Clique no botão pra ver todas.'},
+  {kw:['salvar','save','perder','progresso','salva','recomecar','recomeçar','zerar'], a:'💾 SALVAR: o jogo salva sozinho a cada 15s e quando você compra/vende. Pode fechar e voltar que continua! As plantas até CRESCEM enquanto o jogo está fechado. Na tela inicial, "Continuar" carrega sua fazenda; "Começar do zero" apaga tudo.'},
+  {kw:['descer','pe','pé','andar','boneco','personagem','sair','veiculo','desce','caminhar'], a:'🚶 ANDAR A PÉ: clique no botão 🚶 Descer (ou tecla [C]) pra sair do veículo e andar como seu boneco com W A S D. Pra voltar, chegue perto de um veículo e aperte [C] ou o botão. No botão 🧍 Boneco você customiza pele, camisa, calça e chapéu!'},
+  {kw:['placar','online','ranking','leaderboard','visitar','fazenda','fazendas','outros','mundial'], a:'🌐 PLACAR ONLINE: sua fazenda é publicada automaticamente no placar mundial (botão 📊). Lá você vê os outros jogadores e pode VISITAR a fazenda deles — clique no nome! Para voltar, use o botão "↩️ Voltar pra minha fazenda".'},
+  {kw:['velocidade','turbo','correr','shift','acelerar','rapido','depressa'], a:'💨 VELOCIDADE: segure [Shift] pra dar TURBO (acelera ~60%). Compre tratores/carros melhores pra andar bem mais rápido. A velocidade aparece no canto (km/h).'},
+  {kw:['camera','câmera','girar','zoom','visao','visão'], a:'🎥 CÂMERA: arraste com o mouse pra girar ao redor do veículo, e use a rolagem do mouse pra dar zoom. No celular use um dedo pra girar.'},
+  {kw:['minimapa','mapa','minimap'], a:'🗺️ MINIMAPA (canto esquerdo): mostra você (seta branca), os campos (marrom), os currais e as lojas (pontos coloridos). Ajuda a achar tudo rápido.'},
+  {kw:['comecar','começar','iniciante','novato','inicio','início','primeiro','o que fazer','dica','dicas','ajuda geral','agora','proximo','próximo','sugest'], a:'__CONTEXT__'},
+  {kw:['controle','controles','tecla','teclas','como jog','botao','botão','ajuda','help','comandos'], a:'🎮 CONTROLES:\n[W A S D] dirigir · [Shift] turbo\n[1] arar · [2] plantar · [3] colher · [4] irrigar · [5] machado · [0] guardar\n[Q] trocar semente · [B] loja/posto · [G] construir\n[V] comprar área · [C] descer/subir · [F] trocar veículo · [T] trocar trator\n[R] galão · [H] buzina · [L] faróis'},
 ];
+// Context-aware advice based on the player's current state
+function aiContextTip(){
+  const tips=[];
+  if(state.fuel < state.maxFuel*0.2) tips.push('⛽ Seu combustível está baixo! Vá à Área de Combustível e aperte [B] pra abastecer.');
+  const cost=(typeof nextPlotCost==='function')?nextPlotCost():null;
+  if(contract){ const C=CROPS[contract.crop]; const have=state.inventory[contract.crop]||0;
+    tips.push(`📋 Seu contrato pede ${contract.qty}× ${C.emoji} ${C.name} (você tem ${have}). Plante e colha ${C.name} pra ganhar $${contract.rewardMoney}!`); }
+  let anyPlanted=false, anyGrown=false, anyTilled=false;
+  for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){ if(t.state==='planted')anyPlanted=true; if(t.state==='grown')anyGrown=true; if(t.state==='tilled')anyTilled=true; }
+  if(anyGrown) tips.push('🌾 Tem planta MADURA pronta! Aperte [3] e passe por cima pra colher.');
+  else if(anyTilled) tips.push('🌱 Você tem terra arada vazia — aperte [2] e plante (escolha a semente com [Q]).');
+  else if(!anyPlanted) tips.push('🚜 Comece arando ([1]) e plantando ([2]) no campo cercado. Compre sementes no Mercado [B].');
+  if(cost!=null && state.money>=cost) tips.push(`🌾 Você tem grana pra comprar uma nova ÁREA ($${cost.toLocaleString('pt-BR')})! Vá até o quadrado verde e aperte [V].`);
+  if(state.money>=600 && state.stats.animalsBought<1) tips.push('🐄 Compre seu 1º animal na Loja de Animais — eles geram renda sozinhos!');
+  tips.push('💡 Pergunte "como ganhar dinheiro", "pragas", "comprar área", "animais" ou qualquer assunto que eu explico tudo!');
+  return 'Olhando sua fazenda agora:\n• '+tips.slice(0,4).join('\n• ');
+}
 function aiNormalize(s){ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function aiAnswer(text){
   const t=aiNormalize(text);
   const words=new Set(t.split(/[^a-z0-9]+/).filter(Boolean));
-  let best=null, bestScore=0;
+  const scored=[];
   for(const item of AI_KB){
     let score=0;
     for(const k of item.kw){
@@ -1769,15 +1860,26 @@ function aiAnswer(text){
       if(words.has(nk)) score+=2;                          // exact word match
       else if(nk.length>=4 && t.includes(nk)) score+=1;    // stem match (min 4 chars, avoids false hits)
     }
-    if(score>bestScore){ bestScore=score; best=item; }
+    if(score>0) scored.push({item,score});
   }
-  if(best) return best.a;
-  return 'Hmm, não entendi 🤔. Posso ajudar com: plantar, arar, regar, colher, vender, dinheiro, missões, animais, construir, combustível, trator, níveis. Tenta uma dessas palavras!';
+  scored.sort((a,b)=>b.score-a.score);
+  if(scored.length){
+    const top=scored[0].item;
+    let ans = top.a==='__CONTEXT__' ? aiContextTip() : top.a;
+    // If a second, clearly-relevant topic also matched strongly, add it as a bonus tip
+    if(scored.length>1 && scored[1].score>=2 && scored[1].item!==top && scored[1].item.a!=='__CONTEXT__' && top.a!=='__CONTEXT__'){
+      ans += '\n\n➕ Também pode interessar:\n'+scored[1].item.a;
+    }
+    return ans;
+  }
+  return 'Hmm, não tenho certeza do que você quis dizer 🤔. Mas posso explicar QUALQUER coisa do jogo! Tenta perguntar sobre:\n🌱 plantar · 🌾 colher · 💧 regar · 💰 dinheiro · 📋 contratos · 🐄 animais · 🏗️ construir · ⛽ combustível · 🚜 tratores · 🏎️ carros · 🌾 comprar área · 🐛 pragas · 🪲 pesticida · 🪓 árvores · 🚶 andar a pé · 🧍 boneco · 🌐 placar online.\nOu peça uma "dica" que eu olho sua fazenda! 😊';
 }
 function aiAddMsg(text, who){
   const m=document.getElementById('ai-msgs');
   const d=document.createElement('div'); d.className='ai-msg '+(who==='user'?'ai-user':'ai-bot');
-  d.textContent=text; m.appendChild(d); m.scrollTop=m.scrollHeight;
+  if(who==='user'){ d.textContent=text; }
+  else { d.innerHTML=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+  m.appendChild(d); m.scrollTop=m.scrollHeight;
 }
 window.aiSend=()=>{
   const inp=document.getElementById('ai-input');
@@ -1793,7 +1895,7 @@ window.toggleAI=()=>{
   }
 };
 // Quick chips
-const AI_CHIPS=['Como plantar?','Como ganhar dinheiro?','Como fazer missões?','Como regar?','Como abastecer?','Comprar animais'];
+const AI_CHIPS=['💡 Dica pra mim','Como plantar?','Como ganhar dinheiro?','Comprar nova área','Pragas?','Andar a pé','Como abastecer?','Carros velozes'];
 function aiBuildChips(){
   const c=document.getElementById('ai-chips'); if(!c) return;
   for(const q of AI_CHIPS){ const b=document.createElement('div'); b.className='ai-chip'; b.textContent=q;
@@ -2309,6 +2411,7 @@ function updateDayNight(){
     const sx=Math.cos(ang)*100, sy=Math.sin(ang)*100;
     sun.position.set(sx, Math.max(20, sy), 30);   // keep sun above horizon for lighting
     const day=Math.max(0, Math.sin(t*Math.PI*2-Math.PI/2)*0.5+0.5);
+    dayFactor=day;
     // Softer light so it's not blown-out white
     sun.intensity = 0.5 + day*0.65;
     // Sky never gets pitch dark, daytime a calmer blue (not bright white)
@@ -2903,6 +3006,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updatePests(dt);
   updateTimers(dt);
   updateFuelArea(dt);
+  updateAmbient(dt, now);
   updateWaterTowers(dt);
   updateProducers(dt);
   updateMarket(dt);
