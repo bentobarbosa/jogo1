@@ -55,34 +55,28 @@
     #event-banner.show { transform:translateX(-50%) scale(1); opacity:1; }
 
     /* AI Assistant */
-    #ai-btn { position:fixed; right:20px; top:50%; transform:translateY(82px);
-      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#42a5f5,#1976d2);
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
-      display:flex; align-items:center; justify-content:center; }
-    #ai-btn:hover { transform:translateY(82px) scale(1.08); }
-    #ai-btn::after { content:'Ajuda'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #chop-btn { position:fixed; right:20px; top:50%; transform:translateY(206px); width:58px; height:58px; border-radius:50%;
-      background:linear-gradient(135deg,#a1887f,#6d4c41); border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px;
-      box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
-    #chop-btn:hover { transform:translateY(206px) scale(1.08); }
-    #chop-btn::after { content:'Cortar árvore'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #spray-btn { position:fixed; right:20px; top:50%; transform:translateY(270px); width:58px; height:58px; border-radius:50%;
-      background:linear-gradient(135deg,#9ccc65,#558b2f); border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px;
-      box-shadow:0 4px 16px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
-    #spray-btn:hover { transform:translateY(270px) scale(1.08); }
-    #spray-btn::after { content:'Pulverizar campo'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    /* Right-side circular buttons — all identical 52px "balls" */
+    .rbtn { position:fixed; right:20px; top:50%; width:52px; height:52px; border-radius:50%;
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:23px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+      display:flex; align-items:center; justify-content:center; padding:0; }
+    .rbtn .lbl { content:''; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .15s; }
+    .rbtn:hover .lbl { opacity:1; }
+    #ai-btn { transform:translateY(29px); background:linear-gradient(135deg,#42a5f5,#1976d2); }
+    #ai-btn:hover { transform:translateY(29px) scale(1.08); }
+    #ai-btn::after { content:'Ajuda'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #chop-btn { transform:translateY(145px); background:linear-gradient(135deg,#a1887f,#6d4c41); }
+    #chop-btn:hover { transform:translateY(145px) scale(1.08); }
+    #chop-btn::after { content:'Cortar árvore'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #spray-btn { transform:translateY(203px); background:linear-gradient(135deg,#9ccc65,#558b2f); }
+    #spray-btn:hover { transform:translateY(203px) scale(1.08); }
+    #spray-btn::after { content:'Pulverizar campo'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #boneco-btn { transform:translateY(-29px); background:linear-gradient(135deg,#ab47bc,#6a1b9a); }
+    #boneco-btn:hover { transform:translateY(-29px) scale(1.08); }
+    #boneco-btn::after { content:'Boneco'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
     #plot-btn:hover { transform:translateY(72px) scale(1.05); }
-    #foot-btn { position:fixed; left:16px; top:50%; transform:translateY(76px); z-index:50; padding:9px 15px; border-radius:24px;
-      background:linear-gradient(135deg,#42a5f5,#1565c0); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
-      cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
-    #foot-btn:hover { transform:translateY(76px) scale(1.05); }
-    #boneco-btn { position:fixed; left:16px; top:50%; transform:translateY(122px); z-index:50; padding:9px 15px; border-radius:24px;
-      background:linear-gradient(135deg,#ab47bc,#6a1b9a); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
-      cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
-    #boneco-btn:hover { transform:translateY(122px) scale(1.05); }
     .bn-row { margin:9px 0; }
     .bn-label { font-size:13px; font-weight:700; color:#ffe082; margin-bottom:5px; }
     .bn-swatches { display:flex; gap:7px; flex-wrap:wrap; }
@@ -109,17 +103,17 @@
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
     /* Trophies panel */
-    #trophy-btn { position:fixed; right:20px; top:50%; transform:translateY(18px);
-      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#ffd54f,#ff8f00);
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
-      display:flex; align-items:center; justify-content:center; }
-    #trophy-btn:hover { transform:translateY(18px) scale(1.08); }
-    #trophy-btn::after { content:'Conquistas'; position:absolute; right:64px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #missions-btn { position:fixed; right:20px; top:50%; transform:translateY(-46px);
-      width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#66bb6a,#388e3c);
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:26px; box-shadow:0 4px 16px rgba(0,0,0,0.4); }
-    #missions-btn:hover { transform:translateY(-46px) scale(1.08); }
-    #missions-btn::after { content:'Missões'; position:absolute; right:64px; top:18px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #music-btn { transform:translateY(-203px); background:linear-gradient(135deg,#26a69a,#00796b); }
+    #music-btn:hover { transform:translateY(-203px) scale(1.08); }
+    #missions-btn { transform:translateY(-145px); background:linear-gradient(135deg,#66bb6a,#388e3c); }
+    #missions-btn:hover { transform:translateY(-145px) scale(1.08); }
+    #missions-btn::after { content:'Missões'; position:absolute; right:60px; top:18px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #trophy-btn { transform:translateY(-87px); background:linear-gradient(135deg,#ffd54f,#ff8f00); }
+    #trophy-btn:hover { transform:translateY(-87px) scale(1.08); }
+    #trophy-btn::after { content:'Conquistas'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #stats-btn { transform:translateY(87px); background:linear-gradient(135deg,#5c6bc0,#3949ab); }
+    #stats-btn:hover { transform:translateY(87px) scale(1.08); }
+    #stats-btn::after { content:'Placar'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
     #level-box { cursor:pointer; pointer-events:auto; }
     #level-box:hover { border-color:#fff; }
     .mrow { background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; margin-bottom:8px; border:2px solid rgba(255,255,255,0.08); }
@@ -279,12 +273,11 @@
 <canvas id="minimap" width="124" height="124" style="position:fixed;top:50%;left:16px;transform:translateY(-62px);width:124px;height:124px;border:3px solid rgba(255,255,255,0.55);border-radius:12px;z-index:12;background:rgba(20,40,20,0.5);"></canvas>
 
 <!-- Music + Stats buttons -->
-<button id="music-btn" onclick="toggleMusic()" title="Música" style="position:fixed;right:20px;top:50%;transform:translateY(-110px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#26a69a,#00796b);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">🎵</button>
-<button id="stats-btn" onclick="toggleStats()" title="Estatísticas" style="position:fixed;right:20px;top:50%;transform:translateY(146px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);border:3px solid #fff;cursor:pointer;z-index:120;font-size:20px;">📊</button>
-<button id="chop-btn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
-<button id="spray-btn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
-<button id="foot-btn" onclick="toggleOnFoot()" title="Descer/subir do trator (tecla C)">🚶 Descer</button>
-<button id="boneco-btn" onclick="toggleBonecoPanel()" title="Montar seu boneco">🧍 Boneco</button>
+<button id="music-btn" class="rbtn" onclick="toggleMusic()" title="Música">🎵</button>
+<button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
+<button id="chop-btn" class="rbtn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
+<button id="spray-btn" class="rbtn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
+<button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)">🧍</button>
 
 <!-- Character (boneco) customizer -->
 <div id="boneco-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:16px;z-index:160;padding:20px;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
@@ -319,6 +312,7 @@
     <button class="tact" onclick="setTool(state.tool===2?0:2)">🌱</button>
     <button class="tact" onclick="setTool(state.tool===3?0:3)">🌾</button>
     <button class="tact" onclick="setTool(state.tool===5?0:5)">🪓</button>
+    <button class="tact" onclick="toggleOnFoot()" title="Descer/subir (tecla C)">🚶</button>
     <button class="tact" onclick="toggleShopIfNear()">🏪</button>
   </div>
 </div>
@@ -330,7 +324,7 @@
 </div>
 
 <!-- Trophies -->
-<button id="trophy-btn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
+<button id="trophy-btn" class="rbtn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
 <div id="trophy-panel">
   <h2>🏆 CONQUISTAS</h2>
   <div id="trophy-progress"></div>
@@ -339,7 +333,7 @@
 </div>
 
 <!-- Missions -->
-<button id="missions-btn" onclick="toggleMissions()" title="Missões">📜<span id="missions-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#e53935;border:2px solid #fff;"></span></button>
+<button id="missions-btn" class="rbtn" onclick="toggleMissions()" title="Missões">📜<span id="missions-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#e53935;border:2px solid #fff;"></span></button>
 <div id="missions-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-height:80vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #66bb6a;border-radius:16px;z-index:130;padding:20px;color:#fff;">
   <h2 style="text-align:center;color:#a5d6a7;margin-bottom:6px;">📜 MISSÕES</h2>
   <div style="text-align:center;color:#90caf9;font-size:13px;margin-bottom:12px;">Complete missões para ganhar XP!</div>
@@ -356,7 +350,7 @@
 </div>
 
 <!-- AI Assistant -->
-<button id="ai-btn" onclick="toggleAI()" title="Assistente">🤖</button>
+<button id="ai-btn" class="rbtn" onclick="toggleAI()" title="Assistente">🤖</button>
 <div id="ai-panel">
   <div id="ai-head"><span>🤖 Assistente Fazenda</span><span class="ai-x" onclick="toggleAI()">✕</span></div>
   <div id="ai-msgs"></div>
