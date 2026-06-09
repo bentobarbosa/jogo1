@@ -77,6 +77,8 @@
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
     #plot-btn:hover { transform:translateY(72px) scale(1.05); }
+    .cheat-b { padding:11px; border:none; border-radius:10px; background:linear-gradient(135deg,#42a5f5,#1565c0); color:#fff; font-weight:800; font-size:14px; cursor:pointer; }
+    .cheat-b:hover { filter:brightness(1.12); transform:scale(1.02); }
     .bn-row { margin:9px 0; }
     .bn-label { font-size:13px; font-weight:700; color:#ffe082; margin-bottom:5px; }
     .bn-swatches { display:flex; gap:7px; flex-wrap:wrap; }
@@ -297,6 +299,23 @@
   <button id="online-submit" onclick="submitOnlineScore()" style="display:block;width:100%;margin-top:10px;padding:9px;background:#0288d1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:800;">📤 Enviar minha pontuação</button>
   <button onclick="renderOnlineBoard()" style="display:block;width:100%;margin-top:6px;padding:6px;background:rgba(255,255,255,0.12);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔄 Atualizar</button>
   <button onclick="toggleStats()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
+
+<!-- 🔓 Secret cheat menu (type "money") -->
+<div id="cheat-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;background:linear-gradient(160deg,#1b2230,#2a1f3a);border:3px solid #ffd54f;border-radius:16px;z-index:170;padding:20px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.6);">
+  <h2 style="text-align:center;color:#ffd54f;margin-bottom:2px;">🔓 MENU SECRETO</h2>
+  <div style="text-align:center;font-size:12px;color:#9fa8ff;margin-bottom:12px;">Jogador: <b id="cheat-name">—</b></div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <button class="cheat-b" onclick="cheatMoney(100000)">💰 +$100.000</button>
+    <button class="cheat-b" onclick="cheatMoney(1000000)">💰 +$1.000.000</button>
+    <button class="cheat-b" onclick="cheatMoney(100000000)">💰 +$100.000.000</button>
+    <button class="cheat-b" onclick="cheatXP()">⭐ Subir 5 níveis</button>
+    <button class="cheat-b" onclick="cheatAreas()">🌾 Liberar todas as áreas</button>
+    <button class="cheat-b" onclick="cheatSeeds()">🌱 +50 de cada semente</button>
+    <button class="cheat-b" onclick="cheatFuel()">⛽ Tanque cheio</button>
+    <button class="cheat-b" onclick="cheatName()">✏️ Mudar meu nome</button>
+  </div>
+  <button onclick="closeCheat()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 
 <!-- Touch controls (mobile only) -->
@@ -1329,10 +1348,13 @@ function updateTimers(dt){
 
 // ---------- INPUT ----------
 const keys={};
+let cheatBuf='';
 addEventListener('keydown',e=>{
   // Ignore game controls while typing in a text input (AI chat)
   if(document.activeElement && document.activeElement.tagName==='INPUT'){ return; }
   keys[e.code]=true;
+  // 🔓 secret cheat: type the word "money" to open the admin menu
+  if(e.key && e.key.length===1){ cheatBuf=(cheatBuf+e.key.toLowerCase()).slice(-12); if(cheatBuf.endsWith('money')) openCheat(); }
   if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4); if(e.code==='Digit5')setTool(5);
   if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
@@ -1344,6 +1366,15 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyG'){ toggleBuildMenu(); }
   if(e.code==='KeyT'){ cycleTractor(); }
 });
+// ---------- 🔓 SECRET CHEAT MENU (type "money") ----------
+function openCheat(){ const p=document.getElementById('cheat-panel'); if(p){ p.style.display='block'; const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=getPlayerName(); if(typeof beep==='function')beep(900,0.08); if(typeof showMessage==='function')showMessage('🔓 Menu secreto aberto!',1200);} }
+window.closeCheat=()=>{ const p=document.getElementById('cheat-panel'); if(p)p.style.display='none'; };
+window.cheatMoney=(a)=>{ state.money+=a; updateHUD(); saveGame(); if(typeof sndSell==='function')sndSell(); showMessage('💰 +$'+a.toLocaleString('pt-BR')+'!',1600); };
+window.cheatXP=()=>{ for(let i=0;i<5;i++) gainXP(state.xpToNext); updateHUD(); saveGame(); showMessage('⭐ +5 níveis!',1600); };
+window.cheatAreas=()=>{ let n=0; while(typeof nextPlotCost==='function' && nextPlotCost()!=null && n<20){ unlockNewPlot(); n++; } updateHUD(); if(typeof updatePlotMarker==='function')updatePlotMarker(); saveGame(); showMessage('🌾 Todas as áreas liberadas!',1800); };
+window.cheatSeeds=()=>{ for(const k in CROPS){ state.inventory[k+'_seed']=(state.inventory[k+'_seed']||0)+50; } state.inventory.fertilizer=(state.inventory.fertilizer||0)+50; state.inventory.pesticide=(state.inventory.pesticide||0)+50; updateHUD(); saveGame(); showMessage('🌱 +50 de cada semente + insumos!',1800); };
+window.cheatFuel=()=>{ state.fuel=state.maxFuel; updateHUD(); showMessage('⛽ Tanque cheio!',1200); };
+window.cheatName=()=>{ const n=prompt('Novo nome (placar online):', getPlayerName()); if(n&&n.trim()){ setPlayerName(n.trim().slice(0,16)); const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=n.trim().slice(0,16); showMessage('✏️ Nome: '+n.trim().slice(0,16),1600); } };
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 // Mouse camera control (cam declared above)
