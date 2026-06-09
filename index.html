@@ -55,24 +55,26 @@
     #event-banner.show { transform:translateX(-50%) scale(1); opacity:1; }
 
     /* AI Assistant */
-    /* Right-side circular buttons — all identical 52px "balls" */
-    .rbtn { position:fixed; right:20px; top:50%; width:52px; height:52px; border-radius:50%;
-      border:3px solid #fff; cursor:pointer; z-index:120; font-size:23px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+    /* Right-side circular buttons — all identical 50px "balls", evenly spaced */
+    .rbtn { position:fixed; right:20px; top:50%; width:50px; height:50px; border-radius:50%;
+      border:3px solid #fff; cursor:pointer; z-index:120; font-size:22px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; padding:0; }
-    .rbtn .lbl { content:''; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .15s; }
-    .rbtn:hover .lbl { opacity:1; }
-    #ai-btn { transform:translateY(29px); background:linear-gradient(135deg,#42a5f5,#1976d2); }
-    #ai-btn:hover { transform:translateY(29px) scale(1.08); }
-    #ai-btn::after { content:'Ajuda'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #chop-btn { transform:translateY(145px); background:linear-gradient(135deg,#a1887f,#6d4c41); }
-    #chop-btn:hover { transform:translateY(145px) scale(1.08); }
-    #chop-btn::after { content:'Cortar árvore'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #spray-btn { transform:translateY(203px); background:linear-gradient(135deg,#9ccc65,#558b2f); }
-    #spray-btn:hover { transform:translateY(203px) scale(1.08); }
-    #spray-btn::after { content:'Pulverizar campo'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #boneco-btn { transform:translateY(-29px); background:linear-gradient(135deg,#ab47bc,#6a1b9a); }
-    #boneco-btn:hover { transform:translateY(-29px) scale(1.08); }
-    #boneco-btn::after { content:'Boneco'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    .rbtn::after { position:absolute; right:58px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #inv-btn { transform:translateY(-162px); background:linear-gradient(135deg,#8d6e63,#5d4037); }
+    #inv-btn:hover { transform:translateY(-162px) scale(1.08); }
+    #inv-btn::after { content:'Inventário'; }
+    #ai-btn { transform:translateY(54px); background:linear-gradient(135deg,#42a5f5,#1976d2); }
+    #ai-btn:hover { transform:translateY(54px) scale(1.08); }
+    #ai-btn::after { content:'Ajuda'; }
+    #chop-btn { transform:translateY(162px); background:linear-gradient(135deg,#a1887f,#6d4c41); }
+    #chop-btn:hover { transform:translateY(162px) scale(1.08); }
+    #chop-btn::after { content:'Cortar árvore'; }
+    #spray-btn { transform:translateY(216px); background:linear-gradient(135deg,#9ccc65,#558b2f); }
+    #spray-btn:hover { transform:translateY(216px) scale(1.08); }
+    #spray-btn::after { content:'Pulverizar campo'; }
+    #boneco-btn { transform:translateY(0px); background:linear-gradient(135deg,#ab47bc,#6a1b9a); }
+    #boneco-btn:hover { transform:translateY(0px) scale(1.08); }
+    #boneco-btn::after { content:'Boneco'; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
@@ -105,17 +107,17 @@
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
     /* Trophies panel */
-    #music-btn { transform:translateY(-203px); background:linear-gradient(135deg,#26a69a,#00796b); }
-    #music-btn:hover { transform:translateY(-203px) scale(1.08); }
-    #missions-btn { transform:translateY(-145px); background:linear-gradient(135deg,#66bb6a,#388e3c); }
-    #missions-btn:hover { transform:translateY(-145px) scale(1.08); }
-    #missions-btn::after { content:'Missões'; position:absolute; right:60px; top:18px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #trophy-btn { transform:translateY(-87px); background:linear-gradient(135deg,#ffd54f,#ff8f00); }
-    #trophy-btn:hover { transform:translateY(-87px) scale(1.08); }
-    #trophy-btn::after { content:'Conquistas'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #stats-btn { transform:translateY(87px); background:linear-gradient(135deg,#5c6bc0,#3949ab); }
-    #stats-btn:hover { transform:translateY(87px) scale(1.08); }
-    #stats-btn::after { content:'Placar'; position:absolute; right:60px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+    #music-btn { transform:translateY(-216px); background:linear-gradient(135deg,#26a69a,#00796b); }
+    #music-btn:hover { transform:translateY(-216px) scale(1.08); }
+    #missions-btn { transform:translateY(-108px); background:linear-gradient(135deg,#66bb6a,#388e3c); }
+    #missions-btn:hover { transform:translateY(-108px) scale(1.08); }
+    #missions-btn::after { content:'Missões'; }
+    #trophy-btn { transform:translateY(-54px); background:linear-gradient(135deg,#ffd54f,#ff8f00); }
+    #trophy-btn:hover { transform:translateY(-54px) scale(1.08); }
+    #trophy-btn::after { content:'Conquistas'; }
+    #stats-btn { transform:translateY(108px); background:linear-gradient(135deg,#5c6bc0,#3949ab); }
+    #stats-btn:hover { transform:translateY(108px) scale(1.08); }
+    #stats-btn::after { content:'Placar'; }
     #level-box { cursor:pointer; pointer-events:auto; }
     #level-box:hover { border-color:#fff; }
     .mrow { background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; margin-bottom:8px; border:2px solid rgba(255,255,255,0.08); }
@@ -155,11 +157,13 @@
     .tact { width:54px; height:54px; border-radius:50%; background:rgba(0,0,0,0.55);
       border:2px solid rgba(255,255,255,0.5); color:#fff; font-size:22px; cursor:pointer; }
 
-    #inventory { position:absolute; top:160px; right:16px; background:rgba(255,255,255,0.92);
-      padding:10px 14px; border-radius:12px; min-width:170px; box-shadow:0 4px 16px rgba(0,0,0,0.25); }
-    #inventory h3 { color:#2d5016; margin-bottom:6px; font-size:12px; letter-spacing:1px; }
-    .inv-row { display:flex; justify-content:space-between; padding:2px 0; font-size:12px; }
-    .inv-label { color:#555; } .inv-val { font-weight:700; color:#2d5016; }
+    #inventory { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:340px; max-width:92vw; max-height:80vh; overflow-y:auto; background:rgba(25,30,48,0.98);
+      border:3px solid #66bb6a; border-radius:16px; z-index:135; padding:18px; box-shadow:0 12px 48px rgba(0,0,0,0.55); }
+    #inventory h3 { color:#a5d6a7; margin-bottom:8px; font-size:16px; letter-spacing:1px; text-align:center; }
+    .inv-row { display:flex; justify-content:space-between; padding:4px 2px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .inv-label { color:#cfd8dc; } .inv-val { font-weight:700; color:#fff; }
+    #inv-close { display:block; margin:14px auto 0; padding:8px 30px; background:#c62828; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
 
     #help { position:absolute; top:16px; left:16px; background:rgba(40,30,20,0.9);
       padding:14px 16px; border-radius:14px; color:#fff; width:270px;
@@ -276,6 +280,7 @@
 
 <!-- Music + Stats buttons -->
 <button id="music-btn" class="rbtn" onclick="toggleMusic()" title="Música">🎵</button>
+<button id="inv-btn" class="rbtn" onclick="toggleInventory()" title="Inventário">📦</button>
 <button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
 <button id="chop-btn" class="rbtn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
 <button id="spray-btn" class="rbtn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
@@ -392,8 +397,9 @@
   <div id="event-banner"></div>
   <div id="inventory">
     <h3>📦 INVENTÁRIO</h3>
-    <div id="selected-seed" style="background:rgba(255,213,79,0.25);border-radius:6px;padding:4px 8px;margin-bottom:6px;font-size:12px;font-weight:700;color:#2d5016;">Selecionado: 🌾 Trigo — 10 sementes</div>
+    <div id="selected-seed" style="background:rgba(255,213,79,0.9);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:13px;font-weight:700;color:#2d5016;text-align:center;">Selecionado: 🌾 Trigo — 10 sementes</div>
     <div id="inv-list"></div>
+    <button id="inv-close" onclick="toggleInventory()">FECHAR</button>
   </div>
   <div id="help">
     <h3>🎮 CONTROLES</h3>
@@ -1375,6 +1381,7 @@ window.cheatAreas=()=>{ let n=0; while(typeof nextPlotCost==='function' && nextP
 window.cheatSeeds=()=>{ for(const k in CROPS){ state.inventory[k+'_seed']=(state.inventory[k+'_seed']||0)+50; } state.inventory.fertilizer=(state.inventory.fertilizer||0)+50; state.inventory.pesticide=(state.inventory.pesticide||0)+50; updateHUD(); saveGame(); showMessage('🌱 +50 de cada semente + insumos!',1800); };
 window.cheatFuel=()=>{ state.fuel=state.maxFuel; updateHUD(); showMessage('⛽ Tanque cheio!',1200); };
 window.cheatName=()=>{ const n=prompt('Novo nome (placar online):', getPlayerName()); if(n&&n.trim()){ setPlayerName(n.trim().slice(0,16)); const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=n.trim().slice(0,16); showMessage('✏️ Nome: '+n.trim().slice(0,16),1600); } };
+window.toggleInventory=()=>{ const p=document.getElementById('inventory'); if(!p) return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open && typeof updateHUD==='function') updateHUD(); };
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 // Mouse camera control (cam declared above)
