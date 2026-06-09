@@ -509,7 +509,7 @@ const SEASONS = [
   { name:'Outono',    emoji:'🍂', grass:0xa1887f, tree:0xff8f00, growMult:1.2 },
   { name:'Inverno',   emoji:'❄️', grass:0xe0e0e0, tree:0x90a4ae, growMult:1.6 },  // grows slower
 ];
-const XP_PER_HARVEST = { wheat:5, corn:10, potato:18, tomato:14, soy:12, melon:25, sunflower:20, apple:30, orange:35, carrot:9, strawberry:15, pumpkin:24, grape:22, rice:10, cotton:20, pineapple:30, chili:16, eggplant:19, coconut:35, dragon:45 };
+const XP_PER_HARVEST = { wheat:5, corn:10, potato:18, tomato:14, soy:12, melon:25, sunflower:20, apple:30, orange:35, carrot:9, strawberry:15, pumpkin:24, grape:22, rice:10, cotton:20, pineapple:30, chili:16, eggplant:19, coconut:35, dragon:45, lettuce:8, pea:11, peanut:20, blueberry:22, banana:38, avocado:60 };
 
 const TRACTORS = [
   { name:'🚜 Tratorzinho',   speed:14, fuelCap:100, price:0,     color:0x2e7d32, scale:1.0 },
@@ -547,6 +547,11 @@ const CROPS = {
   eggplant: { emoji:'🍆', name:'Berinjela', growTime:42, sell:88, seed:17, top:0x6a1b9a },
   coconut:  { emoji:'🥥', name:'Coco (árvore)', growTime:65, sell:150, seed:90, top:0x8d6e63, tree:true, regrow:45 },
   dragon:   { emoji:'🐉', name:'Pitaya',    growTime:75, sell:200,seed:50, top:0xe91e63 },
+  lettuce:  { emoji:'🥬', name:'Alface',    growTime:24, sell:40, seed:7,  top:0x7cb342 },
+  pea:      { emoji:'🫛', name:'Ervilha',   growTime:30, sell:52, seed:10, top:0x9ccc65 },
+  peanut:   { emoji:'🥜', name:'Amendoim',  growTime:46, sell:95, seed:19, top:0xc99a55 },
+  blueberry:{ emoji:'🫐', name:'Mirtilo',   growTime:50, sell:105,seed:21, top:0x5c6bc0 },
+  banana:   { emoji:'🍌', name:'Banana (árvore)', growTime:62, sell:165, seed:95, top:0xffd54f, tree:true, regrow:42 },
   avocado:  { emoji:'🥑', name:'Abacate (árvore)', growTime:600, sell:450, seed:300, top:0x558b2f, tree:true, regrow:300 },
 };
 // Grow times scaled by price: cheapest (wheat $25) = 30s, most expensive (avocado $450) = 600s (10 min)
@@ -554,6 +559,8 @@ const CROPS = {
   let gt=Math.round(30 + (c.sell-minP)/(maxP-minP)*(600-30)); gt=Math.max(30,Math.min(600,gt));
   c.growTime=gt; if(c.tree) c.regrow=Math.round(gt*0.6);
 } })();
+// Make sure every crop (incl. new ones) has inventory slots so buying never makes NaN
+for(const k in CROPS){ if(state.inventory[k]===undefined) state.inventory[k]=0; if(state.inventory[k+'_seed']===undefined) state.inventory[k+'_seed']=0; if(state.qualityTotals[k]===undefined) state.qualityTotals[k]=0; }
 
 // ---------- AUDIO ----------
 let actx;
@@ -568,10 +575,13 @@ function beep(freq,dur,type='square',vol=0.2){
     o.start(); o.stop(actx.currentTime+dur);
   }catch(e){}
 }
-const sndPlow=()=>beep(110,0.12,'sawtooth',0.25);
-const sndPlant=()=>beep(520,0.1,'triangle',0.2);
-const sndHarvest=()=>{beep(660,0.08,'square',0.2); setTimeout(()=>beep(880,0.1,'square',0.2),70);};
-const sndSell=()=>{beep(700,0.08); setTimeout(()=>beep(1050,0.12),80);};
+const sndPlow=()=>{beep(120,0.1,'sawtooth',0.22); setTimeout(()=>beep(85,0.12,'sawtooth',0.16),55);};
+const sndPlant=()=>{beep(440,0.07,'triangle',0.18); setTimeout(()=>beep(660,0.1,'triangle',0.15),55);};
+const sndHarvest=()=>{[523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,0.12,'triangle',0.2),i*55));}; // happy C-E-G chime
+const sndSell=()=>{beep(880,0.06,'square',0.16); setTimeout(()=>beep(1318,0.1,'square',0.15),65); setTimeout(()=>beep(1760,0.14,'triangle',0.11),140);}; // coin cha-ching
+const sndError=()=>{beep(200,0.14,'sawtooth',0.18); setTimeout(()=>beep(130,0.18,'sawtooth',0.16),80);};
+const sndChop=()=>{beep(150,0.13,'sawtooth',0.24); setTimeout(()=>beep(70,0.12,'square',0.16),65);};
+const sndPestDie=()=>{[440,330,220].forEach((f,i)=>setTimeout(()=>beep(f,0.07,'square',0.17),i*45));};
 
 // ---------- THREE ----------
 const canvas=document.getElementById('canvas');
@@ -1137,7 +1147,7 @@ const BN_PANTS=[0x3e2723,0x1a237e,0x37474f,0x4e342e,0x000000,0x795548];
 const BN_HATC =[0xd32f2f,0x1565c0,0x2e7d32,0x6d4c41,0xffd54f,0x222222];
 const BN_HATS =[[0,'Sem chapéu'],[1,'🧢 Boné'],[2,'👒 Palha'],[3,'🤠 Caubói']];
 let bonecoPreview=false;
-function setBoneco(part,val){ state.boneco[part]=val; rebuildPlayer(); renderBonecoPanel(); if(typeof saveGame==='function')saveGame(); }
+function setBoneco(part,val){ state.boneco[part]=val; state.stats.bonecoChanged=true; rebuildPlayer(); renderBonecoPanel(); if(typeof saveGame==='function')saveGame(); }
 function renderBonecoPanel(){
   const host=document.getElementById('boneco-rows'); if(!host) return; const b=state.boneco;
   const swatch=(arr,part,cur)=>arr.map(c=>`<div class="bn-sw ${c===cur?'sel':''}" style="background:#${c.toString(16).padStart(6,'0')}" onclick="setBoneco('${part}',${c})"></div>`).join('');
@@ -1176,7 +1186,7 @@ window.toggleOnFoot=()=>{
     const ox=Math.cos(vs.heading)*2.6, oz=-Math.sin(vs.heading)*2.6; // step to the side
     player.position.set(v.position.x+ox,0,v.position.z+oz);
     PLAYER.heading=vs.heading; PLAYER.speed=0; player.rotation.y=vs.heading; player.visible=true;
-    state.onFoot=true;
+    state.onFoot=true; state.stats.walkedOnFoot=true;
     showMessage('🚶 Você desceu! Ande com W A S D. Aperte 🚜 (ou F) pra subir num veículo perto.',2800);
   } else {
     // get back in — board the nearest vehicle within range
@@ -1263,7 +1273,7 @@ window.chopNearestTree=()=>{
     }
   }
   if(best && bd<16){ const nm=CROPS[best.crop].name; clearTileToGrass(best);
-    floatText(best.x,best.z,'🪓 '+nm+' removida',0x8d6e63); if(typeof sndPlow==='function')sndPlow();
+    floatText(best.x,best.z,'🪓 '+nm+' removida',0x8d6e63); if(typeof sndChop==='function')sndChop();
     showMessage('🪓 Árvore removida!',1200);
   } else {
     showMessage('🪓 Chegue perto de uma árvore plantada (🍎🍊🥥🥑) e clique de novo!',2600);
@@ -1357,7 +1367,7 @@ function notifyNoSeed(){
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
   if(t.weed){ const w=t.weed; t.weed=null; scene.remove(w); if(w.geometry)w.geometry.dispose(); if(w.material)w.material.dispose(); }
-  if(t.pest){ removePest(t); floatText(t.x,t.z,'✅ praga destruída!',0x66bb6a); }
+  if(t.pest){ removePest(t); floatText(t.x,t.z,'✅ praga destruída!',0x66bb6a); state.stats.pestsKilled=(state.stats.pestsKilled||0)+1; if(typeof sndPestDie==='function')sndPestDie(); }
   if(state.tool===1){ if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; sndPlow(); } }
   else if(state.tool===2){ if(t.state==='tilled'){ const sk=state.selectedCrop+'_seed'; if(state.inventory[sk]>0){ state.inventory[sk]--;
     // Auto-apply fertilizer if available
@@ -1406,7 +1416,7 @@ function workTile(t){ if(!t)return;
   } }
   else if(state.tool===5){ // axe — chop down planted trees
     if((t.state==='planted'||t.state==='grown') && t.crop && CROPS[t.crop] && CROPS[t.crop].tree){
-      clearTileToGrass(t); floatText(t.x,t.z,'🪓 árvore removida',0x8d6e63); sndPlow();
+      clearTileToGrass(t); floatText(t.x,t.z,'🪓 árvore removida',0x8d6e63); sndChop();
     }
   }
 }
@@ -1489,6 +1499,16 @@ function buildCrop(crop,t){const g=new THREE.Group();
   else if(crop==='eggplant'){for(let i=0;i<4;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.7,5),new THREE.MeshLambertMaterial({color:0x33691e}));stem.position.set((Math.random()-0.5)*1.6,0.35,(Math.random()-0.5)*1.6);g.add(stem);const e=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:0x6a1b9a}));e.scale.y=1.5;e.position.set(stem.position.x,0.4,stem.position.z);g.add(e);}}
   else if(crop==='coconut'){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,3,6),new THREE.MeshLambertMaterial({color:0x8d6e63}));trunk.position.y=1.5;trunk.rotation.z=0.1;g.add(trunk);for(let l=0;l<6;l++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.25,2,4),new THREE.MeshLambertMaterial({color:0x388e3c}));const a=(l/6)*Math.PI*2;leaf.position.set(Math.cos(a)*0.8,3.2,Math.sin(a)*0.8);leaf.rotation.z=Math.cos(a)*1.1;leaf.rotation.x=Math.sin(a)*1.1;g.add(leaf);}for(let i=0;i<3;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshLambertMaterial({color:0x5d4037}));c.position.set((Math.random()-0.5)*0.5,2.8,(Math.random()-0.5)*0.5);g.add(c);}}
   else if(crop==='dragon'){for(let i=0;i<3;i++){const stalk=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.4,6),new THREE.MeshLambertMaterial({color:0x2e7d32}));stalk.position.set((Math.random()-0.5)*1.5,0.7,(Math.random()-0.5)*1.5);g.add(stalk);const f=new THREE.Mesh(new THREE.SphereGeometry(0.28,8,8),new THREE.MeshLambertMaterial({color:0xe91e63,flatShading:true}));f.position.set(stalk.position.x,1.4,stalk.position.z);g.add(f);for(let j=0;j<5;j++){const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.2,4),new THREE.MeshLambertMaterial({color:0x76ff03}));const a=(j/5)*Math.PI*2;sp.position.set(f.position.x+Math.cos(a)*0.28,1.4+Math.sin(a)*0.2,f.position.z+Math.sin(a)*0.28);g.add(sp);}}}
+  else if(crop==='lettuce'){for(let i=0;i<5;i++){const head=new THREE.Group();const bx=(Math.random()-0.5)*1.6,bz=(Math.random()-0.5)*1.6;for(let l=0;l<4;l++){const leaf=new THREE.Mesh(new THREE.SphereGeometry(0.3-l*0.04,7,6),new THREE.MeshLambertMaterial({color:[0x9ccc65,0x7cb342,0x8bc34a,0xaed581][l]}));leaf.position.set(bx+(Math.random()-0.5)*0.2,0.25+l*0.03,bz+(Math.random()-0.5)*0.2);leaf.scale.y=0.55;head.add(leaf);}g.add(head);}}
+  else if(crop==='pea'){for(let i=0;i<6;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.9,4),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.6,0.45,(Math.random()-0.5)*1.6);g.add(s);for(let j=0;j<3;j++){const pod=new THREE.Mesh(new THREE.SphereGeometry(0.09,6,5),new THREE.MeshLambertMaterial({color:0x9ccc65}));pod.scale.set(1.7,0.7,0.7);pod.position.set(s.position.x+0.1,0.35+j*0.22,s.position.z);g.add(pod);}}}
+  else if(crop==='peanut'){for(let i=0;i<5;i++){const bush=new THREE.Mesh(new THREE.SphereGeometry(0.32,7,6),new THREE.MeshLambertMaterial({color:0x558b2f}));bush.scale.y=0.6;bush.position.set((Math.random()-0.5)*1.6,0.3,(Math.random()-0.5)*1.6);g.add(bush);for(let j=0;j<2;j++){const nut=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,5),new THREE.MeshLambertMaterial({color:0xc99a55}));nut.scale.set(1.6,0.8,0.8);nut.position.set(bush.position.x+(Math.random()-0.5)*0.3,0.12,bush.position.z+(Math.random()-0.5)*0.3);g.add(nut);}}}
+  else if(crop==='blueberry'){for(let i=0;i<5;i++){const bush=new THREE.Mesh(new THREE.SphereGeometry(0.34,8,7),new THREE.MeshLambertMaterial({color:0x33691e}));bush.position.set((Math.random()-0.5)*1.6,0.35,(Math.random()-0.5)*1.6);g.add(bush);for(let j=0;j<5;j++){const b=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),new THREE.MeshLambertMaterial({color:0x5c6bc0}));b.position.set(bush.position.x+(Math.random()-0.5)*0.45,0.35+(Math.random()-0.3)*0.3,bush.position.z+(Math.random()-0.5)*0.45);g.add(b);}}}
+  else if(crop==='banana'){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.28,3,7),new THREE.MeshLambertMaterial({color:0x6d4c41}));trunk.position.y=1.5;g.add(trunk);for(let l=0;l<6;l++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.3,2.2,4),new THREE.MeshLambertMaterial({color:0x43a047,flatShading:true}));const a=(l/6)*Math.PI*2;leaf.position.set(Math.cos(a)*0.9,3.1,Math.sin(a)*0.9);leaf.rotation.z=Math.cos(a)*1.2;leaf.rotation.x=Math.sin(a)*1.2;g.add(leaf);}for(let b=0;b<5;b++){const ban=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.42,5),new THREE.MeshLambertMaterial({color:0xffd54f}));ban.position.set(Math.cos(b)*0.18,2.55,Math.sin(b)*0.18);ban.rotation.z=0.5+Math.random()*0.3;g.add(ban);}}
+  else if(crop==='avocado'){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,2.2,7),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1.1;g.add(trunk);for(let l=0;l<3;l++){const leaves=new THREE.Mesh(new THREE.SphereGeometry(1.25-l*0.2,9,8),new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));leaves.position.y=2.5+l*0.5;g.add(leaves);}for(let i=0;i<6;i++){const av=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshLambertMaterial({color:0x33691e}));av.scale.y=1.4;const a=Math.random()*Math.PI*2,r=0.7+Math.random()*0.3;av.position.set(Math.cos(a)*r,2.4+Math.random()*0.8,Math.sin(a)*r);g.add(av);}}
+  else { // generic fallback for any other crop — a little bush in the crop's color
+    const col=(CROPS[crop]&&CROPS[crop].top)||0x4caf50;
+    for(let i=0;i<4;i++){const bush=new THREE.Mesh(new THREE.SphereGeometry(0.3,7,6),new THREE.MeshLambertMaterial({color:0x4caf50}));bush.position.set((Math.random()-0.5)*1.5,0.35,(Math.random()-0.5)*1.5);g.add(bush);const fr=new THREE.Mesh(new THREE.SphereGeometry(0.13,7,6),new THREE.MeshLambertMaterial({color:col}));fr.position.set(bush.position.x,0.55,bush.position.z);g.add(fr);}
+  }
   g.position.set(t.x,0.1,t.z);return g;}
 function updateCrops(now){
   for(const plot of allPlots) for(const row of plot.tiles) for(const t of row){
@@ -1648,13 +1668,19 @@ const ACHIEVEMENTS=[
   {id:'harvest_100',   icon:'🚜', title:'Fazendeiro',         desc:'Colheu 100 plantações',        check:()=>state.stats.harvested>=100},
   {id:'harvest_1000',  icon:'👑', title:'Rei da Fazenda',     desc:'Colheu 1000 plantações',       check:()=>state.stats.harvested>=1000},
   {id:'first_animal',  icon:'🐄', title:'Criador',            desc:'Comprou seu primeiro animal',  check:()=>state.stats.animalsBought>=1},
-  {id:'all_crops',     icon:'🌈', title:'Colecionador',       desc:'Colheu todas as 15 culturas',  check:()=>Object.keys(CROPS).every(c=>state.stats.cropsSeen[c])},
+  {id:'all_crops',     icon:'🌈', title:'Colecionador',       desc:'Colheu todas as culturas',     check:()=>Object.keys(CROPS).every(c=>state.stats.cropsSeen[c])},
   {id:'level_10',      icon:'⭐', title:'Nível 10',           desc:'Alcançou o nível 10',          check:()=>state.level>=10},
   {id:'level_50',      icon:'🌟', title:'Nível 50',           desc:'Alcançou o nível 50',          check:()=>state.level>=50},
   {id:'level_100',     icon:'💫', title:'Nível 100',          desc:'Alcançou o nível 100',         check:()=>state.level>=100},
   {id:'millionaire',   icon:'💰', title:'Milionário',         desc:'Acumulou $1.000.000',          check:()=>state.money>=1000000},
-  {id:'all_plots',     icon:'🗺️', title:'Conquistador',       desc:'Desbloqueou todos os campos',  check:()=>state.plotsUnlocked>=9},
+  {id:'multi_mi',      icon:'💎', title:'Multimilionário',    desc:'Acumulou $5.000.000',          check:()=>state.money>=5000000},
+  {id:'all_plots',     icon:'🗺️', title:'Conquistador',       desc:'Comprou todos os campos',      check:()=>state.plotsUnlocked>=9},
   {id:'gold_tractor',  icon:'🏆', title:'Trator Dourado',     desc:'Comprou o Mega Trator Dourado',check:()=>state.tractorIdx>=4},
+  {id:'fast_car',      icon:'🏎️', title:'Velocista',          desc:'Comprou um carro veloz',       check:()=>state.tractorsOwned.some(i=>i>=7)},
+  {id:'avocado',       icon:'🥑', title:'Rei do Abacate',     desc:'Colheu um abacate',            check:()=>!!state.stats.cropsSeen.avocado},
+  {id:'pest_killer',   icon:'🐛', title:'Dedetizador',        desc:'Destruiu 10 pragas',           check:()=>(state.stats.pestsKilled||0)>=10},
+  {id:'on_foot',       icon:'🚶', title:'Pé na Terra',        desc:'Andou a pé pela fazenda',      check:()=>!!state.stats.walkedOnFoot},
+  {id:'stylist',       icon:'🧍', title:'Estiloso',           desc:'Customizou seu boneco',        check:()=>!!state.stats.bonecoChanged},
   {id:'contracts_10',  icon:'📋', title:'Empreiteiro',        desc:'Cumpriu 10 contratos',         check:()=>state.stats.contractsDone>=10},
 ];
 function showToast(icon,title,desc){
