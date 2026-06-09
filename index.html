@@ -802,15 +802,12 @@ function makeFuelArea(x,z){
   const ring=new THREE.Mesh(new THREE.RingGeometry(2.2,2.8,24), new THREE.MeshBasicMaterial({color:0xffeb3b,side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(x,0.05,z+0.01); scene.add(ring);
 }
 makeFuelArea(pumpPos.x,pumpPos.z);
-let _fuelMsg=0;
 function updateFuelArea(dt){
   if(state.visiting) return;
   const p=activeVehPos();
-  if(Math.hypot(p.x-FUEL_AREA.x,p.z-FUEL_AREA.z)<FUEL_AREA.r){
-    if(state.fuel<state.maxFuel){ state.fuel=Math.min(state.maxFuel, state.fuel+dt*40); // auto-refuel, free
-      const now=performance.now()/1000; if(now-_fuelMsg>3 && state.fuel<state.maxFuel){ _fuelMsg=now; }
-    }
-  }
+  const inside=Math.hypot(p.x-FUEL_AREA.x,p.z-FUEL_AREA.z)<FUEL_AREA.r;
+  if(inside && !state._inFuel){ state._inFuel=true; if(state.fuel<state.maxFuel) showMessage('⛽ Aperte [B] para abastecer (metade ou tanque cheio)',2400); }
+  if(!inside) state._inFuel=false;
 }
 // Floating beacon sign helper so player can find key buildings
 function beaconSign(x,z,text){
@@ -1494,10 +1491,10 @@ function updateHUD(){
 }
 
 function tryRefuel(){
-  const veh = activeVeh==='tractor'?tractor:truck;
+  const p = activeVehPos();
   // Near the main pump OR any built fuel depot?
-  let near = distXZ(veh.position,pumpPos)<16;
-  if(!near) for(const d of fuelDepots){ if(distXZ(veh.position,d)<12){ near=true; break; } }
+  let near = distXZ(p,pumpPos)<16;
+  if(!near) for(const d of fuelDepots){ if(distXZ(p,d)<12){ near=true; break; } }
   // Emergency jerrycan usable anywhere
   if(!near){
     if(state.inventory.jerrycan>0){ state.inventory.jerrycan--; state.fuel=Math.min(state.maxFuel,state.fuel+50); sndSell();
@@ -1530,7 +1527,7 @@ const OBJ=[
   {icon:'📋',text:'9/12 — Cumpra um CONTRATO (painel à esquerda)',done:()=>state.stats.contractsDone>=1},
   {icon:'🐄',text:'10/12 — Compre um animal na loja (aba ANIMAIS)',done:()=>state.stats.animalsBought>=1},
   {icon:'🏗️',text:'11/12 — Aperte [G] e construa algo (ex: Estufa)',done:()=>(state.stats.builtCount||0)>=1},
-  {icon:'⛽',text:'12/12 — Abasteça no posto: chegue perto e aperte [R]',done:()=>state.stats.refueled>0},
+  {icon:'⛽',text:'12/12 — Vá ao ⛽ Posto, chegue perto e aperte [B] pra abastecer',done:()=>state.stats.refueled>0},
   {icon:'🎉',text:'Tutorial completo! Continue crescendo sua fazenda!',done:()=>false},
 ];
 function updateObjective(){
@@ -1807,20 +1804,22 @@ setTimeout(aiBuildChips,0);
 setTimeout(()=>{ const inp=document.getElementById('ai-input'); if(inp){ inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') aiSend(); }); } },0);
 
 // ---------- STATIONS (separate places, each opened with [B]) ----------
-function nearAny(list,d){ const p=(activeVeh==='tractor'?tractor:truck).position; for(const m of list){ if(distXZ(p,m)<d) return true; } return false; }
+function nearAny(list,d){ const p=activeVehPos(); for(const m of list){ if(distXZ(p,m)<d) return true; } return false; }
 const STATIONS={
   market:  { title:'🏪 MERCADO',          sub:'Sementes • Insumos • Venda',            tabs:[['buy','🛒 SEMENTES'],['supplies','🧪 INSUMOS'],['sell','💵 VENDER']] },
   garage:  { title:'🚜 GARAGEM',          sub:'Compre, troque [T] e pinte seus tratores',  tabs:[['tractors','🚜 TRATORES'],['paint','🎨 PINTAR']] },
   animals: { title:'🐄 LOJA DE ANIMAIS',  sub:'Compre animais • Venda no açougue',          tabs:[['animals','🐄 COMPRAR'],['butcher','🥩 VENDER']] },
+  fuel:    { title:'⛽ POSTO DE GASOLINA', sub:'Abasteça seu veículo',                       tabs:[['fuel','⛽ ABASTECER']] },
 };
 function toggleShopIfNear(){
   if(state.shopOpen){closeShop();return;}
-  const p=(activeVeh==='tractor'?tractor:truck).position;
+  const p=activeVehPos(); // uses the boneco's position when on foot, vehicle's when driving
   let ctx=null;
-  if(distXZ(p,garagePos)<15) ctx='garage';
+  if(distXZ(p,pumpPos)<13) ctx='fuel';
+  else if(distXZ(p,garagePos)<15) ctx='garage';
   else if(distXZ(p,shopPos)<15 || nearAny(marketStalls,14)) ctx='market';
   else if(distXZ(p,animalShopPos)<16 || nearAny(butchers,14)) ctx='animals';
-  if(!ctx){ showMessage('Vá até o 🏪 MERCADO, a 🚜 GARAGEM ou a 🐄 LOJA DE ANIMAIS!',1800); return; }
+  if(!ctx){ showMessage('Chegue PERTO de uma loja: 🏪 Mercado · 🚜 Garagem · 🐄 Animais · ⛽ Posto, e aperte [B]!',2400); return; }
   openStation(ctx);
 }
 function openStation(ctx){
@@ -1860,6 +1859,17 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
     const jEl=document.createElement('div'); jEl.className='shop-item';
     jEl.innerHTML=`<h4>🛢️ Galão de Combustível</h4><p>Tem: <b>${state.inventory.jerrycan}</b></p><p>Aperte R em qualquer lugar = +50 combustível</p><p>Preço: <b>$40</b></p><button onclick="buyJerry(40,1)">x1 ($40)</button><button onclick="buyJerry(150,5)">x5 ($150)</button>`;
     grid.appendChild(jEl);
+  }
+  else if(state.shopTab==='fuel'){
+    const max=state.maxFuel, cur=Math.round(state.fuel);
+    const halfTarget=Math.round(max*0.5);
+    const halfNeed=Math.max(0,halfTarget-state.fuel), halfCost=Math.ceil(halfNeed*0.8);
+    const fullNeed=Math.max(0,max-state.fuel), fullCost=Math.ceil(fullNeed*0.8);
+    const el=document.createElement('div'); el.className='shop-item'; el.style.gridColumn='1/3';
+    el.innerHTML=`<h4>⛽ Abastecer veículo</h4><p>Tanque atual: <b>${cur} / ${max}</b> litros</p><p>Preço: $0,80 por litro</p>`+
+      `<button onclick="fillFuel('half')" ${state.fuel>=halfTarget?'disabled':''}>Encher METADE — $${halfCost}</button>`+
+      `<button onclick="fillFuel('full')" ${state.fuel>=max?'disabled':''}>Encher TANQUE CHEIO — $${fullCost}</button>`;
+    grid.appendChild(el);
   }
   else if(state.shopTab==='animals'){
     Object.entries(ANIMAL_TYPES).forEach(([key,a])=>{
@@ -1923,6 +1933,15 @@ window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficie
 window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
 window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
 window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
+window.fillFuel=(mode)=>{
+  const max=state.maxFuel; const target = mode==='half' ? max*0.5 : max;
+  if(state.fuel>=target){ showMessage(mode==='half'?'Já está na metade ou mais!':'Tanque já está cheio!',1600); return; }
+  const need=target-state.fuel; const cost=Math.ceil(need*0.8);
+  if(state.money<cost){ showMessage('❌ Falta dinheiro! Custa $'+cost,2000); return; }
+  state.money-=cost; state.fuel=target; state.stats.refueled=(state.stats.refueled||0)+1; sndSell();
+  showMessage('⛽ Abastecido! '+Math.round(state.fuel)+'/'+max+' litros (-$'+cost+')',2000);
+  updateHUD(); renderShop(); saveGame();
+};
 window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
 window.sellAnimal=(type,price)=>{
   const idx=farmAnimals.findIndex(f=>f.type===type);
