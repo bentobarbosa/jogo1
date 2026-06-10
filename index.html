@@ -309,9 +309,9 @@
 <div id="field-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-width:92vw;max-height:88vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #66bb6a;border-radius:16px;z-index:165;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
   <h2 style="text-align:center;color:#a5d6a7;margin-bottom:2px;">🌾 MEUS CAMPOS</h2>
   <div style="text-align:center;font-size:11px;color:#90caf9;margin-bottom:8px;">Gerencie cada campo daqui — sem precisar dirigir até ele!</div>
-  <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,0.25);border-radius:10px;padding:7px 10px;margin-bottom:10px;position:sticky;top:0;">
-    <span style="font-size:13px;">Plantar: <b id="fields-seed">🌾 Trigo</b></span>
-    <button onclick="fieldsCycleSeed()" style="padding:5px 12px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">🔁 Trocar semente</button>
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,0.3);border-radius:10px;padding:8px 10px;margin-bottom:10px;">
+    <span style="font-size:13px;white-space:nowrap;">🌱 Semente:</span>
+    <select id="fields-seed-sel" onchange="setFieldSeed(this.value)" style="flex:1;padding:7px;border-radius:6px;border:none;background:#2c3e5c;color:#fff;font-size:13px;font-weight:700;cursor:pointer;"></select>
   </div>
   <div id="field-body" style="display:flex;flex-direction:column;gap:8px;"></div>
   <button onclick="toggleFieldsPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
@@ -1451,22 +1451,26 @@ window.toggleInventory=()=>{ const p=document.getElementById('inventory'); if(!p
 window.toggleActionsMenu=()=>{ const p=document.getElementById('actions-panel'); if(!p) return; p.style.display = (p.style.display==='block')?'none':'block'; };
 function renderFieldsPanel(){
   const host=document.getElementById('field-body'); if(!host) return;
-  const sc=CROPS[state.selectedCrop];
-  const sel=document.getElementById('fields-seed'); if(sel) sel.textContent=sc.emoji+' '+sc.name;
+  // populate the seed dropdown
+  const sel=document.getElementById('fields-seed-sel');
+  if(sel){ sel.innerHTML=Object.entries(CROPS).map(([k,c])=>`<option value="${k}" ${k===state.selectedCrop?'selected':''}>${c.emoji} ${c.name}</option>`).join(''); }
+  const wcost=workerCost();
   let h='';
-  for(let i=0;i<allPlots.length;i++){ const p=allPlots[i]; const s=fieldStats(p); const hasW=workers.some(w=>w.plot===p);
-    h+=`<div class="field-row"><div class="field-head">🌾 <b>Campo ${i+1}</b> <span class="field-stat">vazio ${s.g+s.til} · 🌱 ${s.pl} · ✅ ${s.gr}${hasW?' · 👨‍🌾':''}</span></div>`+
+  for(let i=0;i<allPlots.length;i++){ const p=allPlots[i]; const s=fieldStats(p); const wn=workers.filter(w=>w.plot===p).length;
+    h+=`<div class="field-row"><div class="field-head">🌾 <b>Campo ${i+1}</b> <span class="field-stat">vazio ${s.g+s.til} · 🌱 ${s.pl} · ✅ ${s.gr}${wn?(' · 👨‍🌾×'+wn):''}</span></div>`+
       `<div class="field-btns">`+
       `<button onclick="fieldPlow(${i})">🚜 Arar</button>`+
       `<button onclick="fieldPlant(${i})">🌱 Plantar</button>`+
       `<button onclick="fieldWater(${i})">💧 Regar</button>`+
       `<button onclick="fieldHarvest(${i})">🌾 Colher</button>`+
-      `<button onclick="fieldWorker(${i})" class="${hasW?'on':''}">${hasW?'👨‍🌾 Tirar':'👨‍🌾 +Trab.'}</button>`+
       `<button onclick="fieldGoto(${i})">📍 Ir</button>`+
+      `<button onclick="removeFieldWorker(${i})" ${wn?'':'disabled'}>👨‍🌾➖ Tirar</button>`+
+      `<button class="on" style="grid-column:1/-1" onmousedown="startHold(()=>addFieldWorker(${i}))" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(()=>addFieldWorker(${i}))" ontouchend="stopHold()">👨‍🌾➕ Contratar trabalhador — $${wcost.toLocaleString('pt-BR')} (segure p/ vários)</button>`+
       `</div></div>`;
   }
   host.innerHTML=h;
 }
+window.setFieldSeed=(c)=>{ if(CROPS[c]){ state.selectedCrop=c; const el=document.getElementById('tool-crop'); if(el) el.textContent=CROPS[c].emoji+' '+CROPS[c].name; } };
 window.toggleFieldsPanel=()=>{ const p=document.getElementById('field-panel'); if(!p) return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderFieldsPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
 window.toggleFieldPanel=window.toggleFieldsPanel; // alias (button compatibility)
 window.fieldsCycleSeed=()=>{ if(typeof cycleCrop==='function') cycleCrop(); renderFieldsPanel(); };
@@ -1548,7 +1552,17 @@ window.fieldPlow=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r 
 window.fieldPlant=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r){ if(plantOnTile(t,state.selectedCrop))n++; } if(n)sndPlant(); showMessage(n?('🌱 Campo '+(i+1)+': '+n+' '+CROPS[state.selectedCrop].name+' plantadas'):('❌ Sem terra arada ou sem sementes de '+CROPS[state.selectedCrop].name+'!'),2200); updateHUD(); renderFieldsPanel(); saveGame(); };
 window.fieldWater=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r) if(waterTileNow(t))n++; showMessage('💧 Campo '+(i+1)+': '+n+' quadrados regados',1500); renderFieldsPanel(); };
 window.fieldHarvest=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r){ if(t.state==='grown'){ harvestTile(t); n++; } } showMessage(n?('🌾 Campo '+(i+1)+': '+n+' colhidas!'):'Nada maduro nesse campo ainda.',1800); renderFieldsPanel(); saveGame(); };
-window.fieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const ex=workers.find(w=>w.plot===p); if(ex){ scene.remove(ex.mesh); workers.splice(workers.indexOf(ex),1); showMessage('👨‍🌾 Trabalhador removido do campo '+(i+1),1600); } else { workers.push({mesh:makeWorkerNPC(p.centerX,p.centerZ),plot:p,tile:null}); showMessage('👨‍🌾 Trabalhador contratado pro campo '+(i+1)+'! Ara, planta e colhe sozinho.',2600); } renderFieldsPanel(); };
+function workerCost(){ return Math.round(800*buyMult()); }
+window.addFieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const cost=workerCost();
+  if(state.money<cost){ stopHold(); showMessage('❌ Sem dinheiro pra contratar! ($'+cost.toLocaleString('pt-BR')+')',1800); return; }
+  state.money-=cost; if(typeof spendXP==='function') spendXP(cost);
+  const wx=p.centerX+(Math.random()-0.5)*8, wz=p.centerZ+(Math.random()-0.5)*8;
+  workers.push({mesh:makeWorkerNPC(wx,wz),plot:p,tile:null});
+  if(typeof sndSell==='function') sndSell();
+  updateHUD(); refreshFieldsSoon(); saveSoon(); };
+window.removeFieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const ex=workers.find(w=>w.plot===p); if(!ex)return; scene.remove(ex.mesh); workers.splice(workers.indexOf(ex),1); showMessage('👨‍🌾 Trabalhador dispensado do campo '+(i+1),1400); updateHUD(); renderFieldsPanel(); saveGame(); };
+let _fieldsRefreshT=null;
+function refreshFieldsSoon(){ clearTimeout(_fieldsRefreshT); _fieldsRefreshT=setTimeout(()=>{ if(document.getElementById('field-panel').style.display==='block') renderFieldsPanel(); }, 250); }
 window.fieldGoto=(i)=>{ const p=allPlots[i]; if(!p)return; const v=(typeof curVeh==='function')?curVeh():tractor; v.position.x=p.centerX; v.position.z=p.centerZ+16; showMessage('📍 Você foi pro campo '+(i+1),1400); toggleFieldsPanel(); };
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
@@ -3186,14 +3200,19 @@ window.removeBuildingNear=()=>{
 };
 function makeWorkerNPC(x,z){
   const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.9,0.35),new THREE.MeshLambertMaterial({color:0x1565c0,flatShading:true}));body.position.y=0.75;body.castShadow=true;g.add(body);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.9,0.35),new THREE.MeshLambertMaterial({color:0x1565c0,flatShading:true}));body.position.y=0.75;g.add(body);
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),new THREE.MeshLambertMaterial({color:0xffccbc}));head.position.y=1.32;g.add(head);
   const hat=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.22,12),new THREE.MeshLambertMaterial({color:0xffca28}));hat.position.y=1.5;g.add(hat);
   for(const s of[-1,1]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.5,0.16),new THREE.MeshLambertMaterial({color:0x3e2723}));leg.position.set(s*0.13,0.25,0);g.add(leg);}
   g.position.set(x,0,z);scene.add(g);return g;
 }
+let _workerCullT=0;
 function updateWorkers(dt){
   const now=performance.now()/1000;
+  // render only nearby workers when there are lots (keeps it smooth with infinite workers)
+  _workerCullT-=dt;
+  if(_workerCullT<=0){ _workerCullT=0.5; const many=workers.length>60; const cx=camera.position.x,cz=camera.position.z;
+    for(const w of workers){ if(!many){ w.mesh.visible=true; } else { const dx=w.mesh.position.x-cx,dz=w.mesh.position.z-cz; w.mesh.visible=(dx*dx+dz*dz)<95*95; } } }
   for(const w of workers){
     if(!w.tile){ const cand=[]; for(const row of w.plot.tiles) for(const t of row){ if(t.state==='grass'||t.state==='tilled'||t.state==='grown') cand.push(t); } w.tile=cand.length?cand[Math.floor(Math.random()*cand.length)]:null; if(!w.tile) continue; }
     const t=w.tile; const dx=t.x-w.mesh.position.x, dz=t.z-w.mesh.position.z, d=Math.hypot(dx,dz);
