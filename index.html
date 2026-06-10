@@ -313,9 +313,26 @@
 <div id="actions-panel" style="display:none;position:fixed;right:84px;top:50%;transform:translateY(-50%);z-index:160;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);width:230px;">
   <div style="text-align:center;color:#ffd54f;font-weight:800;margin-bottom:8px;">🛠️ AÇÕES</div>
   <button class="act-b" onclick="toggleActionsMenu();toggleFieldsPanel()" style="background:#1b5e20;">🌾 Meus campos (1-100)</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleEnergyPanel()" style="background:#5d4037;">⚡ Energia / Super Chuva</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleRodeoPanel()" style="background:#6a1b9a;">🤠 Rodeio (placar de vacas)</button>
   <button class="act-b" onclick="chopNearestTree();toggleActionsMenu()">🪓 Cortar árvore</button>
   <button class="act-b" onclick="sprayAllField();toggleActionsMenu()">🪲 Pulverizar campo</button>
   <button class="act-b" onclick="removeBuildingNear();toggleActionsMenu()">🧨 Remover construção</button>
+</div>
+
+<!-- ⚡ Energy panel -->
+<div id="energy-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:16px;z-index:165;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
+  <h2 style="text-align:center;color:#ffd54f;margin-bottom:8px;">⚡ ENERGIA SOLAR</h2>
+  <div id="energy-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+  <button onclick="toggleEnergyPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+</div>
+
+<!-- 🤠 Rodeo panel -->
+<div id="rodeo-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-width:92vw;max-height:88vh;overflow-y:auto;background:rgba(30,20,40,0.98);border:3px solid #ab47bc;border-radius:16px;z-index:165;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
+  <h2 style="text-align:center;color:#ce93d8;margin-bottom:2px;">🤠 RODEIO DAS VACAS</h2>
+  <div style="text-align:center;font-size:11px;color:#d1b3e0;margin-bottom:10px;">Placar mundial: quem ganhou mais 💰 vendendo 🥛 leite!</div>
+  <div id="rodeo-body" style="font-size:13px;"></div>
+  <button onclick="toggleRodeoPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 
 <!-- Per-field management panel -->
@@ -559,7 +576,7 @@ const state = {
   plotsUnlocked:1,
   fuel:150, maxFuel:150,
   headlights:false,
-  stats:{harvested:0, contractsDone:0, animalsBought:0, cropsSeen:{}},
+  stats:{harvested:0, contractsDone:0, animalsBought:0, cropsSeen:{}, cowMoney:0},
   achievements:{},
   missionsClaimed:{},
   sellMultiplier:1,
@@ -580,6 +597,7 @@ const state = {
   contractIdx:0,  // chronological contract progression (trigo -> abacate)
   workerCrop:'wheat', // which seed the automatic farmer plants
   autoWaterPlots:[], autoFertPlots:[], penFeeders:[], // paid field/pen upgrades
+  energy:0, superRainUntil:0, solarCount:0, // solar energy + super-rain event
   boneco:{ skin:0xffccaa, shirt:0x1565c0, pants:0x3e2723, hat:0xd32f2f, hatType:1 }, // character look
   difficulty:'medium', // easy | medium | hard | impossible
 };
@@ -993,6 +1011,23 @@ function makeSilo(x,z){const g=new THREE.Group();
   const top=new THREE.Mesh(new THREE.SphereGeometry(2,18,9,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:0x90a4ae}));top.position.y=11;g.add(top);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.4);}
 makeSilo(-66,-6); makeSilo(-69.5,-6);
+beaconSign(-67.5,-6,'⚡ ARMAZÉM DE ENERGIA');
+// 🤠 Rodeo arena (decorative competition structure)
+function makeRodeo(x,z){
+  const g=new THREE.Group(); const R=9;
+  for(let a=0;a<Math.PI*2-0.01;a+=Math.PI/12){ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,2,6),new THREE.MeshLambertMaterial({color:0x8d4e2e})); post.position.set(Math.cos(a)*R,1,Math.sin(a)*R); g.add(post); }
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(R,28),new THREE.MeshLambertMaterial({color:0xc6975a})); floor.rotation.x=-Math.PI/2; floor.position.y=0.05; g.add(floor);
+  const bull=new THREE.Group();
+  bull.add(new THREE.Mesh(new THREE.BoxGeometry(1.4,1.1,2.2),new THREE.MeshLambertMaterial({color:0x4e342e})));
+  bull.children[0].position.y=1.2;
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8),new THREE.MeshLambertMaterial({color:0x3e2723})); head.position.set(0,1.4,-1.3); bull.add(head);
+  for(const s of[-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.4,6),new THREE.MeshLambertMaterial({color:0xeeeeee})); horn.position.set(s*0.3,1.85,-1.4); horn.rotation.z=s*0.6; bull.add(horn);}
+  for(let i=0;i<4;i++){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.9,0.25),new THREE.MeshLambertMaterial({color:0x3e2723})); leg.position.set(i%2?0.5:-0.5,0.45,i<2?-0.7:0.7); bull.add(leg);}
+  g.add(bull);
+  g.position.set(x,0,z); scene.add(g); addCol(x,z,9,9);
+}
+makeRodeo(96,56);
+beaconSign(96,56,'🤠 RODEIO');
 
 // Windmill (decor)
 function makeWindmill(x,z){const g=new THREE.Group();
@@ -1732,6 +1767,7 @@ function updateCrops(now){
       for(const h of hiveZones){ if(Math.hypot(t.x-h.x,t.z-h.z)<h.r){ speedMult *= 1.5; break; } } // hive pollination
       if(t.weed) speedMult = 0; // halt
       if(t.pest) speedMult = 0; // pests halt growth too
+      if(typeof superRainActive==='function' && superRainActive() && !t.weed && !t.pest) speedMult *= 20; // 🌧️⚡ Super Rain — grow at max speed
       t.growProgress = (t.growProgress||0) + (now - (t.lastUpdate||now)) * speedMult;
       t.lastUpdate = now;
       const cropDef = CROPS[t.crop];
@@ -2342,7 +2378,7 @@ function cycleTractor(){
   applyTractor(next);
   showMessage(`🚜 Trator: ${TRACTORS[next].name}`,1500); beep(500,0.08); updateHUD(); saveGame();
 }
-window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;state.money+=Math.round(q*u*state.sellMultiplier);sndSell();updateHUD();renderShop();saveGame();};
+window.sellItem=(k,q,u)=>{if(q<=0)return;if(state.inventory[k]<q)q=state.inventory[k];const have=state.inventory[k]; const ratio= have>0 ? q/have : 1; state.qualityTotals[k] = Math.round((state.qualityTotals[k]||0)*(1-ratio)); state.inventory[k]-=q;const earned=Math.round(q*u*state.sellMultiplier);state.money+=earned;if(k==='milk') state.stats.cowMoney=(state.stats.cowMoney||0)+earned;sndSell();updateHUD();renderShop();saveGame();};
 
 // ---------- SAVE / LOAD (#33 autosave) ----------
 const SAVE_KEY='bentofarm_save_v2'; // bumped -> resets ALL old games, everyone starts from zero
@@ -2356,7 +2392,7 @@ function saveGame(){
       if(t.state!=='grass') tilesData.push({p:pi,c,r,st:t.state,cr:t.crop,gp:t.growProgress||0,w:t.water?1:0,fz:t.fertilized?1:0,rg:t.regrowing?1:0}); } });
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
-      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective, contractIdx:state.contractIdx, workerCrop:state.workerCrop, difficulty:state.difficulty, autoWaterPlots:state.autoWaterPlots, autoFertPlots:state.autoFertPlots, penFeeders:state.penFeeders,
+      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective, contractIdx:state.contractIdx, workerCrop:state.workerCrop, difficulty:state.difficulty, autoWaterPlots:state.autoWaterPlots, autoFertPlots:state.autoFertPlots, penFeeders:state.penFeeders, energy:state.energy, superRainUntil:state.superRainUntil, solarCount:state.solarCount,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
@@ -2381,6 +2417,8 @@ function loadGame(){
     if(Array.isArray(d.autoWaterPlots)) state.autoWaterPlots = d.autoWaterPlots.slice();
     if(Array.isArray(d.autoFertPlots)) state.autoFertPlots = d.autoFertPlots.slice();
     if(Array.isArray(d.penFeeders)) state.penFeeders = d.penFeeders.slice();
+    state.energy = d.energy || 0; state.superRainUntil = 0; // don't carry the timed event across reloads
+    if(d.solarCount>0){ for(let i=0;i<d.solarCount && i<400;i++) makeSolar(solarSlot(i).x, solarSlot(i).z); state.solarCount=d.solarCount; }
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
@@ -3315,6 +3353,54 @@ function updateProducers(dt){
   if(gained) updateHUD();
 }
 
+// ========== ⚡ ENERGY: solar farm + Super Rain event ==========
+const ENERGY_MAX=5000, SUPER_RAIN_SECONDS=3600; // 5000 energy -> 1h super rain
+// dedicated solar field (east side, away from crops) — panels auto-arrange in a grid
+function solarSlot(n){ const cols=10; return { x:240 + (n%cols)*9, z:-40 + Math.floor(n/cols)*9 }; }
+function makeSolar(x,z){
+  const g=new THREE.Group();
+  for(const s of[-1.6,1.6]){const leg=new THREE.Mesh(new THREE.BoxGeometry(0.2,2,0.2),new THREE.MeshLambertMaterial({color:0x555}));leg.position.set(s,1,0);g.add(leg);}
+  const panel=new THREE.Mesh(new THREE.BoxGeometry(4.5,0.2,3),new THREE.MeshPhongMaterial({color:0x1a237e,emissive:0x3949ab,emissiveIntensity:0.35,shininess:90}));panel.position.set(0,2.2,0);panel.rotation.x=-0.5;g.add(panel);
+  for(let i=-2;i<=2;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.22,3),new THREE.MeshBasicMaterial({color:0x90caf9}));l.position.set(i,2.2,0);l.rotation.x=-0.5;g.add(l);}
+  g.position.set(x,0,z); scene.add(g); solarPanels.push({x,z,mesh:g}); return g;
+}
+window.buildSolar=()=>{
+  const cost=adjBuy(1200);
+  if(state.money<cost){ stopHold(); showMessage('❌ Falta dinheiro pra placa solar ($'+cost.toLocaleString('pt-BR')+')',2000); return; }
+  state.money-=cost; if(typeof spendXP==='function') spendXP(cost);
+  const slot=solarSlot(state.solarCount||0); makeSolar(slot.x, slot.z); state.solarCount=(state.solarCount||0)+1;
+  if(typeof sndSell==='function') sndSell(); updateHUD(); refreshEnergySoon(); saveSoon();
+};
+function superRainActive(){ return (performance.now()/1000) < (state.superRainUntil||0); }
+window.invokeSuperRain=()=>{
+  if(state.energy < ENERGY_MAX){ showMessage('⚡ Energia insuficiente! Precisa de '+ENERGY_MAX+'⚡ (você tem '+Math.floor(state.energy)+').',2400); return; }
+  state.energy=0; state.superRainUntil=(performance.now()/1000)+SUPER_RAIN_SECONDS;
+  try{ state.weather='rain'; const ri=document.getElementById('weather-ico'); if(ri)ri.textContent='🌧️'; const ro=document.getElementById('rain-overlay'); if(ro)ro.classList.add('on'); if(typeof rain!=='undefined'&&rain) rain.visible=true; }catch(e){}
+  showMessage('🌧️⚡ SUPER CHUVA INVOCADA! Tudo cresce no MÁXIMO por 1 hora!',4000);
+  if(typeof launchFireworks==='function') launchFireworks();
+  renderEnergyPanel(); updateHUD(); saveGame();
+};
+function updateEnergy(dt){
+  if(solarPanels.length && state.energy<ENERGY_MAX){ state.energy=Math.min(ENERGY_MAX, state.energy + solarPanels.length*dt); }
+}
+let _energyRefreshT=null;
+function refreshEnergySoon(){ clearTimeout(_energyRefreshT); _energyRefreshT=setTimeout(()=>{ if(document.getElementById('energy-panel') && document.getElementById('energy-panel').style.display==='block') renderEnergyPanel(); }, 250); }
+function renderEnergyPanel(){
+  const host=document.getElementById('energy-body'); if(!host) return;
+  const e=Math.floor(state.energy), pct=Math.min(100,e/ENERGY_MAX*100), rate=solarPanels.length;
+  const ready=state.energy>=ENERGY_MAX, raining=superRainActive();
+  const left=raining?Math.ceil((state.superRainUntil-performance.now()/1000)/60):0;
+  host.innerHTML=
+    `<div style="text-align:center;font-size:13px;margin-bottom:6px;">🏭 Armazém de Energia</div>`+
+    `<div style="background:rgba(0,0,0,0.45);border-radius:10px;height:24px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ffd54f,#ffeb3b);transition:width .3s;"></div></div>`+
+    `<div style="text-align:center;font-weight:800;margin-bottom:10px;">⚡ ${e.toLocaleString('pt-BR')} / ${ENERGY_MAX.toLocaleString('pt-BR')}</div>`+
+    `<div style="font-size:12px;color:#cfd8dc;text-align:center;margin-bottom:10px;">☀️ ${rate} placa(s) · gera <b>${rate}⚡/s</b></div>`+
+    (raining?`<div style="background:#1565c0;border-radius:10px;padding:10px;text-align:center;font-weight:800;margin-bottom:10px;">🌧️ SUPER CHUVA ATIVA! ~${left} min restantes</div>`:'')+
+    `<button class="cheat-b" style="background:${ready?'#1b5e20':'#444'}" onclick="invokeSuperRain()" ${ready?'':'disabled'}>🌧️⚡ INVOCAR SUPER CHUVA ${ready?'':'(precisa 5000⚡)'}</button>`+
+    `<button class="cheat-b" onmousedown="startHold(buildSolar)" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(buildSolar)" ontouchend="stopHold()">☀️➕ Comprar Placa Solar — $${adjBuy(1200).toLocaleString('pt-BR')} (segure)</button>`;
+}
+window.toggleEnergyPanel=()=>{ const p=document.getElementById('energy-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderEnergyPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
+
 // ---------- COLLISION ----------
 function collides(x,z){const R=1.2;for(const c of colliders){if(Math.abs(x-c.x)<c.hw+R && Math.abs(z-c.z)<c.hd+R)return true;}if(Math.abs(x)>342||Math.abs(z)>342)return true;return false;}
 
@@ -3387,6 +3473,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateBuilds(dt);
   cullPlots(dt);
   updateFieldUpgrades(dt);
+  updateEnergy(dt);
   updateMarket(dt);
   updateWorkers(dt);
   updatePlanes(dt);
@@ -3510,11 +3597,41 @@ async function doPublish(name){
     buildings:(state.buildings||[]).slice(0,40), animals:farmAnimals.map(a=>a.type).slice(0,40) };
   await fetch(farmTopicURL(name),{method:'POST',body:'FARM:'+JSON.stringify(farm)});
 }
+// ===== 🤠 RODEO: online leaderboard of money earned ONLY from cows (milk) =====
+const RODEO_URL='https://ntfy.sh/farmsim_rodeo_cows_r2026a_q7w';
+async function fetchRodeoBoard(){
+  try{ const r=await fetch(RODEO_URL+'/json?poll=1',{cache:'no-store'}); if(!r.ok)return null;
+    const txt=await r.text(); const lines=txt.trim().split('\n').filter(Boolean); let latest=[];
+    for(const ln of lines){ try{ const o=JSON.parse(ln); if(typeof o.message==='string'&&o.message.startsWith('RD:')) latest=JSON.parse(o.message.slice(3)); }catch(e){} }
+    return (Array.isArray(latest)?latest:[]).sort((a,b)=>(b.cow||0)-(a.cow||0)).slice(0,30);
+  }catch(e){ return null; }
+}
+async function publishRodeo(name){
+  const cow=Math.round(state.stats.cowMoney||0); if(cow<=0) return;
+  let list=await fetchRodeoBoard(); if(!Array.isArray(list)) list=[];
+  const i=list.findIndex(e=>e.name===name);
+  if(i>=0){ list[i]={name,cow:Math.max(cow,list[i].cow||0)}; } else list.push({name,cow});
+  list.sort((a,b)=>(b.cow||0)-(a.cow||0)); list=list.slice(0,50);
+  await fetch(RODEO_URL,{method:'POST',body:'RD:'+JSON.stringify(list)});
+}
+async function renderRodeoPanel(){
+  const el=document.getElementById('rodeo-body'); if(!el) return;
+  const mine=Math.round(state.stats.cowMoney||0);
+  const head=`<div style="text-align:center;background:rgba(0,0,0,0.3);border-radius:10px;padding:10px;margin-bottom:10px;">🐄 Você já ganhou <b style="color:#ffd54f">$${mine.toLocaleString('pt-BR')}</b> com vacas!</div>`;
+  el.innerHTML=head+'<i style="opacity:0.7">Carregando placar mundial...</i>';
+  const list=await fetchRodeoBoard(); const me=getPlayerName();
+  if(list===null){ el.innerHTML=head+'<i style="opacity:0.7">Sem conexão com o placar.</i>'; return; }
+  let h=head;
+  if(!list.length) h+='<i style="opacity:0.7">Seja o primeiro! Compre vacas e venda 🥛 leite pra entrar no placar.</i>';
+  else h+=list.slice(0,15).map((e,i)=>{ const medal=['🥇','🥈','🥉'][i]||((i+1)+'º'); const mineRow=e.name===me; return `<div style="display:flex;justify-content:space-between;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${mineRow?'rgba(255,213,79,0.18)':'rgba(255,255,255,0.05)'}"><span>${medal} ${e.name}${mineRow?' (você)':''}</span><b>$${(e.cow||0).toLocaleString('pt-BR')}</b></div>`; }).join('');
+  el.innerHTML=h;
+}
+window.toggleRodeoPanel=()=>{ const p=document.getElementById('rodeo-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderRodeoPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
 // Auto-publish loop — keeps EVERY farm public & scores fresh, no manual action needed
 let autoPubStarted=false;
 function startAutoPublish(){
   if(autoPubStarted) return; autoPubStarted=true;
-  const pub=()=>{ if(state.visiting||!state.running) return; doPublish(getPlayerName()).then(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }).catch(()=>{}); };
+  const pub=()=>{ if(state.visiting||!state.running) return; doPublish(getPlayerName()).then(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }).catch(()=>{}); publishRodeo(getPlayerName()).then(()=>{ const rp=document.getElementById('rodeo-panel'); if(rp&&rp.style.display==='block') renderRodeoPanel(); }).catch(()=>{}); };
   setTimeout(pub, 4000);      // first publish shortly after start
   setInterval(pub, 20000);    // then every 20s (free server can't handle every second)
 }
