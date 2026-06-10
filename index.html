@@ -2092,7 +2092,7 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
       const have=farmAnimals.filter(f=>f.type===key).length;
       const price=animalPrice(key);
       const el=document.createElement('div'); el.className='shop-item';
-      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><button onclick="buyAnimal('${key}')">COMPRAR ($${price.toLocaleString('pt-BR')})</button>`;
+      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><div class="buy-row"><button onclick="buyAnimal('${key}',1)">x1</button><button onclick="buyAnimal('${key}',10)">x10</button><button onclick="buyAnimalMax('${key}')">MÁX</button></div>`;
       grid.appendChild(el);
     });
   }
@@ -2162,13 +2162,16 @@ window.fillFuel=(mode)=>{
   showMessage('⛽ Abastecido! '+Math.round(state.fuel)+'/'+max+' litros (-$'+cost+', +'+fxp+' XP)',2000);
   updateHUD(); renderShop(); saveGame();
 };
-window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];
-  const price=animalPrice(type);
-  if(state.money<price){ showMessage('❌ Dinheiro insuficiente! ('+a.name+' custa $'+price.toLocaleString('pt-BR')+')',2200); return; }
-  spawnAnimal(type); // unlimited
-  state.money-=price; state.stats.animalsBought++; const xp=spendXP(price); sndSell();
-  showMessage(`${a.name} comprada por $${price.toLocaleString('pt-BR')}! +${xp} XP 🐄`,2000);
+window.buyAnimal=(type,qty)=>{const a=ANIMAL_TYPES[type];
+  qty = qty||1;
+  let bought=0, spent=0;
+  for(let i=0;i<qty;i++){ const price=animalPrice(type); if(state.money<price) break; spawnAnimal(type); state.money-=price; spent+=price; bought++; if(bought>=2000) break; }
+  if(bought===0){ showMessage('❌ Dinheiro insuficiente! ('+a.name+' custa $'+animalPrice(type).toLocaleString('pt-BR')+')',2200); return; }
+  state.stats.animalsBought+=bought; const xp=spendXP(spent); sndSell();
+  showMessage(`${bought}× ${a.name} comprado(s) por $${spent.toLocaleString('pt-BR')}! +${xp} XP 🐄`,2200);
   updateHUD();renderShop();saveGame();};
+// MÁX — buy as many of this animal as money allows (price rises each one)
+window.buyAnimalMax=(type)=>{ buyAnimal(type, 99999); };
 window.sellAnimal=(type,price)=>{
   const idx=farmAnimals.findIndex(f=>f.type===type);
   if(idx<0){ showMessage('Você não tem esse animal!',1500); return; }
