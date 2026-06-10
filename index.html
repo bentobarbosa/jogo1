@@ -3177,7 +3177,7 @@ function updateProducers(dt){
 }
 
 // ---------- COLLISION ----------
-function collides(x,z){const R=1.2;for(const c of colliders){if(Math.abs(x-c.x)<c.hw+R && Math.abs(z-c.z)<c.hd+R)return true;}if(Math.abs(x)>200||Math.abs(z)>200)return true;return false;}
+function collides(x,z){const R=1.2;for(const c of colliders){if(Math.abs(x-c.x)<c.hw+R && Math.abs(z-c.z)<c.hd+R)return true;}if(Math.abs(x)>342||Math.abs(z)>342)return true;return false;}
 
 // ---------- LOOP ----------
 const clock=new THREE.Clock();
