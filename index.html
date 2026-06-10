@@ -1898,6 +1898,7 @@ function updateEvents(dt){
 const AI_KB=[
   {kw:['oi','ola','olá','eai','e ai','bom dia','boa tarde','boa noite','hello','hi'], a:'Oi! 👋 Sou o assistente da sua fazenda. Posso explicar tudo: plantar, colher, dinheiro, contratos, animais, construções, tratores, pragas, andar a pé, comprar áreas e muito mais.\nPergunte à vontade — ou me peça uma "dica" e eu olho sua fazenda e digo o melhor passo agora! 🌻'},
   {kw:['obrigad','valeu','vlw','thanks','obg'], a:'De nada! 😄 Boa colheita, fazendeiro! Qualquer dúvida é só chamar.'},
+  {kw:['segredo','segredos','secreto','secreta','cheat','hack','truque','trapaca','trapaça','macete','infinito','infinita','codigo','código','senha','admin','deus','godmode','easter','milionario','milionário','dinheiro infinito'], a:'🤫 Pssst... dizem por aí que existe um MENU SECRETO de DINHEIRO INFINITO escondido no jogo!\nA lenda conta que pra abrir você precisa DIGITAR no teclado o nome de um bichinho bem esperto e travesso 🐒... mas ninguém confirma se é verdade.\nDescubra a palavra mágica e veja você mesmo! 🍌🔓'},
   {kw:['plantar','plante','plant','semente','sementes','muda','plantio','plantacao','plantação'], a:'🌱 PLANTAR (3 passos):\n1) Aperte [1] (Arado) e passe por cima da grama do campo cercado — vira terra marrom.\n2) Aperte [Q] pra escolher a semente (precisa ter comprado no Mercado).\n3) Aperte [2] (Plantadeira) e passe por cima da terra arada — ela planta sozinha!\nUm contador aparece em cima de cada planta mostrando o tempo pra crescer.'},
   {kw:['arar','arado','arou','lavrar','terra','solo'], a:'🚜 ARAR: aperte [1] (Arado) e dirija por cima da grama dentro do campo cercado. O chão fica marrom = pronto pra plantar. A ferramenta trabalha sozinha enquanto você dirige por cima.'},
   {kw:['colher','colheita','colhe','colhi','maduro','madura','colheitadeira'], a:'🌾 COLHER: quando a planta fica grande/madura (o contador zera), aperte [3] (Colheitadeira) e passe por cima. Vai pro inventário pra você vender. Plantas com ⭐ mais estrelas valem mais!\nÁrvores (🍎🍊🥥🥑) rebrotam sozinhas depois de colher.'},
@@ -1999,7 +2000,7 @@ window.toggleAI=()=>{
   }
 };
 // Quick chips
-const AI_CHIPS=['💡 Dica pra mim','Como plantar?','Como ganhar dinheiro?','Comprar nova área','Pragas?','Andar a pé','Como abastecer?','Carros velozes'];
+const AI_CHIPS=['💡 Dica pra mim','🤫 Tem algum segredo?','Como plantar?','Como ganhar dinheiro?','Comprar nova área','Pragas?','Andar a pé','Carros velozes'];
 function aiBuildChips(){
   const c=document.getElementById('ai-chips'); if(!c) return;
   for(const q of AI_CHIPS){ const b=document.createElement('div'); b.className='ai-chip'; b.textContent=q;
