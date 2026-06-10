@@ -55,26 +55,18 @@
     #event-banner.show { transform:translateX(-50%) scale(1); opacity:1; }
 
     /* AI Assistant */
-    /* Right-side circular buttons — all identical 50px "balls", evenly spaced */
-    .rbtn { position:fixed; right:20px; top:50%; width:50px; height:50px; border-radius:50%;
+    /* Right-side circular buttons — identical "balls", positioned vertically by JS (layoutRightButtons) */
+    .rbtn { position:fixed; right:20px; top:50%; transform:translateY(-50%); width:50px; height:50px; border-radius:50%;
       border:3px solid #fff; cursor:pointer; z-index:120; font-size:22px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       display:flex; align-items:center; justify-content:center; padding:0; }
+    .rbtn:hover { transform:translateY(-50%) scale(1.1); }
     .rbtn::after { position:absolute; right:58px; background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:3px 8px; border-radius:10px; white-space:nowrap; }
-    #inv-btn { transform:translateY(-162px); background:linear-gradient(135deg,#8d6e63,#5d4037); }
-    #inv-btn:hover { transform:translateY(-162px) scale(1.08); }
-    #inv-btn::after { content:'Inventário'; }
-    #ai-btn { transform:translateY(54px); background:linear-gradient(135deg,#42a5f5,#1976d2); }
-    #ai-btn:hover { transform:translateY(54px) scale(1.08); }
-    #ai-btn::after { content:'Ajuda'; }
-    #chop-btn { transform:translateY(162px); background:linear-gradient(135deg,#a1887f,#6d4c41); }
-    #chop-btn:hover { transform:translateY(162px) scale(1.08); }
-    #chop-btn::after { content:'Cortar árvore'; }
-    #spray-btn { transform:translateY(216px); background:linear-gradient(135deg,#9ccc65,#558b2f); }
-    #spray-btn:hover { transform:translateY(216px) scale(1.08); }
-    #spray-btn::after { content:'Pulverizar campo'; }
-    #boneco-btn { transform:translateY(0px); background:linear-gradient(135deg,#ab47bc,#6a1b9a); }
-    #boneco-btn:hover { transform:translateY(0px) scale(1.08); }
-    #boneco-btn::after { content:'Boneco'; }
+    #store-btn  { background:linear-gradient(135deg,#ffb300,#ef6c00); } #store-btn::after  { content:'Loja [B]'; }
+    #inv-btn    { background:linear-gradient(135deg,#8d6e63,#5d4037); } #inv-btn::after    { content:'Inventário'; }
+    #ai-btn     { background:linear-gradient(135deg,#42a5f5,#1976d2); } #ai-btn::after     { content:'Ajuda'; }
+    #chop-btn   { background:linear-gradient(135deg,#a1887f,#6d4c41); } #chop-btn::after   { content:'Cortar árvore'; }
+    #spray-btn  { background:linear-gradient(135deg,#9ccc65,#558b2f); } #spray-btn::after  { content:'Pulverizar campo'; }
+    #boneco-btn { background:linear-gradient(135deg,#ab47bc,#6a1b9a); } #boneco-btn::after { content:'Boneco'; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
@@ -107,17 +99,10 @@
     .ai-chip:hover { background:#42a5f5; color:#fff; }
 
     /* Trophies panel */
-    #music-btn { transform:translateY(-216px); background:linear-gradient(135deg,#26a69a,#00796b); }
-    #music-btn:hover { transform:translateY(-216px) scale(1.08); }
-    #missions-btn { transform:translateY(-108px); background:linear-gradient(135deg,#66bb6a,#388e3c); }
-    #missions-btn:hover { transform:translateY(-108px) scale(1.08); }
-    #missions-btn::after { content:'Missões'; }
-    #trophy-btn { transform:translateY(-54px); background:linear-gradient(135deg,#ffd54f,#ff8f00); }
-    #trophy-btn:hover { transform:translateY(-54px) scale(1.08); }
-    #trophy-btn::after { content:'Conquistas'; }
-    #stats-btn { transform:translateY(108px); background:linear-gradient(135deg,#5c6bc0,#3949ab); }
-    #stats-btn:hover { transform:translateY(108px) scale(1.08); }
-    #stats-btn::after { content:'Placar'; }
+    #music-btn    { background:linear-gradient(135deg,#26a69a,#00796b); } #music-btn::after { content:'Som'; }
+    #missions-btn { background:linear-gradient(135deg,#66bb6a,#388e3c); } #missions-btn::after { content:'Missões'; }
+    #trophy-btn   { background:linear-gradient(135deg,#ffd54f,#ff8f00); } #trophy-btn::after { content:'Conquistas'; }
+    #stats-btn    { background:linear-gradient(135deg,#5c6bc0,#3949ab); } #stats-btn::after { content:'Placar'; }
     #level-box { cursor:pointer; pointer-events:auto; }
     #level-box:hover { border-color:#fff; }
     .mrow { background:rgba(255,255,255,0.05); border-radius:10px; padding:10px 12px; margin-bottom:8px; border:2px solid rgba(255,255,255,0.08); }
@@ -219,9 +204,9 @@
     #shop.open { display:flex; }
     #shop h2 { text-align:center; color:#ffd54f; margin-bottom:4px; }
     #shop .subtitle { text-align:center; color:#fff9c4; margin-bottom:14px; font-size:12px; }
-    .shop-tabs { display:flex; gap:6px; margin-bottom:14px; justify-content:center; }
-    .tab-btn { flex:1; padding:8px; background:rgba(0,0,0,0.3); border:none; color:#fff; cursor:pointer;
-      border-radius:8px; font-weight:700; font-size:13px; }
+    .shop-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; justify-content:center; }
+    .tab-btn { flex:1 1 auto; min-width:96px; padding:8px 6px; background:rgba(0,0,0,0.3); border:none; color:#fff; cursor:pointer;
+      border-radius:8px; font-weight:700; font-size:12px; }
     .tab-btn.active { background:#ffd54f; color:#2d5016; }
     .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; overflow-y:auto; flex:1; min-height:0; padding-right:6px; align-content:start; }
     .shop-item { background:rgba(0,0,0,0.25); padding:12px; border-radius:10px; border:2px solid rgba(255,255,255,0.1); }
@@ -259,7 +244,7 @@
     <p>🎥 Mova a câmera: <b>arraste com o mouse</b> · zoom com a <b>rolagem</b></p>
     <p>🔧 Ferramentas: <span class="key">1</span> Arado · <span class="key">2</span> Plantadeira · <span class="key">3</span> Colheitadeira · <span class="key">0</span> guardar</p>
     <p>🌱 <b>Dirija por cima do campo</b> com a ferramenta ligada — ela trabalha sozinha!</p>
-    <p>🌾 Troque a semente: <span class="key">Q</span> · 🏪 Loja no mercado: <span class="key">B</span></p>
+    <p>🌾 Troque a semente: <span class="key">Q</span> · 🏪 Abra a LOJA (tudo num menu): <span class="key">B</span></p>
   </div>
   <button id="btn-continue" onclick="startGame(false)" style="display:none;">▶ CONTINUAR NA MINHA FAZENDA <span id="continue-lvl"></span></button>
   <button id="btn-new" onclick="startGame(true)">🆕 NOVO JOGO (do zero)</button>
@@ -280,6 +265,7 @@
 <canvas id="minimap" width="124" height="124" style="position:fixed;top:50%;left:16px;transform:translateY(-62px);width:124px;height:124px;border:3px solid rgba(255,255,255,0.55);border-radius:12px;z-index:12;background:rgba(20,40,20,0.5);"></canvas>
 
 <!-- Music + Stats buttons -->
+<button id="store-btn" class="rbtn" onclick="toggleShopIfNear()" title="Abrir a Loja (B)">🏪</button>
 <button id="music-btn" class="rbtn" onclick="toggleMusic()" title="Música">🎵</button>
 <button id="inv-btn" class="rbtn" onclick="toggleInventory()" title="Inventário">📦</button>
 <button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
@@ -826,7 +812,7 @@ function makeShop(x,z){const g=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(2,3.2,0.2),new THREE.MeshLambertMaterial({color:0x4e342e}));door.position.set(0,1.6,4.6);g.add(door);
   const awn=new THREE.Mesh(new THREE.BoxGeometry(9.5,0.3,2.5),new THREE.MeshLambertMaterial({color:0xd32f2f}));awn.position.set(0,3.5,5.2);awn.rotation.x=-0.25;g.add(awn);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,4,4);}
-const shopPos=new THREE.Vector3(-42,0,24); makeShop(shopPos.x,shopPos.z);
+const shopPos=new THREE.Vector3(-42,0,24); // shop building removed — store is now a single menu
 
 // Gas pump building
 function makePump(x,z){const g=new THREE.Group();
@@ -841,25 +827,9 @@ function makePump(x,z){const g=new THREE.Group();
   // Sign
   const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.15),new THREE.MeshLambertMaterial({color:0xffeb3b,emissive:0x886600,emissiveIntensity:0.4}));sign.position.set(0,4.6,0);g.add(sign);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,2.5);}
-const pumpPos=new THREE.Vector3(42,0,24); makePump(pumpPos.x,pumpPos.z);
-// Fuel forecourt AREA — drive/park inside this paved zone to refuel (auto-fills for free)
+const pumpPos=new THREE.Vector3(42,0,24); // pump removed — fuel is now a tab in the store menu
 const FUEL_AREA={x:pumpPos.x, z:pumpPos.z, r:9};
-function makeFuelArea(x,z){
-  const pad=new THREE.Mesh(new THREE.PlaneGeometry(16,16), new THREE.MeshLambertMaterial({color:0x555a5e}));
-  pad.rotation.x=-Math.PI/2; pad.position.set(x,0.042,z); pad.receiveShadow=true; scene.add(pad);
-  // yellow border + center "⛽" markings
-  const mk=new THREE.MeshBasicMaterial({color:0xffd54f});
-  for(const [w,d,oz] of [[16,0.4,-7.6],[16,0.4,7.6],[0.4,16,-7.6],[0.4,16,7.6]]){ const ln=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mk); ln.rotation.x=-Math.PI/2; ln.position.set(x+(d>w?oz:0),0.05,z+(w>d?oz:0)); scene.add(ln); }
-  const ring=new THREE.Mesh(new THREE.RingGeometry(2.2,2.8,24), new THREE.MeshBasicMaterial({color:0xffeb3b,side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(x,0.05,z+0.01); scene.add(ring);
-}
-makeFuelArea(pumpPos.x,pumpPos.z);
-function updateFuelArea(dt){
-  if(state.visiting) return;
-  const p=activeVehPos();
-  const inside=Math.hypot(p.x-FUEL_AREA.x,p.z-FUEL_AREA.z)<FUEL_AREA.r;
-  if(inside && !state._inFuel){ state._inFuel=true; if(state.fuel<state.maxFuel) showMessage('⛽ Aperte [B] para abastecer (metade ou tanque cheio)',2400); }
-  if(!inside) state._inFuel=false;
-}
+function updateFuelArea(dt){ /* fuel area removed — refuel via the store menu ([B] → ⛽ Combustível) */ }
 // Floating beacon sign helper so player can find key buildings
 function beaconSign(x,z,text){
   const c=document.createElement('canvas');c.width=256;c.height=80;const g=c.getContext('2d');
@@ -895,7 +865,7 @@ function makeGarage(x,z){const g=new THREE.Group();
   const cols=[0x2e7d32,0xc62828,0x1565c0];
   for(let i=0;i<3;i++){const mt=makeMiniTractor(cols[i]);mt.position.set((i-1)*W/3,0,-0.5);mt.rotation.y=Math.PI;g.add(mt);}
   g.position.set(x,0,z);g.rotation.y=Math.PI;scene.add(g);addCol(x,z,7,2.2);}
-const garagePos=new THREE.Vector3(-14,0,24); makeGarage(garagePos.x,garagePos.z);
+const garagePos=new THREE.Vector3(-14,0,24); // garage building removed — vehicles are in the store menu
 // Animal shop building (between the pens) — buy/sell animals here
 function makeAnimalShop(x,z){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(7,4,7),new THREE.MeshLambertMaterial({color:0xa1674a,flatShading:true}));body.position.y=2;body.castShadow=true;g.add(body);
@@ -903,11 +873,8 @@ function makeAnimalShop(x,z){const g=new THREE.Group();
   const sign=new THREE.Mesh(new THREE.BoxGeometry(4.5,1,0.2),new THREE.MeshLambertMaterial({color:0x8bc34a,emissive:0x224400,emissiveIntensity:0.3}));sign.position.set(0,3.4,3.55);g.add(sign);
   const door=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.6,0.2),new THREE.MeshLambertMaterial({color:0x3e2723}));door.position.set(0,1.3,3.55);g.add(door);
   g.position.set(x,0,z);scene.add(g);addCol(x,z,3.3,3.3);}
-const animalShopPos=new THREE.Vector3(14,0,24); makeAnimalShop(animalShopPos.x,animalShopPos.z);
-beaconSign(pumpPos.x,pumpPos.z,'⛽ ÁREA DE COMBUSTÍVEL');
-beaconSign(shopPos.x,shopPos.z,'🏪 MERCADO');
-beaconSign(garagePos.x,garagePos.z,'🚜 GARAGEM');
-beaconSign(animalShopPos.x,animalShopPos.z,'🐄 LOJA DE ANIMAIS');
+const animalShopPos=new THREE.Vector3(14,0,24); // animal shop building removed — store is a single menu
+// (Shop/garage/animal/fuel buildings + signs removed — everything is in the store menu now)
 
 function makeHouse(x,z){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(8,4.5,9),new THREE.MeshLambertMaterial({color:0xf5deb3}));b.position.y=2.25;b.castShadow=true;g.add(b);
@@ -1626,22 +1593,13 @@ function updateHUD(){
 }
 
 function tryRefuel(){
-  const p = activeVehPos();
-  // Near the main pump OR any built fuel depot?
-  let near = distXZ(p,pumpPos)<16;
-  if(!near) for(const d of fuelDepots){ if(distXZ(p,d)<12){ near=true; break; } }
-  // Emergency jerrycan usable anywhere
-  if(!near){
-    if(state.inventory.jerrycan>0){ state.inventory.jerrycan--; state.fuel=Math.min(state.maxFuel,state.fuel+50); sndSell();
-      showMessage('🛢️ Galão usado! +50 combustível',1500); updateHUD(); return; }
-    showMessage('⛽ Longe do posto! (compre 🛢️ Galão na loja p/ usar em qualquer lugar)',2200); return;
-  }
-  const need=state.maxFuel-state.fuel;
-  if(need<=0){ showMessage('Tanque cheio!',1000); return; }
-  const cost=Math.ceil(need*0.8);
-  if(state.money<cost){ showMessage('❌ Sem dinheiro ($'+cost+')',1400); return; }
-  state.money-=cost; state.fuel=state.maxFuel; state.stats.refueled=(state.stats.refueled||0)+1; sndSell();
-  showMessage(`⛽ Abastecido! -$${cost}`,1500); updateHUD();
+  // Emergency jerrycan first (instant, anywhere)
+  if(state.inventory.jerrycan>0){ state.inventory.jerrycan--; state.fuel=Math.min(state.maxFuel,state.fuel+50); state.stats.refueled=(state.stats.refueled||0)+1; sndSell();
+    showMessage('🛢️ Galão usado! +50 combustível',1500); updateHUD(); return; }
+  // No jerrycan — open the store on the fuel tab so you can fill up
+  if(!state.shopOpen) openStation('store');
+  state.shopTab='fuel'; renderTabs(); renderShop();
+  showMessage('⛽ Escolha "Encher" na loja (ou compre um 🛢️ Galão pra usar em qualquer lugar com R).',2600);
 }
 let msgT=0;function showMessage(t,ms=1400){const el=document.getElementById('message');el.textContent=t;el.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>el.style.display='none',ms);}
 function distXZ(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
@@ -1657,12 +1615,12 @@ const OBJ=[
   {icon:'💧',text:'4/12 — Aperte [4] Irrigador e regue (cresce 2× mais rápido!)',done:()=>anyTile(t=>t.water>0)},
   {icon:'⏳',text:'5/12 — Espere a planta crescer (fica dourada)',done:()=>anyTile(t=>t.state==='grown')},
   {icon:'🌾',text:'6/12 — Aperte [3] Colheitadeira e colha dirigindo',done:()=>totalCrops()>0},
-  {icon:'🏪',text:'7/12 — Vá ao mercado (placa 🏪) e aperte [B]',done:()=>state.money>500},
+  {icon:'🏪',text:'7/12 — Aperte [B] (ou 🏪) pra abrir a LOJA',done:()=>state.money>500||state.shopOpen},
   {icon:'💵',text:'8/12 — Na aba VENDER, venda sua colheita',done:()=>state.stats.harvested>0 && totalCrops()===0 && state.money>500},
   {icon:'📋',text:'9/12 — Cumpra um CONTRATO (painel à esquerda)',done:()=>state.stats.contractsDone>=1},
-  {icon:'🐄',text:'10/12 — Compre um animal na loja (aba ANIMAIS)',done:()=>state.stats.animalsBought>=1},
+  {icon:'🐄',text:'10/12 — Abra a Loja [B] e compre um animal (aba 🐄 Animais)',done:()=>state.stats.animalsBought>=1},
   {icon:'🏗️',text:'11/12 — Aperte [G] e construa algo (ex: Estufa)',done:()=>(state.stats.builtCount||0)>=1},
-  {icon:'⛽',text:'12/12 — Vá ao ⛽ Posto, chegue perto e aperte [B] pra abastecer',done:()=>state.stats.refueled>0},
+  {icon:'⛽',text:'12/12 — Abra a Loja [B] → aba ⛽ Combustível e abasteça',done:()=>state.stats.refueled>0},
   {icon:'🎉',text:'Tutorial completo! Continue crescendo sua fazenda!',done:()=>false},
 ];
 function updateObjective(){
@@ -1879,16 +1837,16 @@ const AI_KB=[
   {kw:['arar','arado','arou','lavrar','terra','solo'], a:'🚜 ARAR: aperte [1] (Arado) e dirija por cima da grama dentro do campo cercado. O chão fica marrom = pronto pra plantar. A ferramenta trabalha sozinha enquanto você dirige por cima.'},
   {kw:['colher','colheita','colhe','colhi','maduro','madura','colheitadeira'], a:'🌾 COLHER: quando a planta fica grande/madura (o contador zera), aperte [3] (Colheitadeira) e passe por cima. Vai pro inventário pra você vender. Plantas com ⭐ mais estrelas valem mais!\nÁrvores (🍎🍊🥥🥑) rebrotam sozinhas depois de colher.'},
   {kw:['regar','rega','irrigar','irrig','agua','água','molhar','molha','irrigador'], a:'💧 REGAR: aperte [4] (Irrigador) e passe por cima das plantas — regado cresce 2× mais rápido! Constrói uma 🚰 Torre d\'Água com [G] que rega o campo sozinha. E quando chove, tudo é regado de graça! ☔'},
-  {kw:['combustivel','combustível','gasolina','posto','abastecer','abasteci','fuel','tanque','encher'], a:'⛽ ABASTECER: vá até a ÁREA DE COMBUSTÍVEL (piso cinza com faixas amarelas, na fila de lojas) e aperte [B]. Abre o Posto, onde você escolhe Encher METADE ou TANQUE CHEIO (paga por litro).\nLonge do posto? Compre um 🛢️ Galão na aba INSUMOS e aperte [R] em qualquer lugar (+50). Mesmo com o tanque vazio o veículo anda devagar até o posto.'},
+  {kw:['combustivel','combustível','gasolina','posto','abastecer','abasteci','fuel','tanque','encher'], a:'⛽ ABASTECER: aperte [B] pra abrir a Loja e vá na aba ⛽ Combustível — escolha Encher METADE ou TANQUE CHEIO (paga por litro). Ou compre um 🛢️ Galão (aba Insumos) e aperte [R] em qualquer lugar (+50). Mesmo com o tanque vazio o veículo anda devagar.'},
   {kw:['dinheiro','grana','vender','vende','venda','money','rico','lucro','ganhar','vendas'], a:'💰 GANHAR DINHEIRO:\n• Colha e venda no 🏪 Mercado (aba 💵 VENDER).\n• Cumpra CONTRATOS (painel azul) — pagam ~1,7× o valor!\n• Plantas caras valem mais: o 🥑 Abacate é a melhor ($450), seguido de pitaya 🐉 e melancia 🍉.\n• Crie animais pra renda passiva (leite, ovo, mel...).\n• Plantas com ⭐⭐⭐ (regadas + fertilizadas) vendem por mais.'},
   {kw:['missao','missão','missoes','missões','contrato','contratos','contrte','tarefa','quest','entregar'], a:'📋 CONTRATOS (painel azul à esquerda): pedem uma quantidade de uma cultura, em ordem do mais barato (🌾 Trigo) ao mais caro (🥑 Abacate). Quando você tiver o suficiente no inventário, o botão ENTREGAR acende — clique e ganhe 💰 + ⭐XP. Aí vem o próximo da fila.\nAs MISSÕES (botão 📜) dão XP extra por metas maiores.'},
-  {kw:['animal','animais','vaca','galinha','ovelha','porco','cabra','pato','coelho','abelha','leite','ovo','la','lã','mel','curral','queijo'], a:'🐄 ANIMAIS: na 🐄 Loja de Animais (aperte [B] perto dela) compre vaca (leite), galinha (ovo), ovelha (lã), porco (trufa), cabra (queijo), pato (pena), coelho (pelo) e abelha (mel 🍯). Eles vivem nos currais e produzem SOZINHOS. Venda os produtos no Mercado = renda passiva. A abelha ainda faz as plantas perto crescerem mais rápido!'},
+  {kw:['animal','animais','vaca','galinha','ovelha','porco','cabra','pato','coelho','abelha','leite','ovo','la','lã','mel','curral','queijo'], a:'🐄 ANIMAIS: aperte [B] e vá na aba 🐄 Animais pra comprar vaca (leite), galinha (ovo), ovelha (lã), porco (trufa), cabra (queijo), pato (pena), coelho (pelo) e abelha (mel 🍯). Eles vivem nos currais e produzem SOZINHOS. Venda os produtos no Mercado = renda passiva. A abelha ainda faz as plantas perto crescerem mais rápido!'},
   {kw:['nivel','nível','xp','level','experiencia','experiência'], a:'⭐ NÍVEL/XP: você ganha XP colhendo e cumprindo contratos. A cada nível você ganha um bônus de dinheiro e novas culturas/itens vão sendo apresentados (clique na barra 🎖️ NÍVEL pra ver a lista). Os CAMPOS novos agora são COMPRADOS com dinheiro (veja "comprar área").'},
   {kw:['area','área','campo','campos','expandir','terreno','plantação nova','comprar area','comprar área'], a:'🌾 COMPRAR NOVA ÁREA: aparece um quadrado VERDE no chão (com placa "Comprar área $X · aperte [V]") no lugar do próximo campo. Dirija ou ande até ele e aperte [V] pra comprar. Fica VERMELHO se faltar dinheiro. O preço sobe a cada campo: começa em $1.000 e o último custa $1.000.000!'},
   {kw:['construir','construcao','construção','build','estufa','torre','silo','predio','prédio','composteira','painel','solar','moinho','padaria'], a:'🏗️ CONSTRUIR: aperte [G] pra abrir o menu. Tem 🪴 Estufa (cresce 3× mais rápido), 🚰 Torre d\'Água (rega sozinha), ⛽ Tanque (abastece longe do posto), 🌰 Composteira (faz fertilizante), 🐝 Colmeia, 🏭 Moinho/Padaria (vira farinha e pão pra vender caro!) e decorações. A construção aparece na frente do veículo.'},
   {kw:['trator','tractor','melhor trator','tratores'], a:'🚜 TRATORES: na 🚜 Garagem (aba TRATORES) você compra modelos melhores — mais rápidos e com tanque maior. Aperte [T] a qualquer hora pra trocar entre os que você tem, e a aba 🎨 PINTAR muda a cor. Pra correr MUITO, veja os carros velozes!'},
   {kw:['carro','carros','esportivo','veloz','rapido','rápido','formula','foguete','buggy','suv'], a:'🏎️ CARROS VELOZES: na Garagem tem veículos super rápidos pra comprar — SUV Turbo, Buggy, Carro Esportivo, Fórmula Fazenda e o 🚀 Foguete da Roça (o mais veloz!). Quanto mais caro, mais rápido. Aperte [F] pra trocar entre seus veículos.'},
-  {kw:['loja','mercado','shop','comprar','vendedor'], a:'🏪 LOJAS: ficam todas em FILA. Chegue perto e aperte [B]:\n• 🏪 Mercado — abas SEMENTES, INSUMOS (fertilizante/pesticida/galão) e VENDER.\n• 🚜 Garagem — tratores e carros + pintura.\n• 🐄 Loja de Animais — comprar e vender bichos.\n• ⛽ Posto — abastecer.'},
+  {kw:['loja','mercado','shop','comprar','vendedor','vender'], a:'🏪 LOJA: agora é UM menu só! Aperte [B] (ou o botão 🏪) em QUALQUER lugar pra abrir. Lá em cima você escolhe a categoria:\n• 🌱 Sementes · 🧪 Insumos · 💵 Vender\n• 🚜 Veículos (tratores e carros) · 🎨 Pintar\n• 🐄 Animais · 🥩 Vender Bichos · ⛽ Combustível.\nNão tem mais prédios de loja no mapa — está tudo no menu.'},
   {kw:['caminhao','caminhão','truck','transporte'], a:'🚚 CAMINHÃO: aperte [F] pra alternar entre seus veículos (trator → caminhão → carro). O caminhão é mais rápido que o trator básico — bom pra correr até o mercado.'},
   {kw:['estacao','estação','estacoes','estações','inverno','verao','verão','outono','primavera','season','neve'], a:'🍂 ESTAÇÕES: mudam a cada dia (Primavera→Verão→Outono→Inverno). No ☀️ Verão tudo cresce mais rápido; no ❄️ Inverno mais devagar e neva! As árvores e o cenário mudam de cor. Veja a estação no relógio embaixo.'},
   {kw:['clima','chuva','tempo','weather','tempestade','sol','nublado','raio'], a:'🌧️ CLIMA: alterna entre ☀️ sol, ☁️ nublado e 🌧️ chuva (com raios!). Quando chove, TODAS as suas plantas são regadas de graça — ótimo momento pra deixar crescendo.'},
@@ -1914,7 +1872,7 @@ const AI_KB=[
 // Context-aware advice based on the player's current state
 function aiContextTip(){
   const tips=[];
-  if(state.fuel < state.maxFuel*0.2) tips.push('⛽ Seu combustível está baixo! Vá à Área de Combustível e aperte [B] pra abastecer.');
+  if(state.fuel < state.maxFuel*0.2) tips.push('⛽ Combustível baixo! Aperte [B] → aba ⛽ Combustível pra abastecer.');
   const cost=(typeof nextPlotCost==='function')?nextPlotCost():null;
   if(contract){ const C=CROPS[contract.crop]; const have=state.inventory[contract.crop]||0;
     tips.push(`📋 Seu contrato pede ${contract.qty}× ${C.emoji} ${C.name} (você tem ${have}). Plante e colha ${C.name} pra ganhar $${contract.rewardMoney}!`); }
@@ -1988,22 +1946,21 @@ setTimeout(()=>{ const inp=document.getElementById('ai-input'); if(inp){ inp.add
 // ---------- STATIONS (separate places, each opened with [B]) ----------
 function nearAny(list,d){ const p=activeVehPos(); for(const m of list){ if(distXZ(p,m)<d) return true; } return false; }
 const STATIONS={
-  market:  { title:'🏪 MERCADO',          sub:'Sementes • Insumos • Venda',            tabs:[['buy','🛒 SEMENTES'],['supplies','🧪 INSUMOS'],['sell','💵 VENDER']] },
-  garage:  { title:'🚜 GARAGEM',          sub:'Compre, troque [T] e pinte seus tratores',  tabs:[['tractors','🚜 TRATORES'],['paint','🎨 PINTAR']] },
-  animals: { title:'🐄 LOJA DE ANIMAIS',  sub:'Compre animais • Venda no açougue',          tabs:[['animals','🐄 COMPRAR'],['butcher','🥩 VENDER']] },
-  fuel:    { title:'⛽ POSTO DE GASOLINA', sub:'Abasteça seu veículo',                       tabs:[['fuel','⛽ ABASTECER']] },
+  // Single unified STORE — everything in one menu, opened from anywhere with [B]
+  store:   { title:'🏪 LOJA', sub:'Compre tudo num lugar só — escolha a categoria', tabs:[
+    ['buy','🌱 Sementes'],['supplies','🧪 Insumos'],['sell','💵 Vender'],
+    ['tractors','🚜 Veículos'],['paint','🎨 Pintar'],
+    ['animals','🐄 Animais'],['butcher','🥩 Vender Bichos'],['fuel','⛽ Combustível'] ] },
+  market:  { title:'🏪 MERCADO',          sub:'Sementes • Insumos • Venda',            tabs:[['buy','🌱 Sementes'],['supplies','🧪 Insumos'],['sell','💵 Vender']] },
+  garage:  { title:'🚜 GARAGEM',          sub:'Compre, troque [T] e pinte seus tratores',  tabs:[['tractors','🚜 Veículos'],['paint','🎨 Pintar']] },
+  animals: { title:'🐄 LOJA DE ANIMAIS',  sub:'Compre animais • Venda no açougue',          tabs:[['animals','🐄 Comprar'],['butcher','🥩 Vender']] },
+  fuel:    { title:'⛽ POSTO DE GASOLINA', sub:'Abasteça seu veículo',                       tabs:[['fuel','⛽ Abastecer']] },
 };
 function toggleShopIfNear(){
   if(state.shopOpen){closeShop();return;}
-  const p=activeVehPos(); // uses the boneco's position when on foot, vehicle's when driving
-  let ctx=null;
-  if(distXZ(p,pumpPos)<13) ctx='fuel';
-  else if(distXZ(p,garagePos)<15) ctx='garage';
-  else if(distXZ(p,shopPos)<15 || nearAny(marketStalls,14)) ctx='market';
-  else if(distXZ(p,animalShopPos)<16 || nearAny(butchers,14)) ctx='animals';
-  if(!ctx){ showMessage('Chegue PERTO de uma loja: 🏪 Mercado · 🚜 Garagem · 🐄 Animais · ⛽ Posto, e aperte [B]!',2400); return; }
-  openStation(ctx);
+  openStation('store'); // one store, opens from anywhere
 }
+window.openStore=()=>{ if(!state.shopOpen) openStation('store'); };
 function openStation(ctx){
   state.shopContext=ctx;
   const st=STATIONS[ctx];
@@ -3164,9 +3121,7 @@ function drawMinimap(dt){
   // pens (tan)
   miniCtx.fillStyle='#cddc8a';
   for(const a of Object.values(ANIMAL_TYPES)){ const [mx,my]=toMap(a.pen.cx,a.pen.cz); miniCtx.fillRect(mx-3,my-3,6,6); }
-  // stations (colored dots)
-  const dots=[[shopPos,'#ffd54f'],[garagePos,'#90caf9'],[animalShopPos,'#a5d6a7'],[pumpPos,'#ef5350']];
-  for(const [p,col] of dots){ const [mx,my]=toMap(p.x,p.z); miniCtx.fillStyle=col; miniCtx.beginPath(); miniCtx.arc(mx,my,3,0,7); miniCtx.fill(); }
+  // (shop buildings removed — store is a menu, so no station dots on the minimap)
   // player arrow
   const vs=(state.onFoot?PLAYER:activeVeh==='tractor'?T:activeVeh==='truck'?TRK:CAR);
   miniCtx.save(); miniCtx.translate(cx,cy); miniCtx.rotate(-vs.heading+Math.PI);
@@ -3467,7 +3422,17 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   setInterval(()=>{ if(document.getElementById('stats-panel').style.display==='block') renderOnlineBoard(); }, 20000);
 }
 window.startGame=startGame;
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+// Evenly position the right-side circular buttons (auto-adjusts to however many exist)
+const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','chop-btn','spray-btn'];
+function layoutRightButtons(){
+  const els=RIGHT_BTN_ORDER.map(id=>document.getElementById(id)).filter(Boolean);
+  const n=els.length; if(!n) return;
+  const gap=Math.min(54, Math.max(40, (innerHeight*0.86)/n)); // shrink spacing on short screens
+  const start=-(n-1)/2*gap;
+  els.forEach((el,i)=>{ el.style.marginTop=Math.round(start+i*gap)+'px'; });
+}
+layoutRightButtons();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);layoutRightButtons();});
 renderer.render(scene,camera);
 // Auto-enter visit mode on reload ONLY if a fresh visit token is pending (self-heals stale ones)
 if(getVisitInfo()){ setTimeout(()=>{ try{ startGame(false); }catch(e){ console.error(e); } }, 50); }
