@@ -68,6 +68,13 @@
     #boneco-btn { background:linear-gradient(135deg,#ab47bc,#6a1b9a); } #boneco-btn::after { content:'Boneco'; }
     .act-b { display:block; width:100%; margin:6px 0; padding:10px; border:none; border-radius:9px; background:#37474f; color:#fff; font-weight:800; font-size:13px; cursor:pointer; text-align:left; }
     .act-b:hover { background:#455a64; }
+    .field-row { background:rgba(0,0,0,0.28); border-radius:10px; padding:8px 10px; }
+    .field-head { font-size:13px; color:#fff; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; }
+    .field-stat { font-size:11px; color:#b0bec5; font-weight:600; }
+    .field-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .field-btns button { padding:7px 2px; border:none; border-radius:7px; background:#37474f; color:#fff; font-weight:700; font-size:12px; cursor:pointer; }
+    .field-btns button:hover { background:#455a64; }
+    .field-btns button.on { background:#1b5e20; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
@@ -292,7 +299,7 @@
 <!-- Ações (agrupa as ações de campo num menu só) -->
 <div id="actions-panel" style="display:none;position:fixed;right:84px;top:50%;transform:translateY(-50%);z-index:160;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);width:230px;">
   <div style="text-align:center;color:#ffd54f;font-weight:800;margin-bottom:8px;">🛠️ AÇÕES</div>
-  <button class="act-b" onclick="toggleActionsMenu();toggleFieldPanel()" style="background:#1b5e20;">🌾 Gerenciar campo</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleFieldsPanel()" style="background:#1b5e20;">🌾 Meus campos (1-100)</button>
   <button class="act-b" onclick="chopNearestTree();toggleActionsMenu()">🪓 Cortar árvore</button>
   <button class="act-b" onclick="sprayAllField();toggleActionsMenu()">🪲 Pulverizar campo</button>
   <button class="act-b" onclick="removeBuildingNear();toggleActionsMenu()">🧨 Remover construção</button>
@@ -300,10 +307,14 @@
 
 <!-- Per-field management panel -->
 <div id="field-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-width:92vw;max-height:88vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #66bb6a;border-radius:16px;z-index:165;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
-  <h2 style="text-align:center;color:#a5d6a7;margin-bottom:2px;">🌾 GERENCIAR CAMPO</h2>
-  <div style="text-align:center;font-size:11px;color:#90caf9;margin-bottom:10px;">Ações em massa no campo mais perto de você</div>
-  <div id="field-body" style="display:flex;flex-direction:column;gap:7px;"></div>
-  <button onclick="toggleFieldPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
+  <h2 style="text-align:center;color:#a5d6a7;margin-bottom:2px;">🌾 MEUS CAMPOS</h2>
+  <div style="text-align:center;font-size:11px;color:#90caf9;margin-bottom:8px;">Gerencie cada campo daqui — sem precisar dirigir até ele!</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,0.25);border-radius:10px;padding:7px 10px;margin-bottom:10px;position:sticky;top:0;">
+    <span style="font-size:13px;">Plantar: <b id="fields-seed">🌾 Trigo</b></span>
+    <button onclick="fieldsCycleSeed()" style="padding:5px 12px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">🔁 Trocar semente</button>
+  </div>
+  <div id="field-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+  <button onclick="toggleFieldsPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 <button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)">🧍</button>
 
@@ -1388,33 +1399,7 @@ window.sprayAllField=()=>{
   showMessage('🪲 Pulverizei '+done+' planta(s)!'+(ranOut?(' Faltou pesticida pra '+(cands.length-done)+'. Compre mais.'):' Campo protegido!'),3000);
   updateHUD(); saveGame();
 };
-// ===== PER-FIELD MANAGEMENT PANEL — one-click improvements for the closest field =====
-let _fieldPlot=null;
-function nearestPlot(){ const p=activeVehPos(); let best=null,bd=1e9; for(const plot of allPlots){ const d=Math.hypot(plot.centerX-p.x,plot.centerZ-p.z); if(d<bd){bd=d;best=plot;} } return best; }
-function fieldStats(plot){ let grass=0,tilled=0,planted=0,grown=0; for(const row of plot.tiles) for(const t of row){ if(t.state==='grass')grass++; else if(t.state==='tilled')tilled++; else if(t.state==='planted')planted++; else if(t.state==='grown')grown++; } return {grass,tilled,planted,grown}; }
-function fieldApply(tool){ if(!_fieldPlot) return; const prev=state.tool; state.tool=tool; for(const row of _fieldPlot.tiles) for(const t of row) workTile(t); state.tool=prev; updateHUD(); renderFieldPanel(); saveGame(); }
-window.fieldPlow=()=>fieldApply(1);
-window.fieldPlant=()=>fieldApply(2);
-window.fieldWater=()=>fieldApply(4);
-window.fieldHarvest=()=>{ if(!_fieldPlot) return; for(const row of _fieldPlot.tiles) for(const t of row) if(t.state==='grown') harvestTile(t); updateHUD(); renderFieldPanel(); saveGame(); };
-window.fieldSpray=()=>{ if(!_fieldPlot) return; let n=0; for(const row of _fieldPlot.tiles) for(const t of row){ if((t.state==='planted'||t.state==='grown')&&!t.protected){ if((state.inventory.pesticide||0)<=0){ showMessage('🪲 Sem pesticida! Compre na loja.',1800); break; } state.inventory.pesticide--; protectTile(t); n++; } } if(n)showMessage('🪲 '+n+' planta(s) protegida(s)!',1600); if(typeof sndSell==='function'&&n)sndSell(); updateHUD(); renderFieldPanel(); saveGame(); };
-window.fieldWorkerCrop=()=>{ if(!_fieldPlot) return; const o=Object.keys(CROPS); const cur=_fieldPlot.workerCrop||state.workerCrop||'wheat'; const i=Math.max(0,o.indexOf(cur)); _fieldPlot.workerCrop=o[(i+1)%o.length]; renderFieldPanel(); saveGame(); };
-function renderFieldPanel(){ if(!_fieldPlot) return; const body=document.getElementById('field-body'); if(!body) return;
-  const s=fieldStats(_fieldPlot); const sc=CROPS[state.selectedCrop]; const wc=CROPS[_fieldPlot.workerCrop||state.workerCrop||'wheat'];
-  body.innerHTML=`<div style="font-size:12px;color:#cfd8dc;text-align:center;margin-bottom:10px;">🟩 Vazio: <b>${s.grass}</b> · 🟫 Arado: <b>${s.tilled}</b> · 🌱 Crescendo: <b>${s.planted}</b> · 🌾 Maduro: <b>${s.grown}</b></div>`+
-    `<button class="cheat-b" onclick="fieldPlow()">🚜 Arar o campo todo</button>`+
-    `<button class="cheat-b" onclick="fieldPlant()">🌱 Plantar tudo (${sc.emoji} ${sc.name})</button>`+
-    `<button class="cheat-b" onclick="fieldWater()">💧 Regar o campo todo</button>`+
-    `<button class="cheat-b" onclick="fieldSpray()">🪲 Pulverizar o campo todo</button>`+
-    `<button class="cheat-b" onclick="fieldHarvest()">🌾 Colher o campo todo</button>`+
-    `<div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:9px;margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-size:13px;">👨‍🌾 Trabalhador planta: <b>${wc.emoji} ${wc.name}</b></span><button onclick="fieldWorkerCrop()" style="padding:6px 12px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;">🔁 Trocar</button></div>`;
-}
-window.toggleFieldPanel=()=>{ const p=document.getElementById('field-panel'); if(!p) return;
-  if(p.style.display==='block'){ p.style.display='none'; return; }
-  _fieldPlot=nearestPlot(); if(!_fieldPlot){ showMessage('Nenhum campo por perto!',1600); return; }
-  renderFieldPanel(); p.style.display='block';
-  const am=document.getElementById('actions-panel'); if(am) am.style.display='none';
-};
+// (Per-field management is implemented as a full list below — see renderFieldsPanel)
 // Throttled countdown updater — only near the player for performance
 let _timerAcc=0;
 function updateTimers(dt){
@@ -1464,6 +1449,27 @@ window.cheatFuel=()=>{ state.fuel=state.maxFuel; updateHUD(); showMessage('⛽ T
 window.cheatName=()=>{ const n=prompt('Novo nome (placar online):', getPlayerName()); if(n&&n.trim()){ setPlayerName(n.trim().slice(0,16)); const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=n.trim().slice(0,16); showMessage('✏️ Nome: '+n.trim().slice(0,16),1600); } };
 window.toggleInventory=()=>{ const p=document.getElementById('inventory'); if(!p) return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open && typeof updateHUD==='function') updateHUD(); };
 window.toggleActionsMenu=()=>{ const p=document.getElementById('actions-panel'); if(!p) return; p.style.display = (p.style.display==='block')?'none':'block'; };
+function renderFieldsPanel(){
+  const host=document.getElementById('field-body'); if(!host) return;
+  const sc=CROPS[state.selectedCrop];
+  const sel=document.getElementById('fields-seed'); if(sel) sel.textContent=sc.emoji+' '+sc.name;
+  let h='';
+  for(let i=0;i<allPlots.length;i++){ const p=allPlots[i]; const s=fieldStats(p); const hasW=workers.some(w=>w.plot===p);
+    h+=`<div class="field-row"><div class="field-head">🌾 <b>Campo ${i+1}</b> <span class="field-stat">vazio ${s.g+s.til} · 🌱 ${s.pl} · ✅ ${s.gr}${hasW?' · 👨‍🌾':''}</span></div>`+
+      `<div class="field-btns">`+
+      `<button onclick="fieldPlow(${i})">🚜 Arar</button>`+
+      `<button onclick="fieldPlant(${i})">🌱 Plantar</button>`+
+      `<button onclick="fieldWater(${i})">💧 Regar</button>`+
+      `<button onclick="fieldHarvest(${i})">🌾 Colher</button>`+
+      `<button onclick="fieldWorker(${i})" class="${hasW?'on':''}">${hasW?'👨‍🌾 Tirar':'👨‍🌾 +Trab.'}</button>`+
+      `<button onclick="fieldGoto(${i})">📍 Ir</button>`+
+      `</div></div>`;
+  }
+  host.innerHTML=h;
+}
+window.toggleFieldsPanel=()=>{ const p=document.getElementById('field-panel'); if(!p) return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderFieldsPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
+window.toggleFieldPanel=window.toggleFieldsPanel; // alias (button compatibility)
+window.fieldsCycleSeed=()=>{ if(typeof cycleCrop==='function') cycleCrop(); renderFieldsPanel(); };
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 // Mouse camera control (cam declared above)
@@ -1520,6 +1526,30 @@ function harvestTile(t){
   }
   gainXP(XP_PER_HARVEST[cropKey]||5); state.stats.harvested++; state.stats.cropsSeen[cropKey]=true; updateHUD();
 }
+// ---- Reusable tile ops (used by the Fields management panel) ----
+function tillTile(t){ if(t.state!=='grass') return false; t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; return true; }
+function plantOnTile(t, crop){
+  if(t.state!=='tilled' || !CROPS[crop]) return false;
+  const sk=crop+'_seed'; if((state.inventory[sk]||0)<=0) return false;
+  state.inventory[sk]--;
+  if(state.inventory.fertilizer>0){ state.inventory.fertilizer--; t.fertilized=true;
+    const ft=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96,TILE*0.96),new THREE.MeshBasicMaterial({color:0x9c27b0,transparent:true,opacity:0.18}));
+    ft.rotation.x=-Math.PI/2; ft.position.set(t.x,0.075,t.z); scene.add(ft); t.fertilTint=ft; }
+  if(state.inventory.pesticide>0){ state.inventory.pesticide--; t.protected=true; applyPesticideTint(t); }
+  t.state='planted'; t.crop=crop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
+  const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
+  addCropMarker(t, CROPS[crop].emoji); return true;
+}
+function waterTileNow(t){ if(t.state==='grass') return false; t.water=1; t.waterUntil=performance.now()/1000+60;
+  if(!t.waterTint){ const wt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97,TILE*0.97), new THREE.MeshBasicMaterial({color:0x4fc3f7,transparent:true,opacity:0.25})); wt.rotation.x=-Math.PI/2; wt.position.set(t.x,0.07,t.z); scene.add(wt); t.waterTint=wt; } return true; }
+function fieldStats(plot){ let g=0,til=0,pl=0,gr=0; for(const row of plot.tiles)for(const t of row){ if(t.state==='grass')g++; else if(t.state==='tilled')til++; else if(t.state==='planted')pl++; else if(t.state==='grown')gr++; } return {g,til,pl,gr}; }
+// Per-field actions (operate on a whole plantation at once)
+window.fieldPlow=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r) if(tillTile(t))n++; if(n)sndPlow(); showMessage('🚜 Campo '+(i+1)+': '+n+' quadrados arados',1500); renderFieldsPanel(); saveGame(); };
+window.fieldPlant=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r){ if(plantOnTile(t,state.selectedCrop))n++; } if(n)sndPlant(); showMessage(n?('🌱 Campo '+(i+1)+': '+n+' '+CROPS[state.selectedCrop].name+' plantadas'):('❌ Sem terra arada ou sem sementes de '+CROPS[state.selectedCrop].name+'!'),2200); updateHUD(); renderFieldsPanel(); saveGame(); };
+window.fieldWater=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r) if(waterTileNow(t))n++; showMessage('💧 Campo '+(i+1)+': '+n+' quadrados regados',1500); renderFieldsPanel(); };
+window.fieldHarvest=(i)=>{ const p=allPlots[i]; if(!p)return; let n=0; for(const r of p.tiles)for(const t of r){ if(t.state==='grown'){ harvestTile(t); n++; } } showMessage(n?('🌾 Campo '+(i+1)+': '+n+' colhidas!'):'Nada maduro nesse campo ainda.',1800); renderFieldsPanel(); saveGame(); };
+window.fieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const ex=workers.find(w=>w.plot===p); if(ex){ scene.remove(ex.mesh); workers.splice(workers.indexOf(ex),1); showMessage('👨‍🌾 Trabalhador removido do campo '+(i+1),1600); } else { workers.push({mesh:makeWorkerNPC(p.centerX,p.centerZ),plot:p,tile:null}); showMessage('👨‍🌾 Trabalhador contratado pro campo '+(i+1)+'! Ara, planta e colhe sozinho.',2600); } renderFieldsPanel(); };
+window.fieldGoto=(i)=>{ const p=allPlots[i]; if(!p)return; const v=(typeof curVeh==='function')?curVeh():tractor; v.position.x=p.centerX; v.position.z=p.centerZ+16; showMessage('📍 Você foi pro campo '+(i+1),1400); toggleFieldsPanel(); };
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
   if(t.weed){ const w=t.weed; t.weed=null; scene.remove(w); if(w.geometry)w.geometry.dispose(); if(w.material)w.material.dispose(); }
