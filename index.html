@@ -215,6 +215,8 @@
     .shop-item button { width:100%; padding:6px; margin-top:5px; background:#2d5016; color:#fff; border:none;
       border-radius:6px; cursor:pointer; font-weight:700; font-size:13px; }
     .shop-item button:hover { background:#4caf50; } .shop-item button:disabled { background:#555; opacity:0.5; cursor:not-allowed; }
+    .buy-row { display:flex; gap:5px; margin-top:5px; } .buy-row .buyq { flex:1; padding:7px 2px; margin-top:0; font-size:12px; }
+    .buy-hint { font-size:10px; opacity:0.6; text-align:center; margin-top:3px; }
     .close-btn { display:block; margin:16px auto 0; padding:8px 30px; background:#c62828; color:#fff; border:none;
       border-radius:8px; cursor:pointer; font-weight:700; }
 
@@ -415,7 +417,7 @@
     <div class="divider"></div>
     <div class="help-line"><span class="key">1</span> Arado &nbsp;<span class="key">2</span> Plantar &nbsp;<span class="key">3</span> Colher &nbsp;<span class="key">4</span> 💧 Irrigar &nbsp;<span class="key">0</span> Guardar</div>
     <div class="help-line"><span class="key">Q</span> Semente &nbsp; <span class="key">B</span> Loja &nbsp; <span class="key">H</span> 🔊 Buzina &nbsp; <span class="key">L</span> 💡 Faróis</div>
-    <div class="help-line"><span class="key">R</span> Abastecer &nbsp; <span class="key">F</span> 🚚 Trocar veículo &nbsp; <span class="key">G</span> 🏗️ Construir</div>
+    <div class="help-line"><span class="key">R</span> Abastecer &nbsp; <span class="key">F</span> 🚚 Trocar veículo &nbsp; <span class="key">M</span> 🏗️ Construir</div>
     <div class="help-line"><span class="key">T</span> 🚜 Trocar de trator (entre os que você tem)</div>
     <div class="help-line"><span class="key">C</span> 🚶 Descer/subir &nbsp; <span class="key">V</span> 🌾 Comprar área (perto do verde) &nbsp; · 🧍 Boneco: botão</div>
     <div class="divider"></div>
@@ -445,7 +447,7 @@
 </div>
 
 <div id="build-menu" style="display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:rgba(40,30,20,0.95);border:3px solid #ffd54f;border-radius:14px;padding:16px;z-index:90;color:#fff;width:560px;max-width:94vw;max-height:78vh;overflow-y:auto;pointer-events:auto;">
-  <h3 style="text-align:center;color:#ffd54f;margin-bottom:8px;">🏗️ CONSTRUIR (será colocado à sua frente)</h3>
+  <h3 style="text-align:center;color:#ffd54f;margin-bottom:8px;">🏗️ CONSTRUIR [M] — a obra fica pronta após um tempo (aparece à sua frente)</h3>
   <button onclick="removeBuildingNear()" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:800;">🧨 REMOVER construção mais próxima (volta 50% do valor)</button>
   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;border-radius:8px;margin-bottom:10px;">
     <span style="font-size:13px;">👨‍🌾 Fazendeiro automático planta: <b id="worker-crop-label">🌾 Trigo</b></span>
@@ -1388,7 +1390,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'){ if(state.onFoot) toggleOnFoot(); else toggleVehicle(); }
   if(e.code==='KeyC'){ toggleOnFoot(); }
   if(e.code==='KeyV'){ tryBuyPlotNearby(); }
-  if(e.code==='KeyG'){ toggleBuildMenu(); }
+  if(e.code==='KeyG'||e.code==='KeyM'){ toggleBuildMenu(); }
   if(e.code==='KeyT'){ cycleTractor(); }
 });
 // ---------- 🔓 SECRET CHEAT MENU (type "money") ----------
@@ -2027,23 +2029,41 @@ function renderTabs(){
 }
 window.closeShop=()=>{state.shopOpen=false;document.getElementById('shop').style.display='none';};
 window.showTab=(tab)=>{state.shopTab=tab;renderTabs();renderShop();};
+// ----- Bulk buy (x10 / x50 / MÁX) + hold-to-repeat -----
+let _holdT=null,_holdI=null,_shopRefreshT=null,_saveT=null;
+window.startHold=(fn)=>{ fn(); clearTimeout(_holdT); clearInterval(_holdI); _holdT=setTimeout(()=>{ _holdI=setInterval(fn,110); },330); };
+window.stopHold=()=>{ clearTimeout(_holdT); clearInterval(_holdI); _holdT=null; _holdI=null; };
+function refreshShopSoon(){ clearTimeout(_shopRefreshT); _shopRefreshT=setTimeout(()=>{ if(state.shopOpen) renderShop(); }, 350); }
+function saveSoon(){ clearTimeout(_saveT); _saveT=setTimeout(()=>{ if(typeof saveGame==='function') saveGame(); }, 600); }
+window.buyQty=(invKey, unitBase, mode)=>{
+  const unit=adjBuy(unitBase);
+  let qty = mode==='max' ? Math.floor(state.money/unit) : Math.min(mode, Math.floor(state.money/unit));
+  if(qty<1){ stopHold(); showMessage('❌ Sem dinheiro pra comprar!',900); return; }
+  const cost=unit*qty; state.money-=cost; state.inventory[invKey]=(state.inventory[invKey]||0)+qty;
+  if(typeof spendXP==='function') spendXP(cost); if(typeof sndSell==='function') sndSell();
+  updateHUD(); refreshShopSoon(); saveSoon();
+};
+// Build the 4 buy buttons (x1, x10, x50, MÁX) with hold-to-repeat for an item
+function buyBtns(invKey, unitBase){
+  const b=(arg,label)=>`<button class="buyq" onmousedown="startHold(()=>buyQty('${invKey}',${unitBase},${arg}))" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(()=>buyQty('${invKey}',${unitBase},${arg}))" ontouchend="stopHold()">${label}</button>`;
+  return `<div class="buy-row">${b(1,'x1')}${b(10,'x10')}${b(50,'x50')}${b("'max'",'MÁX')}</div><div class="buy-hint">segure pra comprar muitos</div>`;
+}
 function renderShop(){const grid=document.getElementById('shop-grid');grid.innerHTML='';
   if(state.shopTab==='buy'){
-    Object.entries(CROPS).forEach(([ck,c])=>{const key=ck+'_seed';const el=document.createElement('div');el.className='shop-item';const treeNote=c.tree?` · Rebrota em ${c.regrow}s`:'';const p1=adjBuy(c.seed),p10=adjBuy(c.seed*10);const sv=Math.round(c.sell*sellMult());el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${sv}${treeNote}</p><p>Preço: <b>$${p1}</b></p><button onclick="buySeed('${key}',${p1})">x1 ($${p1})</button><button onclick="buySeed('${key}',${p10},10)">x10 ($${p10})</button>`;grid.appendChild(el);});
+    Object.entries(CROPS).forEach(([ck,c])=>{const key=ck+'_seed';const el=document.createElement('div');el.className='shop-item';const treeNote=c.tree?` · Rebrota em ${c.regrow}s`:'';const p1=adjBuy(c.seed);const sv=Math.round(c.sell*sellMult());el.innerHTML=`<h4>${c.emoji} Semente de ${c.name}</h4><p>Cresce em ${c.growTime}s · Vende $${sv}${treeNote}</p><p>Preço: <b>$${p1}</b> cada · Tem: <b>${state.inventory[key]||0}</b></p>${buyBtns(key,c.seed)}`;grid.appendChild(el);});
   }
   else if(state.shopTab==='supplies'){
     // Pesticide (now its own tab, pricier)
     const pEl=document.createElement('div'); pEl.className='shop-item';
-    const pp1=adjBuy(80),pp10=adjBuy(700);
-    pEl.innerHTML=`<h4>🪲 Pesticida</h4><p>Tem: <b>${state.inventory.pesticide}</b></p><p>Protege a planta de PRAGAS e mato</p><p>Aplicado ao plantar OU use 🛠️ Ações → Pulverizar campo</p><p>Preço: <b>$${pp1}</b></p><button onclick="buyPest(${pp1},1)">x1 ($${pp1})</button><button onclick="buyPest(${pp10},10)">x10 ($${pp10})</button>`;
+    pEl.innerHTML=`<h4>🪲 Pesticida</h4><p>Tem: <b>${state.inventory.pesticide}</b> · $${adjBuy(80)} cada</p><p>Protege contra PRAGAS e mato</p>${buyBtns('pesticide',80)}`;
     grid.appendChild(pEl);
     // Fertilizer
-    const fEl=document.createElement('div'); fEl.className='shop-item'; const fp1=adjBuy(15),fp10=adjBuy(120);
-    fEl.innerHTML=`<h4>🧪 Fertilizante</h4><p>Tem: <b>${state.inventory.fertilizer}</b></p><p>Aplicado automático ao plantar</p><p>+50% velocidade · +2⭐ qualidade</p><p>Preço: <b>$${fp1}</b></p><button onclick="buyFert(${fp1},1)">x1 ($${fp1})</button><button onclick="buyFert(${fp10},10)">x10 ($${fp10})</button>`;
+    const fEl=document.createElement('div'); fEl.className='shop-item';
+    fEl.innerHTML=`<h4>🧪 Fertilizante</h4><p>Tem: <b>${state.inventory.fertilizer}</b> · $${adjBuy(15)} cada</p><p>+50% velocidade · +2⭐ qualidade</p>${buyBtns('fertilizer',15)}`;
     grid.appendChild(fEl);
     // Jerrycan (emergency fuel)
-    const jEl=document.createElement('div'); jEl.className='shop-item'; const jp1=adjBuy(40),jp5=adjBuy(150);
-    jEl.innerHTML=`<h4>🛢️ Galão de Combustível</h4><p>Tem: <b>${state.inventory.jerrycan}</b></p><p>Aperte R em qualquer lugar = +50 combustível</p><p>Preço: <b>$${jp1}</b></p><button onclick="buyJerry(${jp1},1)">x1 ($${jp1})</button><button onclick="buyJerry(${jp5},5)">x5 ($${jp5})</button>`;
+    const jEl=document.createElement('div'); jEl.className='shop-item';
+    jEl.innerHTML=`<h4>🛢️ Galão de Combustível</h4><p>Tem: <b>${state.inventory.jerrycan}</b> · $${adjBuy(40)} cada</p><p>Aperte R em qualquer lugar = +50 comb.</p>${buyBtns('jerrycan',40)}`;
     grid.appendChild(jEl);
   }
   else if(state.shopTab==='fuel'){
@@ -2689,15 +2709,21 @@ function toggleBuildMenu(){
   const m=document.getElementById('build-menu');
   if(m.style.display==='block'){ m.style.display='none'; return; }
   const grid=document.getElementById('build-grid'); grid.innerHTML='';
-  BUILDINGS.forEach(b=>{
+  const header=(txt)=>{ const h=document.createElement('div'); h.style.cssText='grid-column:1/3;color:#ffd54f;font-weight:800;font-size:13px;margin:6px 0 2px;border-bottom:1px solid rgba(255,213,79,0.3);padding-bottom:3px;'; h.textContent=txt; grid.appendChild(h); };
+  // Organize: functional buildings first, decorations grouped at the end
+  const funcs=BUILDINGS.filter(b=>!b.decor), decos=BUILDINGS.filter(b=>b.decor);
+  const addItem=(b)=>{
     const locked=state.level<(b.req||1);
     const el=document.createElement('div');
     el.style.cssText='background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;'+(locked?'opacity:0.6;':'');
+    const cost=adjBuy(b.price); const t=Math.max(3,Math.min(18,Math.round(b.price/300)));
     const btn=locked?`<button disabled style="width:100%;padding:5px;background:#555;color:#aaa;border:none;border-radius:6px;font-weight:700;">🔒 Nível ${b.req}</button>`
-      :`<button onclick="placeBuilding('${b.id}',${adjBuy(b.price)})" style="width:100%;padding:5px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">$${adjBuy(b.price).toLocaleString('pt-BR')}</button>`;
+      :`<button onclick="placeBuilding('${b.id}',${cost})" style="width:100%;padding:5px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">$${cost.toLocaleString('pt-BR')} · ⏱️${t}s</button>`;
     el.innerHTML=`<div style="font-weight:700;color:#ffd54f;">${b.name}</div><div style="font-size:11px;opacity:0.85;margin:4px 0;">${b.desc}</div>${btn}`;
     grid.appendChild(el);
-  });
+  };
+  header('🏭 Construções'); funcs.forEach(addItem);
+  if(decos.length){ header('🎨 Decoração'); decos.forEach(addItem); }
   updateBuildWorkerLabel();
   m.style.display='block';
 }
@@ -2716,14 +2742,54 @@ window.placeBuilding=(id,price)=>{
   // Space check — don't allow building on top of another building/object
   for(const c of colliders){ if(Math.abs(bx-c.x)<c.hw+3.5 && Math.abs(bz-c.z)<c.hd+3.5){ showMessage('🚫 Sem espaço aqui! Ande até um lugar livre.',1800); return; } }
   state.money-=price; sndSell();
-  state.buildings=state.buildings||[]; state.buildings.push({id,x:bx,z:bz});
-  placedObjs.push(trackedConstruct(id,bx,bz));
   state.stats.builtCount=(state.stats.builtCount||0)+1;
   if(typeof spendXP==='function') spendXP(price); // earn XP for building (scaled to cost)
+  // Construction TAKES TIME — show a build site with a countdown, finish later
+  const total = Math.max(3, Math.min(18, Math.round(price/300)));
+  startConstruction(id, bx, bz, total, bdef?bdef.name:'Construção');
   updateHUD();
   document.getElementById('build-menu').style.display='none';
+  showMessage('🏗️ Obra iniciada: '+(bdef?bdef.name:'')+' fica pronta em '+total+'s',2400);
   saveGame();
 };
+// ---- Construction-in-progress (build time) ----
+const pendingBuilds=[];
+function makeBuildSite(x,z){
+  const g=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.BoxGeometry(4,0.3,4),new THREE.MeshLambertMaterial({color:0x6d4c41})); base.position.y=0.15; g.add(base);
+  for(const [sx,sz] of [[-1.7,-1.7],[1.7,-1.7],[-1.7,1.7],[1.7,1.7]]){ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,3.2,6),new THREE.MeshLambertMaterial({color:0xffb300})); p.position.set(sx,1.7,sz); g.add(p); }
+  for(const y of [1.2,2.6]){ const bar=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.12,0.12),new THREE.MeshLambertMaterial({color:0xffca28})); bar.position.set(0,y,-1.7); g.add(bar); }
+  const crate=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.4,1.4),new THREE.MeshLambertMaterial({color:0xa1887f})); crate.position.set(0,0.9,0.6); g.add(crate);
+  g.position.set(x,0,z); scene.add(g); return g;
+}
+function buildLabelSprite(x,z){
+  const cv=document.createElement('canvas'); cv.width=160; cv.height=56;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
+  sp.scale.set(3,1.05,1); sp.position.set(x,4.2,z); sp.renderOrder=999; sp.userData.cv=cv; scene.add(sp); return sp;
+}
+function drawBuildLabel(sp,text){ const cv=sp.userData.cv,g=cv.getContext('2d'); g.clearRect(0,0,160,56);
+  g.fillStyle='rgba(0,0,0,0.7)'; if(g.roundRect){g.beginPath();g.roundRect(6,8,148,40,10);g.fill();} else g.fillRect(6,8,148,40);
+  g.fillStyle='#ffd54f'; g.font='bold 26px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(text,80,28); sp.material.map.needsUpdate=true; }
+function startConstruction(id,x,z,total,name){
+  const site=makeBuildSite(x,z); const label=buildLabelSprite(x,z);
+  pendingBuilds.push({id,x,z,time:total,total,site,label,name});
+}
+function updateBuilds(dt){
+  if(!pendingBuilds.length) return; const now=performance.now()/1000;
+  for(let i=pendingBuilds.length-1;i>=0;i--){ const pb=pendingBuilds[i]; pb.time-=dt;
+    if(pb.site){ pb.site.rotation.y+=dt*0.6; pb.site.position.y=Math.abs(Math.sin(now*3))*0.1; }
+    if(pb.label) drawBuildLabel(pb.label,'🏗️ '+Math.max(0,Math.ceil(pb.time))+'s');
+    if(pb.time<=0){
+      if(pb.site){ scene.remove(pb.site); pb.site.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); }
+      if(pb.label){ scene.remove(pb.label); if(pb.label.material){ if(pb.label.material.map)pb.label.material.map.dispose(); pb.label.material.dispose(); } }
+      state.buildings=state.buildings||[]; state.buildings.push({id:pb.id,x:pb.x,z:pb.z});
+      placedObjs.push(trackedConstruct(pb.id,pb.x,pb.z));
+      if(typeof sndSell==='function') sndSell();
+      if(typeof floatText==='function') floatText(pb.x,pb.z,'✅ '+pb.name+' pronta!',0x66bb6a);
+      pendingBuilds.splice(i,1); if(typeof saveGame==='function') saveGame();
+    }
+  }
+}
 // Builds the actual mesh + registers functional zones (used by placeBuilding AND by load)
 function constructBuilding(id,bx,bz){
   if(id==='silo'){ makeSilo(bx,bz); }
@@ -3144,6 +3210,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateAmbient(dt, now);
   updateWaterTowers(dt);
   updateProducers(dt);
+  updateBuilds(dt);
   updateMarket(dt);
   updateWorkers(dt);
   updatePlanes(dt);
