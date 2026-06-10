@@ -74,6 +74,9 @@
     #plot-btn:hover { transform:translateY(72px) scale(1.05); }
     .cheat-b { padding:11px; border:none; border-radius:10px; background:linear-gradient(135deg,#42a5f5,#1565c0); color:#fff; font-weight:800; font-size:14px; cursor:pointer; }
     .cheat-b:hover { filter:brightness(1.12); transform:scale(1.02); }
+    /* hidden easter-egg spot that opens the secret menu (the 🐒 rumor) */
+    #secret-spot { position:fixed; left:3px; bottom:2px; z-index:300; font-size:15px; opacity:0.1; cursor:pointer; user-select:none; transition:opacity .2s, transform .2s; line-height:1; }
+    #secret-spot:hover { opacity:0.85; transform:scale(1.3); }
     .bn-row { margin:9px 0; }
     .bn-label { font-size:13px; font-weight:700; color:#ffe082; margin-bottom:5px; }
     .bn-swatches { display:flex; gap:7px; flex-wrap:wrap; }
@@ -315,11 +318,12 @@
   <button onclick="toggleStats()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 
-<!-- 🔓 Secret cheat menu (type "money") -->
+<!-- 🔓 Secret cheat menu -->
 <div id="cheat-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;background:linear-gradient(160deg,#1b2230,#2a1f3a);border:3px solid #ffd54f;border-radius:16px;z-index:170;padding:20px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.6);">
   <h2 style="text-align:center;color:#ffd54f;margin-bottom:2px;">🔓 MENU SECRETO</h2>
   <div style="text-align:center;font-size:12px;color:#9fa8ff;margin-bottom:12px;">Jogador: <b id="cheat-name">—</b></div>
   <div style="display:flex;flex-direction:column;gap:8px;">
+    <button class="cheat-b" onclick="cheatMoney(1e15)" style="background:linear-gradient(135deg,#ffd54f,#ef6c00);color:#2d2010;">♾️ DINHEIRO INFINITO</button>
     <button class="cheat-b" onclick="cheatMoney(100000)">💰 +$100.000</button>
     <button class="cheat-b" onclick="cheatMoney(1000000)">💰 +$1.000.000</button>
     <button class="cheat-b" onclick="cheatMoney(100000000)">💰 +$100.000.000</button>
@@ -331,6 +335,8 @@
   </div>
   <button onclick="closeCheat()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
+<!-- discreet easter-egg "spot" that opens the secret money menu (the 🐒 rumor leads here) -->
+<div id="secret-spot" onclick="openCheat()" title="🐒" style="display:none;">🍌</div>
 
 <!-- Touch controls (mobile only) -->
 <div id="touch-controls" style="display:none;position:fixed;inset:0;z-index:90;pointer-events:none;">
@@ -3578,6 +3584,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   // Spawn NPCs
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   state.onFoot=false; if(player) player.visible=false; updateFootButton();
+  { const ss=document.getElementById('secret-spot'); if(ss) ss.style.display='block'; }
   setTool(0);updateHUD();clock.start();clock.getDelta();animate();
   // Visiting another farm? show banner, don't autosave/submit
   if(_visit){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+_visit.name;
