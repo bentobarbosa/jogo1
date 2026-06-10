@@ -546,7 +546,8 @@ function buyMult(){ return diff().buyMult; }
 function sellMult(){ return diff().sellMult; }
 function adjBuy(base){ return Math.max(1, Math.round(base * buyMult())); }
 // Progressive animal price: each extra animal of a type costs more
-function animalPrice(type){ const at=ANIMAL_TYPES[type]; const owned=farmAnimals.filter(f=>f.type===type).length; return Math.round(at.price * buyMult() * Math.pow(diff().animalStep, owned)); }
+// Gentle LINEAR price rise per extra animal of a type (was exponential = billions at 60!)
+function animalPrice(type){ const at=ANIMAL_TYPES[type]; const owned=farmAnimals.filter(f=>f.type===type).length; const inc=(diff().animalStep-1)*0.4; return Math.round(at.price * buyMult() * (1 + owned*inc)); }
 const MAX_ANIMALS = 60; // cap so the game never freezes with too many animals
 window.selectDifficulty=(d)=>{ if(!DIFFICULTIES[d]) return; state.difficulty=d;
   document.querySelectorAll('.diff-b').forEach(b=>b.classList.toggle('sel', b.dataset.d===d));
