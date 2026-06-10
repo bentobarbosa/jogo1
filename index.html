@@ -214,15 +214,16 @@
 
     #shop { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
       background:linear-gradient(135deg,#5d4037,#8d6e63); border:4px solid #4e342e; border-radius:16px;
-      padding:22px; width:640px; max-height:82vh; overflow-y:auto; z-index:100; color:#fff;
-      box-shadow:0 10px 40px rgba(0,0,0,0.6); pointer-events:auto; }
+      padding:22px; width:640px; max-width:94vw; max-height:88vh; z-index:100; color:#fff;
+      box-shadow:0 10px 40px rgba(0,0,0,0.6); pointer-events:auto; flex-direction:column; }
+    #shop.open { display:flex; }
     #shop h2 { text-align:center; color:#ffd54f; margin-bottom:4px; }
     #shop .subtitle { text-align:center; color:#fff9c4; margin-bottom:14px; font-size:12px; }
     .shop-tabs { display:flex; gap:6px; margin-bottom:14px; justify-content:center; }
     .tab-btn { flex:1; padding:8px; background:rgba(0,0,0,0.3); border:none; color:#fff; cursor:pointer;
       border-radius:8px; font-weight:700; font-size:13px; }
     .tab-btn.active { background:#ffd54f; color:#2d5016; }
-    .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; overflow-y:auto; flex:1; min-height:0; padding-right:6px; align-content:start; }
     .shop-item { background:rgba(0,0,0,0.25); padding:12px; border-radius:10px; border:2px solid rgba(255,255,255,0.1); }
     .shop-item h4 { color:#ffd54f; font-size:14px; } .shop-item p { font-size:12px; color:#f5f5dc; margin:3px 0; }
     .shop-item button { width:100%; padding:6px; margin-top:5px; background:#2d5016; color:#fff; border:none;
@@ -437,8 +438,13 @@
   <div id="message"></div>
 </div>
 
-<div id="build-menu" style="display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:rgba(40,30,20,0.95);border:3px solid #ffd54f;border-radius:14px;padding:16px;z-index:90;color:#fff;width:560px;pointer-events:auto;">
-  <h3 style="text-align:center;color:#ffd54f;margin-bottom:10px;">🏗️ CONSTRUIR (será colocado à sua frente)</h3>
+<div id="build-menu" style="display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:rgba(40,30,20,0.95);border:3px solid #ffd54f;border-radius:14px;padding:16px;z-index:90;color:#fff;width:560px;max-width:94vw;max-height:78vh;overflow-y:auto;pointer-events:auto;">
+  <h3 style="text-align:center;color:#ffd54f;margin-bottom:8px;">🏗️ CONSTRUIR (será colocado à sua frente)</h3>
+  <button onclick="removeBuildingNear()" style="display:block;width:100%;margin-bottom:10px;padding:8px;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:800;">🧨 REMOVER construção mais próxima (volta 50% do valor)</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;border-radius:8px;margin-bottom:10px;">
+    <span style="font-size:13px;">👨‍🌾 Fazendeiro automático planta: <b id="worker-crop-label">🌾 Trigo</b></span>
+    <button onclick="cycleWorkerCrop()" style="padding:6px 12px;background:#2d5016;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;">🔁 Trocar</button>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="build-grid"></div>
   <button onclick="toggleBuildMenu()" style="display:block;margin:12px auto 0;padding:6px 24px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR [G]</button>
 </div>
@@ -518,6 +524,7 @@ const state = {
   dayCount:0,
   onFoot:false,   // walking around as your character?
   contractIdx:0,  // chronological contract progression (trigo -> abacate)
+  workerCrop:'wheat', // which seed the automatic farmer plants
   boneco:{ skin:0xffccaa, shirt:0x1565c0, pants:0x3e2723, hat:0xd32f2f, hatType:1 }, // character look
 };
 // On-foot walking character physics
@@ -2004,7 +2011,7 @@ function openStation(ctx){
   document.getElementById('shop-title').textContent=st.title;
   document.getElementById('shop-subtitle').textContent=st.sub;
   state.shopOpen=true;
-  document.getElementById('shop').style.display='block';
+  document.getElementById('shop').style.display='flex';
   renderTabs(); renderShop();
 }
 function renderTabs(){
@@ -2117,7 +2124,7 @@ window.fillFuel=(mode)=>{
   showMessage('⛽ Abastecido! '+Math.round(state.fuel)+'/'+max+' litros (-$'+cost+')',2000);
   updateHUD(); renderShop(); saveGame();
 };
-window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;sndSell();showMessage(`${a.name} comprada! Está no curral 🐄`,1800);updateHUD();renderShop();saveGame();};
+window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;const xp=Math.max(5,Math.round(a.price/50));gainXP(xp);sndSell();showMessage(`${a.name} comprada! +${xp} XP · Está no curral 🐄`,1900);updateHUD();renderShop();saveGame();};
 window.sellAnimal=(type,price)=>{
   const idx=farmAnimals.findIndex(f=>f.type===type);
   if(idx<0){ showMessage('Você não tem esse animal!',1500); return; }
@@ -2165,7 +2172,7 @@ function saveGame(){
       if(t.state!=='grass') tilesData.push({p:pi,c,r,st:t.state,cr:t.crop,gp:t.growProgress||0,w:t.water?1:0,fz:t.fertilized?1:0,rg:t.regrowing?1:0}); } });
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money:state.money, inventory:state.inventory, level:state.level, xp:state.xp, xpToNext:state.xpToNext,
-      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective, contractIdx:state.contractIdx,
+      tractorIdx:state.tractorIdx, tractorsOwned:state.tractorsOwned, tractorColor:state.tractorColor, plotsUnlocked:state.plotsUnlocked, objective:state.objective, contractIdx:state.contractIdx, workerCrop:state.workerCrop,
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
@@ -2185,6 +2192,7 @@ function loadGame(){
     state.xpToNext = d.xpToNext ?? 50;
     state.objective = d.objective ?? 0;
     state.contractIdx = d.contractIdx ?? 0;
+    if(d.workerCrop && CROPS[d.workerCrop]) state.workerCrop = d.workerCrop;
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
@@ -2203,9 +2211,9 @@ function loadGame(){
     if(d.tractorIdx!=null){ applyTractor(d.tractorIdx); } else { applyTractor(0); }
     // Apply season visuals
     state.season=(state.season+3)%4; advanceSeason();
-    // Recreate buildings
-    state.buildings=[];
-    if(Array.isArray(d.buildings)){ for(const b of d.buildings){ try{ state.buildings.push({id:b.id,x:b.x,z:b.z}); constructBuilding(b.id,b.x,b.z); }catch(e){} } }
+    // Recreate buildings (tracked so they can be removed later)
+    state.buildings=[]; placedObjs.length=0;
+    if(Array.isArray(d.buildings)){ for(const b of d.buildings){ try{ state.buildings.push({id:b.id,x:b.x,z:b.z}); placedObjs.push(trackedConstruct(b.id,b.x,b.z)); }catch(e){} } }
     // Respawn animals
     if(Array.isArray(d.animals)){ for(const t of d.animals){ if(ANIMAL_TYPES[t]) try{ spawnAnimal(t); }catch(e){} } }
     // Restore plantation tiles
@@ -2624,6 +2632,7 @@ function updatePests(dt){
 }
 
 // ---------- BUILD SYSTEM (#19) ----------
+const placedObjs=[];       // parallel to state.buildings: {meshes,cols,zones} so we can REMOVE them
 const greenhouseZones=[];  // {x,z,r} crops grow 3x inside
 const waterTowers=[];      // {x,z,r} auto-water nearby tiles
 const fuelDepots=[];       // {x,z} refuel near these
@@ -2669,8 +2678,11 @@ function toggleBuildMenu(){
     el.innerHTML=`<div style="font-weight:700;color:#ffd54f;">${b.name}</div><div style="font-size:11px;opacity:0.85;margin:4px 0;">${b.desc}</div>${btn}`;
     grid.appendChild(el);
   });
+  updateBuildWorkerLabel();
   m.style.display='block';
 }
+function updateBuildWorkerLabel(){ const el=document.getElementById('worker-crop-label'); if(el){ const c=CROPS[state.workerCrop]||CROPS.wheat; el.textContent=c.emoji+' '+c.name; } }
+window.cycleWorkerCrop=()=>{ const o=Object.keys(CROPS); const i=Math.max(0,o.indexOf(state.workerCrop)); state.workerCrop=o[(i+1)%o.length]; updateBuildWorkerLabel(); const c=CROPS[state.workerCrop]; showMessage('👨‍🌾 Fazendeiro vai plantar: '+c.emoji+' '+c.name+' (tenha sementes!)',2200); saveGame(); };
 window.toggleBuildMenu=toggleBuildMenu;
 window.placeBuilding=(id,price)=>{
   const bdef=BUILDINGS.find(b=>b.id===id);
@@ -2685,8 +2697,9 @@ window.placeBuilding=(id,price)=>{
   for(const c of colliders){ if(Math.abs(bx-c.x)<c.hw+3.5 && Math.abs(bz-c.z)<c.hd+3.5){ showMessage('🚫 Sem espaço aqui! Ande até um lugar livre.',1800); return; } }
   state.money-=price; sndSell();
   state.buildings=state.buildings||[]; state.buildings.push({id,x:bx,z:bz});
-  constructBuilding(id,bx,bz);
+  placedObjs.push(trackedConstruct(id,bx,bz));
   state.stats.builtCount=(state.stats.builtCount||0)+1;
+  gainXP(20); // earn XP for building
   updateHUD();
   document.getElementById('build-menu').style.display='none';
   saveGame();
@@ -2949,6 +2962,37 @@ function applyFestive(){
 
 // ---------- FARMHAND WORKER (auto-farms a plot) ----------
 const workers=[];
+// ----- BUILDING REMOVAL support -----
+function buildingArrays(){ return [greenhouseZones,waterTowers,fuelDepots,solarPanels,composters,seedSheds,hiveZones,marketStalls,butchers,feeders,mills,bakeries,extraWindmills,planes,workers].filter(Array.isArray); }
+// Run constructBuilding while recording every mesh/collider/zone it creates, so it can be undone
+function trackedConstruct(id,bx,bz){
+  const arrs=buildingArrays();
+  const sLen=scene.children.length, cLen=colliders.length, aLens=arrs.map(a=>a.length);
+  try{ constructBuilding(id,bx,bz); }catch(e){ console.error('construct',e); }
+  const meshes=scene.children.slice(sLen);
+  const cols=colliders.slice(cLen);
+  const zones=[]; arrs.forEach((a,i)=>{ for(let j=aLens[i]; j<a.length; j++) zones.push([a,a[j]]); });
+  return {meshes,cols,zones};
+}
+window.removeBuildingNear=()=>{
+  if(state.visiting){ showMessage('Você está visitando outra fazenda!',1600); return; }
+  const list=state.buildings||[]; if(!list.length){ showMessage('🏗️ Você não tem construções pra remover.',2200); return; }
+  const p=activeVehPos(); let bi=-1,bd=1e9;
+  for(let i=0;i<list.length;i++){ const d=Math.hypot(list[i].x-p.x,list[i].z-p.z); if(d<bd){bd=d;bi=i;} }
+  if(bi<0 || bd>18){ showMessage('🏗️ Chegue PERTO da construção que quer remover e tente de novo.',2600); return; }
+  const obj=placedObjs[bi];
+  if(obj){
+    for(const m of obj.meshes){ scene.remove(m); if(m.traverse) m.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); if(o.material.dispose)o.material.dispose(); } }); }
+    for(const c of obj.cols){ const idx=colliders.indexOf(c); if(idx>=0) colliders.splice(idx,1); }
+    for(const [arr,item] of obj.zones){ const idx=arr.indexOf(item); if(idx>=0) arr.splice(idx,1); }
+  }
+  const bdef=BUILDINGS.find(b=>b.id===list[bi].id); const refund=Math.round((bdef&&bdef.price||0)*0.5);
+  state.money+=refund; list.splice(bi,1); placedObjs.splice(bi,1);
+  if(typeof sndChop==='function') sndChop();
+  showMessage('🧨 Construção removida! +$'+refund+' de volta.',2600);
+  document.getElementById('build-menu').style.display='none';
+  updateHUD(); saveGame();
+};
 function makeWorkerNPC(x,z){
   const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.9,0.35),new THREE.MeshLambertMaterial({color:0x1565c0,flatShading:true}));body.position.y=0.75;body.castShadow=true;g.add(body);
@@ -2965,9 +3009,9 @@ function updateWorkers(dt){
     if(d>1){ w.mesh.position.x+=dx/d*4*dt; w.mesh.position.z+=dz/d*4*dt; w.mesh.rotation.y=Math.atan2(dx,dz); w.mesh.position.y=Math.abs(Math.sin(now*8))*0.08; }
     else {
       if(t.state==='grass'){ t.state='tilled'; t.mesh.material=tilledMat(); t.mesh.position.y=0.13; }
-      else if(t.state==='tilled'){ if((state.inventory.wheat_seed||0)>0) state.inventory.wheat_seed--;
-        t.state='planted'; t.crop='wheat'; t.growProgress=0; t.lastUpdate=now;
-        const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z);scene.add(sprout);t.plant=sprout; addCropMarker(t,'🌾'); }
+      else if(t.state==='tilled'){ const wc=(state.workerCrop&&CROPS[state.workerCrop])?state.workerCrop:'wheat'; if((state.inventory[wc+'_seed']||0)>0) state.inventory[wc+'_seed']--;
+        t.state='planted'; t.crop=wc; t.growProgress=0; t.lastUpdate=now;
+        const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z);scene.add(sprout);t.plant=sprout; addCropMarker(t,CROPS[wc].emoji); }
       else if(t.state==='grown'){ const ck=t.crop; state.inventory[ck]=(state.inventory[ck]||0)+(t.golden?5:1); if(t.plant){scene.remove(t.plant);t.plant=null;} if(t.goldMark){scene.remove(t.goldMark);t.goldMark=null;} t.golden=false; removeCropMarker(t); t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; state.stats.harvested++; }
       w.tile=null;
     }
