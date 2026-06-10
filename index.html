@@ -467,6 +467,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ---- Anti-tamper (best effort): block dev-tools shortcuts, view-source & right-click ----
+(function(){
+  addEventListener('keydown',function(e){ const k=(e.key||'').toLowerCase();
+    if(e.key==='F12' || (e.ctrlKey&&e.shiftKey&&(k==='i'||k==='j'||k==='c')) || (e.metaKey&&e.altKey&&(k==='i'||k==='j'||k==='c')) || (e.ctrlKey&&k==='u')){ e.preventDefault(); e.stopPropagation(); return false; }
+  }, true);
+  addEventListener('contextmenu',function(e){ e.preventDefault(); return false; }, true);
+})();
 // Global error catcher — shows JS errors visibly on screen
 // Stack ALL errors visibly so first error (root cause) appears too
 let __errBox = null;
@@ -550,7 +557,7 @@ function adjBuy(base){ return Math.max(1, Math.round(base * buyMult())); }
 // Progressive animal price: each extra animal of a type costs more
 // Gentle LINEAR price rise per extra animal of a type (was exponential = billions at 60!)
 function animalPrice(type){ const at=ANIMAL_TYPES[type]; const owned=farmAnimals.filter(f=>f.type===type).length; const inc=(diff().animalStep-1)*0.4; return Math.round(at.price * buyMult() * (1 + owned*inc)); }
-const MAX_ANIMALS = 60; // cap so the game never freezes with too many animals
+const VISIBLE_ANIMALS = 90; // animals are UNLIMITED to own, but only the nearest ~90 render (keeps it smooth)
 window.selectDifficulty=(d)=>{ if(!DIFFICULTIES[d]) return; state.difficulty=d;
   document.querySelectorAll('.diff-b').forEach(b=>b.classList.toggle('sel', b.dataset.d===d));
   const dd=DIFFICULTIES[d], el=document.getElementById('diff-desc');
@@ -1229,7 +1236,8 @@ const VEH_NAMES={tractor:'🚜 TRATOR',truck:'🚚 CAMINHÃO',car:'🏎️ CARRO
 function toggleVehicle(){
   if(state.onFoot){ showMessage('Você está a pé! Suba num veículo primeiro (🚜).',1800); return; }
   activeVeh = VEH_ORDER[(VEH_ORDER.indexOf(activeVeh)+1)%VEH_ORDER.length];
-  showMessage('Controlando: '+VEH_NAMES[activeVeh], 1500);
+  const fnHint = activeVeh==='truck' ? ' — colhe sozinho passando por cima!' : activeVeh==='car' ? ' — super rápido e quase não gasta combustível!' : '';
+  showMessage('Controlando: '+VEH_NAMES[activeVeh]+fnHint, 2200);
 }
 function curVehObj(){ return activeVeh==='tractor'?tractor:activeVeh==='truck'?truck:car; }
 // Get off / get on the tractor (walk around as your boneco)
@@ -1376,12 +1384,12 @@ function updateTimers(dt){
 // ---------- INPUT ----------
 const keys={};
 let cheatBuf='';
+function _sk(){ return String.fromCharCode(109,97,99,97,99,111); } // obfuscated trigger word
 addEventListener('keydown',e=>{
   // Ignore game controls while typing in a text input (AI chat)
   if(document.activeElement && document.activeElement.tagName==='INPUT'){ return; }
   keys[e.code]=true;
-  // 🔓 secret cheat: type the word "money" to open the admin menu
-  if(e.key && e.key.length===1){ cheatBuf=(cheatBuf+e.key.toLowerCase()).slice(-12); if(cheatBuf.endsWith('money')) openCheat(); }
+  if(e.key && e.key.length===1){ cheatBuf=(cheatBuf+e.key.toLowerCase()).slice(-12); if(cheatBuf.endsWith(_sk())) openCheat(); }
   if(e.code==='Digit0')setTool(0); if(e.code==='Digit1')setTool(1); if(e.code==='Digit2')setTool(2); if(e.code==='Digit3')setTool(3); if(e.code==='Digit4')setTool(4); if(e.code==='Digit5')setTool(5);
   if(e.code==='KeyQ')cycleCrop(); if(e.code==='KeyB')toggleShopIfNear();
   if(e.code==='KeyH'){ beep(220,0.18,'square',0.3); setTimeout(()=>beep(180,0.22,'square',0.3),200); }
@@ -1394,7 +1402,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyT'){ cycleTractor(); }
 });
 // ---------- 🔓 SECRET CHEAT MENU (type "money") ----------
-function openCheat(){ const p=document.getElementById('cheat-panel'); if(p){ p.style.display='block'; const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=getPlayerName(); if(typeof beep==='function')beep(900,0.08); if(typeof showMessage==='function')showMessage('🔓 Menu secreto aberto!',1200);} }
+function openCheat(){ const bm=document.getElementById('build-menu'); if(bm) bm.style.display='none'; const p=document.getElementById('cheat-panel'); if(p){ p.style.display='block'; const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=getPlayerName(); if(typeof beep==='function')beep(900,0.08); if(typeof showMessage==='function')showMessage('🔓 Menu secreto aberto!',1200);} }
 window.closeCheat=()=>{ const p=document.getElementById('cheat-panel'); if(p)p.style.display='none'; };
 window.cheatMoney=(a)=>{ state.money+=a; updateHUD(); saveGame(); if(typeof sndSell==='function')sndSell(); showMessage('💰 +$'+a.toLocaleString('pt-BR')+'!',1600); };
 window.cheatXP=()=>{ for(let i=0;i<5;i++) gainXP(state.xpToNext); updateHUD(); saveGame(); showMessage('⭐ +5 níveis!',1600); };
@@ -1433,6 +1441,33 @@ function notifyNoSeed(){
   lastNoSeedMsg=now;
   showMessage(`❌ Sem sementes de ${CROPS[state.selectedCrop].name}! Compre na loja (B)`, 1800);
 }
+// Harvest a grown tile (shared by the harvester tool AND the truck's auto-collect)
+function harvestTile(t){
+  if(t.state!=='grown') return;
+  const cropKey=t.crop;
+  const yield_ = t.golden?5:1; state.inventory[cropKey]=(state.inventory[cropKey]||0)+yield_;
+  if(t.golden){ floatText(t.x,t.z,'✨ DOURADO ×5!',0xffd700); beep(1000,0.1); }
+  if(t.goldMark){ scene.remove(t.goldMark); t.goldMark=null; } t.golden=false;
+  if(t.plant){scene.remove(t.plant);t.plant=null;}
+  let q=2; if(t.water>0) q++; if(t.fertilized) q+=2; if(t.weed) q--;
+  q = Math.max(1,Math.min(5,q+(Math.random()<0.3?1:0)));
+  state.qualityTotals[cropKey] = (state.qualityTotals[cropKey]||0) + q;
+  const stars='⭐'.repeat(q);
+  floatText(t.x,t.z,'+1 '+CROPS[cropKey].emoji+' '+stars,CROPS[cropKey].top); sndHarvest();
+  if(CROPS[cropKey].tree){
+    t.state='planted'; t.growProgress=0; t.lastUpdate=performance.now()/1000; t.regrowing=true;
+    const baby=new THREE.Group();
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.25,2,6),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1;baby.add(trunk);
+    for(let l=0;l<3;l++){const leaves=new THREE.Mesh(new THREE.SphereGeometry(1.1-l*0.18,9,8),new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));leaves.position.y=2.3+l*0.5;baby.add(leaves);}
+    baby.position.set(t.x,0.1,t.z); scene.add(baby); t.plant=baby;
+  } else {
+    t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0; t.fertilized=false;
+    removeCropMarker(t);
+    if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
+    if(t.fertilTint){scene.remove(t.fertilTint); t.fertilTint=null;}
+  }
+  gainXP(XP_PER_HARVEST[cropKey]||5); state.stats.harvested++; state.stats.cropsSeen[cropKey]=true; updateHUD();
+}
 function workTile(t){ if(!t)return;
   // Any active tool also removes weeds (tractor crushes them)
   if(t.weed){ const w=t.weed; t.weed=null; scene.remove(w); if(w.geometry)w.geometry.dispose(); if(w.material)w.material.dispose(); }
@@ -1449,36 +1484,7 @@ function workTile(t){ if(!t)return;
     updateHUD(); t.state='planted'; t.crop=state.selectedCrop; t.plantedAt=performance.now()/1000; t.growProgress=0; t.lastUpdate=performance.now()/1000;
       const sprout=new THREE.Group(); for(let i=0;i<3;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.45,5),new THREE.MeshLambertMaterial({color:0x66bb6a}));s.position.set((Math.random()-0.5)*1.2,0.25,(Math.random()-0.5)*1.2);sprout.add(s);} sprout.position.set(t.x,0,t.z); scene.add(sprout); t.plant=sprout;
       addCropMarker(t, CROPS[state.selectedCrop].emoji); sndPlant(); } else { notifyNoSeed(); } } }
-  else if(state.tool===3){ if(t.state==='grown'){ const cropKey=t.crop;
-    const yield_ = t.golden?5:1; state.inventory[cropKey]=(state.inventory[cropKey]||0)+yield_;
-    if(t.golden){ floatText(t.x,t.z,'✨ DOURADO ×5!',0xffd700); beep(1000,0.1); }
-    if(t.goldMark){ scene.remove(t.goldMark); t.goldMark=null; } t.golden=false;
-    if(t.plant){scene.remove(t.plant);t.plant=null;}
-    // Quality calc: 1-5 stars based on care
-    let q=2;
-    if(t.water>0) q++;
-    if(t.fertilized) q+=2;
-    if(t.weed) q--;
-    q = Math.max(1,Math.min(5,q+(Math.random()<0.3?1:0)));
-    state.qualityTotals[cropKey] = (state.qualityTotals[cropKey]||0) + q;
-    const stars='⭐'.repeat(q);
-    floatText(t.x,t.z,'+1 '+CROPS[cropKey].emoji+' '+stars,CROPS[cropKey].top); sndHarvest();
-    if(CROPS[cropKey].tree){
-      // Trees regrow — keep planted, restart growth with regrow time
-      t.state='planted'; t.growProgress=0; t.lastUpdate=performance.now()/1000; t.regrowing=true;
-      // Build a "small tree without fruit" while regrowing
-      const baby=new THREE.Group();
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.25,2,6),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1;baby.add(trunk);
-      for(let l=0;l<3;l++){const leaves=new THREE.Mesh(new THREE.SphereGeometry(1.1-l*0.18,9,8),new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));leaves.position.y=2.3+l*0.5;baby.add(leaves);}
-      baby.position.set(t.x,0.1,t.z); scene.add(baby); t.plant=baby;
-    } else {
-      t.state='grass'; t.mesh.material=grassTileMat(); t.crop=null; t.water=0; t.growProgress=0; t.fertilized=false;
-      removeCropMarker(t);
-      if(t.waterTint){scene.remove(t.waterTint); t.waterTint=null;}
-      if(t.fertilTint){scene.remove(t.fertilTint); t.fertilTint=null;}
-    }
-    gainXP(XP_PER_HARVEST[cropKey]||5); state.stats.harvested++; state.stats.cropsSeen[cropKey]=true; updateHUD();
-  } }
+  else if(state.tool===3){ if(t.state==='grown'){ harvestTile(t); } }
   else if(state.tool===4){ if(t.state!=='grass'){ t.water=1; t.waterUntil=performance.now()/1000 + 60;
     if(!t.waterTint){ const wt=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.97,TILE*0.97), new THREE.MeshBasicMaterial({color:0x4fc3f7,transparent:true,opacity:0.25}));
       wt.rotation.x=-Math.PI/2; wt.position.set(t.x,0.07,t.z); scene.add(wt); t.waterTint=wt; }
@@ -1895,7 +1901,8 @@ const AI_KB=[
   {kw:['trator','tractor','melhor trator','tratores'], a:'🚜 TRATORES: na 🚜 Garagem (aba TRATORES) você compra modelos melhores — mais rápidos e com tanque maior. Aperte [T] a qualquer hora pra trocar entre os que você tem, e a aba 🎨 PINTAR muda a cor. Pra correr MUITO, veja os carros velozes!'},
   {kw:['carro','carros','esportivo','veloz','rapido','rápido','formula','foguete','buggy','suv'], a:'🏎️ CARROS VELOZES: na Garagem tem veículos super rápidos pra comprar — SUV Turbo, Buggy, Carro Esportivo, Fórmula Fazenda e o 🚀 Foguete da Roça (o mais veloz!). Quanto mais caro, mais rápido. Aperte [F] pra trocar entre seus veículos.'},
   {kw:['loja','mercado','shop','comprar','vendedor','vender'], a:'🏪 LOJA: agora é UM menu só! Aperte [B] (ou o botão 🏪) em QUALQUER lugar pra abrir. Lá em cima você escolhe a categoria:\n• 🌱 Sementes · 🧪 Insumos · 💵 Vender\n• 🚜 Veículos (tratores e carros) · 🎨 Pintar\n• 🐄 Animais · 🥩 Vender Bichos · ⛽ Combustível.\nNão tem mais prédios de loja no mapa — está tudo no menu.'},
-  {kw:['caminhao','caminhão','truck','transporte'], a:'🚚 CAMINHÃO: aperte [F] pra alternar entre seus veículos (trator → caminhão → carro). O caminhão é mais rápido que o trator básico — bom pra correr até o mercado.'},
+  {kw:['caminhao','caminhão','truck','transporte'], a:'🚚 CAMINHÃO: aperte [F] pra usá-lo. FUNÇÃO ESPECIAL: ele COLHE sozinho as plantas maduras que você passa por cima — uma colheitadeira móvel! Ótimo pra recolher tudo rápido.'},
+  {kw:['carro','car','esportivo','eletrico','elétrico'], a:'🏎️ CARRO: aperte [F] pra usá-lo. FUNÇÃO: é o mais veloz, tem TURBO mais forte (segure Shift) e é elétrico — quase não gasta combustível! Perfeito pra atravessar a fazenda rapidinho.'},
   {kw:['estacao','estação','estacoes','estações','inverno','verao','verão','outono','primavera','season','neve'], a:'🍂 ESTAÇÕES: mudam a cada dia (Primavera→Verão→Outono→Inverno). No ☀️ Verão tudo cresce mais rápido; no ❄️ Inverno mais devagar e neva! As árvores e o cenário mudam de cor. Veja a estação no relógio embaixo.'},
   {kw:['clima','chuva','tempo','weather','tempestade','sol','nublado','raio'], a:'🌧️ CLIMA: alterna entre ☀️ sol, ☁️ nublado e 🌧️ chuva (com raios!). Quando chove, TODAS as suas plantas são regadas de graça — ótimo momento pra deixar crescendo.'},
   {kw:['fertilizante','fertilizar','adubo'], a:'🧪 FERTILIZANTE: compre na aba INSUMOS do Mercado. É aplicado automático ao plantar (se você tiver no estoque) — a planta cresce +50% mais rápido e ganha +2⭐ de qualidade (vende mais caro). A Composteira ([G]) produz fertilizante de graça.'},
@@ -2079,13 +2086,13 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
   }
   else if(state.shopTab==='animals'){
     const tip=document.createElement('div'); tip.style.cssText='grid-column:1/3;text-align:center;color:#fff9c4;font-size:12px;margin-bottom:4px;';
-    tip.innerHTML=`🐄 Total: <b>${farmAnimals.length}/${MAX_ANIMALS}</b> · cada animal a mais do mesmo tipo fica <b>mais caro</b>!`;
+    tip.innerHTML=`🐄 Total: <b>${farmAnimals.length}</b> animais (ilimitado!) · cada um a mais do mesmo tipo fica <b>mais caro</b>`;
     grid.appendChild(tip);
     Object.entries(ANIMAL_TYPES).forEach(([key,a])=>{
       const have=farmAnimals.filter(f=>f.type===key).length;
       const price=animalPrice(key);
       const el=document.createElement('div'); el.className='shop-item';
-      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><button onclick="buyAnimal('${key}')" ${farmAnimals.length>=MAX_ANIMALS?'disabled':''}>COMPRAR ($${price.toLocaleString('pt-BR')})</button>`;
+      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><button onclick="buyAnimal('${key}')">COMPRAR ($${price.toLocaleString('pt-BR')})</button>`;
       grid.appendChild(el);
     });
   }
@@ -2156,10 +2163,9 @@ window.fillFuel=(mode)=>{
   updateHUD(); renderShop(); saveGame();
 };
 window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];
-  if(farmAnimals.length>=MAX_ANIMALS){ showMessage('🐄 Limite de animais atingido ('+MAX_ANIMALS+')! Venda alguns no açougue.',2600); return; }
   const price=animalPrice(type);
   if(state.money<price){ showMessage('❌ Dinheiro insuficiente! ('+a.name+' custa $'+price.toLocaleString('pt-BR')+')',2200); return; }
-  if(!spawnAnimal(type)){ showMessage('🐄 Limite de animais atingido!',2000); return; }
+  spawnAnimal(type); // unlimited
   state.money-=price; state.stats.animalsBought++; const xp=spendXP(price); sndSell();
   showMessage(`${a.name} comprada por $${price.toLocaleString('pt-BR')}! +${xp} XP 🐄`,2000);
   updateHUD();renderShop();saveGame();};
@@ -2409,7 +2415,6 @@ setTimeout(()=>{ try{
   }
 }catch(e){console.error('pen build',e);} },0);
 function spawnAnimal(type,baby){
-  if(farmAnimals.length>=MAX_ANIMALS) return false; // cap to avoid lag/freeze
   const at=ANIMAL_TYPES[type]; const p=at.pen;
   const x=p.cx+(Math.random()-0.5)*(p.sx*2-3);
   const z=p.cz+(Math.random()-0.5)*(p.sz*2-3);
@@ -2421,8 +2426,19 @@ function spawnAnimal(type,baby){
   farmAnimals.push(a);
   return true;
 }
+let _cullT=0;
+function cullAnimals(dt){
+  _cullT-=dt; if(_cullT>0) return; _cullT=0.5;
+  const n=farmAnimals.length;
+  if(n<=VISIBLE_ANIMALS){ for(const a of farmAnimals) a.mesh.visible=true; return; }
+  const cx=camera.position.x, cz=camera.position.z;
+  for(const a of farmAnimals){ const dx=a.mesh.position.x-cx, dz=a.mesh.position.z-cz; a._d=dx*dx+dz*dz; }
+  const sorted=farmAnimals.slice().sort((p,q)=>p._d-q._d);
+  for(let i=0;i<n;i++) sorted[i].mesh.visible = i<VISIBLE_ANIMALS;
+}
 function updateFarmAnimals(dt){
   const now=performance.now()/1000;
+  cullAnimals(dt);
   for(const a of farmAnimals){
     const at=ANIMAL_TYPES[a.type]; const p=at.pen; const m=a.mesh;
     if(a.speed>0){
@@ -3125,7 +3141,7 @@ function updateProducers(dt){
   if(composters.length){ state.inventory.fertilizer+=composters.length; gained=true; }
   if(seedSheds.length){ const crops=Object.keys(CROPS); for(let i=0;i<seedSheds.length;i++){ const c=crops[Math.floor(Math.random()*crops.length)]; state.inventory[c+'_seed']=(state.inventory[c+'_seed']||0)+2; } gained=true; }
   // Feeder: consume some crops as feed and breed a baby of an owned animal type
-  if(feeders.length && farmAnimals.length && farmAnimals.length<MAX_ANIMALS){
+  if(feeders.length && farmAnimals.length){
     const cropKeys=Object.keys(CROPS).filter(c=>(state.inventory[c]||0)>0);
     if(cropKeys.length){
       const ownedTypes=[...new Set(farmAnimals.map(a=>a.type))];
@@ -3162,7 +3178,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     const sprint=keys['ShiftLeft']||keys['ShiftRight'];
     const hasFuel=state.fuel>0;
     // Limp mode: even with no fuel you can crawl slowly so you always reach a pump
-    const maxF = onFoot ? vs.maxF*(sprint?1.5:1) : (hasFuel?vs.maxF*(sprint?1.6:1):6);
+    const sprintMult = (!onFoot && activeVeh==='car') ? 2.1 : 1.6; // 🏎️ car has a stronger turbo
+    const maxF = onFoot ? vs.maxF*(sprint?1.5:1) : (hasFuel?vs.maxF*(sprint?sprintMult:1):6);
     const accel = onFoot ? vs.accel : (hasFuel?vs.accel:8);
     if(keys['KeyW'])vs.speed+=accel*dt; else if(keys['KeyS'])vs.speed-=accel*dt;
     else{const f=Math.sign(vs.speed)*vs.brake*0.4*dt;if(Math.abs(f)>Math.abs(vs.speed))vs.speed=0;else vs.speed-=f;}
@@ -3181,12 +3198,14 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
       player.position.y=Math.abs(Math.sin(now*9))*0.06*Math.min(1,Math.abs(vs.speed)/3);
     }
     else if(isTractor){ bw1.rotation.x+=spin;bw2.rotation.x+=spin;fw1.rotation.x+=spin;fw2.rotation.x+=spin; if(harvester.visible)harvester.userData.reel.rotation.x+=dt*6; autoFarm(); }
-    else if(activeVeh==='truck'){ for(const w of truckWheels) w.rotation.x+=spin; }
+    else if(activeVeh==='truck'){ for(const w of truckWheels) w.rotation.x+=spin;
+      // 🚚 Truck FUNCTION: auto-harvests ripe crops it drives over (mobile colheitadeira)
+      if(Math.abs(vs.speed)>0.2){ const tt=tileUnder(truck.position.x,truck.position.z); if(tt&&tt.state==='grown') harvestTile(tt); } }
     else { for(const w of carWheels) w.rotation.x+=spin; }
-    // Fuel decay (vehicles only — walking is free)
+    // Fuel decay (vehicles only — walking is free; 🏎️ car is electric = barely uses fuel)
     if(!onFoot){
-    // Slower fuel drain so you don't run dry constantly
-    if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*(sprint?0.4:0.22));
+    const fuelRate = activeVeh==='car' ? 0.05 : (sprint?0.4:0.22);
+    if(Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*fuelRate);
     if(isTractor && state.tool!==0 && Math.abs(vs.speed)>0.2) state.fuel=Math.max(0,state.fuel-dt*0.1);
     }
     // Low fuel warning
