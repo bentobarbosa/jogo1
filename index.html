@@ -6,6 +6,16 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <!-- PWA / Add to app -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4caf50">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Farm Sim">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
   <title>🚜 Farm Simulator</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }

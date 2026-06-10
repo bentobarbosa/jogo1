@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ec8f0"/>
+      <stop offset="0.55" stop-color="#a8e063"/>
+      <stop offset="1" stop-color="#56ab2f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#sky)"/>
+  <!-- sun -->
+  <circle cx="400" cy="120" r="48" fill="#ffe066"/>
+  <!-- field rows -->
+  <g fill="#8d6e3a" opacity="0.55">
+    <rect x="40" y="360" width="432" height="14" rx="7"/>
+    <rect x="40" y="392" width="432" height="14" rx="7"/>
+    <rect x="40" y="424" width="432" height="14" rx="7"/>
+  </g>
+  <!-- tractor -->
+  <g transform="translate(150 196)">
+    <rect x="60" y="40" width="120" height="70" rx="14" fill="#f4d03f" stroke="#caa72a" stroke-width="6"/>
+    <rect x="20" y="0" width="78" height="64" rx="12" fill="#cde85a" stroke="#9fbf3a" stroke-width="6"/>
+    <rect x="34" y="12" width="52" height="34" rx="8" fill="#bfe2ff"/>
+    <rect x="150" y="-8" width="16" height="40" rx="6" fill="#5d5d5d"/>
+    <circle cx="60" cy="120" r="40" fill="#2b2b2b"/>
+    <circle cx="60" cy="120" r="18" fill="#9e9e9e"/>
+    <circle cx="172" cy="124" r="56" fill="#2b2b2b"/>
+    <circle cx="172" cy="124" r="26" fill="#9e9e9e"/>
+  </g>
+</svg>
