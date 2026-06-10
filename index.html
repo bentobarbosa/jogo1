@@ -770,7 +770,8 @@ window.buyPlot=()=>{
   if(state.money<cost){ showMessage('❌ Falta dinheiro! Esta área custa $'+cost.toLocaleString('pt-BR'),2400); beep(180,0.2,'square',0.3); return; }
   state.money-=cost; unlockNewPlot();
   if(typeof sndSell==='function') sndSell();
-  showMessage('🌾 Nova área comprada por $'+cost.toLocaleString('pt-BR')+'! Agora você tem '+state.plotsUnlocked+' campos.',2600);
+  const axp=(typeof spendXP==='function')?spendXP(cost):0;
+  showMessage('🌾 Nova área comprada por $'+cost.toLocaleString('pt-BR')+'! +'+axp+' XP · Agora você tem '+state.plotsUnlocked+' campos.',2600);
   if(typeof launchFireworks==='function' && state.running) launchFireworks();
   updateHUD(); updatePlotMarker(); saveGame();
 };
@@ -2068,17 +2069,19 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
     [['flour','🌬️ Farinha',45],['bread','🍞 Pão',90]].forEach(([key,label,price])=>{const have=state.inventory[key]||0;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${label}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
   }
 }
-window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory[k]+=q;sndSell();updateHUD();renderShop();};
-window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;sndSell();updateHUD();renderShop();};
-window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;sndSell();updateHUD();renderShop();};
-window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;sndSell();updateHUD();renderShop();};
+// Earn XP for every purchase — the more you spend, the more XP
+function spendXP(amount){ const xp=Math.min(2000,Math.max(1,Math.round(amount/50))); gainXP(xp); if(typeof floatText==='function'){ const p=activeVehPos(); floatText(p.x,p.z,'+'+xp+' XP',0xffd54f); } return xp; }
+window.buySeed=(k,p,q=1)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory[k]+=q;spendXP(p);sndSell();updateHUD();renderShop();saveGame();};
+window.buyFert=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.fertilizer+=q;spendXP(p);sndSell();updateHUD();renderShop();saveGame();};
+window.buyPest=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.pesticide+=q;spendXP(p);sndSell();updateHUD();renderShop();saveGame();};
+window.buyJerry=(p,q)=>{if(state.money<p){showMessage('❌ Dinheiro insuficiente!',1200);return;}state.money-=p;state.inventory.jerrycan+=q;spendXP(p);sndSell();updateHUD();renderShop();saveGame();};
 window.fillFuel=(mode)=>{
   const max=state.maxFuel; const target = mode==='half' ? max*0.5 : max;
   if(state.fuel>=target){ showMessage(mode==='half'?'Já está na metade ou mais!':'Tanque já está cheio!',1600); return; }
   const need=target-state.fuel; const cost=Math.ceil(need*0.8);
   if(state.money<cost){ showMessage('❌ Falta dinheiro! Custa $'+cost,2000); return; }
-  state.money-=cost; state.fuel=target; state.stats.refueled=(state.stats.refueled||0)+1; sndSell();
-  showMessage('⛽ Abastecido! '+Math.round(state.fuel)+'/'+max+' litros (-$'+cost+')',2000);
+  state.money-=cost; state.fuel=target; state.stats.refueled=(state.stats.refueled||0)+1; const fxp=spendXP(cost); sndSell();
+  showMessage('⛽ Abastecido! '+Math.round(state.fuel)+'/'+max+' litros (-$'+cost+', +'+fxp+' XP)',2000);
   updateHUD(); renderShop(); saveGame();
 };
 window.buyAnimal=(type)=>{const a=ANIMAL_TYPES[type];if(state.money<a.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=a.price;spawnAnimal(type);state.stats.animalsBought++;const xp=Math.max(5,Math.round(a.price/50));gainXP(xp);sndSell();showMessage(`${a.name} comprada! +${xp} XP · Está no curral 🐄`,1900);updateHUD();renderShop();saveGame();};
@@ -2102,8 +2105,8 @@ window.paintTractor=(col)=>{ state.tractorColor=col; chassis.material.color.setH
   showMessage('🎨 Trator pintado!',1500); beep(600,0.08); renderShop(); saveGame(); };
 window.buyTractor=(idx)=>{const tr=TRACTORS[idx];if(state.money<tr.price){showMessage('❌ Dinheiro insuficiente!',1500);return;}state.money-=tr.price;
   if(!state.tractorsOwned.includes(idx)) state.tractorsOwned.push(idx);
-  applyTractor(idx); state.fuel=tr.fuelCap;
-  showMessage(`✅ ${tr.name} comprado e equipado!`,1800);sndSell();updateHUD();renderShop();saveGame();};
+  applyTractor(idx); state.fuel=tr.fuelCap; const txp=spendXP(tr.price);
+  showMessage(`✅ ${tr.name} comprado! +${txp} XP`,1800);sndSell();updateHUD();renderShop();saveGame();};
 window.equipTractor=(idx)=>{ if(!state.tractorsOwned.includes(idx))return; applyTractor(idx);
   showMessage(`🔧 ${TRACTORS[idx].name} equipado!`,1500); sndSell(); updateHUD(); renderShop(); saveGame(); };
 // Cycle through owned tractors with [T]
@@ -2656,7 +2659,7 @@ window.placeBuilding=(id,price)=>{
   state.buildings=state.buildings||[]; state.buildings.push({id,x:bx,z:bz});
   placedObjs.push(trackedConstruct(id,bx,bz));
   state.stats.builtCount=(state.stats.builtCount||0)+1;
-  gainXP(20); // earn XP for building
+  if(typeof spendXP==='function') spendXP(price); // earn XP for building (scaled to cost)
   updateHUD();
   document.getElementById('build-menu').style.display='none';
   saveGame();
