@@ -66,6 +66,7 @@
     #ai-btn     { background:linear-gradient(135deg,#42a5f5,#1976d2); } #ai-btn::after     { content:'Ajuda'; }
     #chop-btn   { background:linear-gradient(135deg,#a1887f,#6d4c41); } #chop-btn::after   { content:'Cortar árvore'; }
     #spray-btn  { background:linear-gradient(135deg,#9ccc65,#558b2f); } #spray-btn::after  { content:'Pulverizar campo'; }
+    #demolish-btn { background:linear-gradient(135deg,#ef5350,#b71c1c); } #demolish-btn::after { content:'Remover construção'; }
     #boneco-btn { background:linear-gradient(135deg,#ab47bc,#6a1b9a); } #boneco-btn::after { content:'Boneco'; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
@@ -271,6 +272,7 @@
 <button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
 <button id="chop-btn" class="rbtn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
 <button id="spray-btn" class="rbtn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
+<button id="demolish-btn" class="rbtn" onclick="removeBuildingNear()" title="Remover a construção mais próxima (volta 50% do valor)">🧨</button>
 <button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)">🧍</button>
 
 <!-- Character (boneco) customizer -->
@@ -3426,7 +3428,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
 }
 window.startGame=startGame;
 // Evenly position the right-side circular buttons (auto-adjusts to however many exist)
-const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','chop-btn','spray-btn'];
+const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','chop-btn','spray-btn','demolish-btn'];
 function layoutRightButtons(){
   const els=RIGHT_BTN_ORDER.map(id=>document.getElementById(id)).filter(Boolean);
   const n=els.length; if(!n) return;
