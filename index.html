@@ -558,6 +558,7 @@ function adjBuy(base){ return Math.max(1, Math.round(base * buyMult())); }
 // Gentle LINEAR price rise per extra animal of a type (was exponential = billions at 60!)
 function animalPrice(type){ const at=ANIMAL_TYPES[type]; const owned=farmAnimals.filter(f=>f.type===type).length; const inc=(diff().animalStep-1)*0.4; return Math.round(at.price * buyMult() * (1 + owned*inc)); }
 const VISIBLE_ANIMALS = 90; // animals are UNLIMITED to own, but only the nearest ~90 render (keeps it smooth)
+const ANIMAL_SELL_NERF = 0.45; // animal products give less money now (they were too OP)
 window.selectDifficulty=(d)=>{ if(!DIFFICULTIES[d]) return; state.difficulty=d;
   document.querySelectorAll('.diff-b').forEach(b=>b.classList.toggle('sel', b.dataset.d===d));
   const dd=DIFFICULTIES[d], el=document.getElementById('diff-desc');
@@ -745,8 +746,8 @@ function dirtTex(plowed){
 const grassTileMat=()=>new THREE.MeshLambertMaterial({color:0x5a9a40});
 const tilledMat=()=>new THREE.MeshLambertMaterial({map:dirtTex(true)});
 const grownDirtMat=()=>new THREE.MeshLambertMaterial({map:dirtTex(false)});
-function fencePost(x,z){const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,1.1,0.2),new THREE.MeshLambertMaterial({color:0x6b4226}));p.position.set(x,0.55,z);p.castShadow=true;scene.add(p);}
-function fenceRail(x1,z1,x2,z2){const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);for(const yy of[0.65,0.95]){const r=new THREE.Mesh(new THREE.BoxGeometry(len,0.07,0.07),new THREE.MeshLambertMaterial({color:0x8d6e63}));r.position.set((x1+x2)/2,yy,(z1+z2)/2);r.rotation.y=Math.atan2(dz,dx);scene.add(r);}}
+function fencePost(x,z){const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,1.1,0.2),new THREE.MeshLambertMaterial({color:0x6b4226}));p.position.set(x,0.55,z);p.castShadow=true;scene.add(p);return p;}
+function fenceRail(x1,z1,x2,z2){const out=[];const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);for(const yy of[0.65,0.95]){const r=new THREE.Mesh(new THREE.BoxGeometry(len,0.07,0.07),new THREE.MeshLambertMaterial({color:0x8d6e63}));r.position.set((x1+x2)/2,yy,(z1+z2)/2);r.rotation.y=Math.atan2(dz,dx);scene.add(r);out.push(r);}return out;}
 function makeTileAt(x,z,c,r){
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.98,TILE*0.98),grassTileMat());
   mesh.rotation.x=-Math.PI/2; mesh.position.set(x,0.05,z); mesh.receiveShadow=true; scene.add(mesh);
@@ -758,27 +759,26 @@ function createPlot(cols, rows, centerX, centerZ){
   const grid = [];
   for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<cols;c++) row.push(makeTileAt(fOX+c*TILE, fOZ+r*TILE, c, r)); grid.push(row); }
   const fXmin=fOX-TILE/2, fXmax=fOX+(cols-0.5)*TILE, fZmin=fOZ-TILE/2, fZmax=fOZ+(rows-0.5)*TILE;
-  for(let x=fXmin;x<=fXmax;x+=4){fencePost(x,fZmin);fencePost(x,fZmax);}
-  for(let z=fZmin;z<=fZmax;z+=4){fencePost(fXmin,z);fencePost(fXmax,z);}
-  fenceRail(fXmin,fZmin,fXmax,fZmin);fenceRail(fXmin,fZmax,fXmax,fZmax);
-  fenceRail(fXmin,fZmin,fXmin,fZmax);fenceRail(fXmax,fZmin,fXmax,fZmax);
-  const plot = {tiles:grid, fOX, fOZ, cols, rows, centerX, centerZ};
+  const deco=[];
+  for(let x=fXmin;x<=fXmax;x+=4){deco.push(fencePost(x,fZmin));deco.push(fencePost(x,fZmax));}
+  for(let z=fZmin;z<=fZmax;z+=4){deco.push(fencePost(fXmin,z));deco.push(fencePost(fXmax,z));}
+  deco.push(...fenceRail(fXmin,fZmin,fXmax,fZmin),...fenceRail(fXmin,fZmax,fXmax,fZmax));
+  deco.push(...fenceRail(fXmin,fZmin,fXmin,fZmax),...fenceRail(fXmax,fZmin,fXmax,fZmax));
+  const plot = {tiles:grid, fOX, fOZ, cols, rows, centerX, centerZ, deco};
   allPlots.push(plot);
   return plot;
 }
 
-// Plantations arranged in a clean 3×3 grid (all same size, in neat rows)
+// Plantations: a BIG grid (100+ fields), bought from the center outward.
 const PLOT_SIZE=10, PLOT_GAP=38;
-// grid columns x=-38,0,38 ; rows z=-28,-66,-104  (row 0 closest to start)
-const PLOT_GRID=[
-  {cx:0,  cz:-28},   // initial (center front)
-  {cx:-38,cz:-28},{cx:38,cz:-28},
-  {cx:0,  cz:-66},{cx:-38,cz:-66},{cx:38,cz:-66},
-  {cx:0,  cz:-104},{cx:-38,cz:-104},{cx:38,cz:-104},
-];
+const PLOT_GRID=[];
+(function(){ const COLS=13, ROWS=8; // 104 fields total (odd cols => a centered x=0 starting field)
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) PLOT_GRID.push({cx:(c-(COLS-1)/2)*PLOT_GAP, cz:-28 - r*PLOT_GAP});
+  // closest to the start first, so the farm grows outward as you buy
+  PLOT_GRID.sort((a,b)=>(a.cx*a.cx+(a.cz+30)*(a.cz+30))-(b.cx*b.cx+(b.cz+30)*(b.cz+30)));
+})();
 // Plot 1 (initial)
 createPlot(PLOT_SIZE, PLOT_SIZE, PLOT_GRID[0].cx, PLOT_GRID[0].cz);
-// Future plots (unlocked by leveling up) fill the rest of the grid in order
 const PLOT_LOCATIONS = PLOT_GRID.slice(1).map(g=>({cols:PLOT_SIZE,rows:PLOT_SIZE,cx:g.cx,cz:g.cz}));
 function unlockNewPlot(){
   const i = state.plotsUnlocked - 1;
@@ -787,10 +787,20 @@ function unlockNewPlot(){
   createPlot(loc.cols, loc.rows, loc.cx, loc.cz);
   state.plotsUnlocked++;
 }
-// New areas are BOUGHT with money — price climbs with how many you already own.
-// First $1.000 ... last $1.000.000 (8 extra areas, harder each time).
-const PLOT_COSTS = [1000, 3000, 8000, 20000, 50000, 140000, 375000, 1000000];
-function nextPlotCost(){ const i = state.plotsUnlocked - 1; if(i<0 || i>=PLOT_COSTS.length) return null; return Math.round(PLOT_COSTS[i]*buyMult()); }
+// Area price grows with how many you already own (gentle, so 100+ is reachable)
+function nextPlotCost(){ const i = state.plotsUnlocked - 1; if(i<0 || i>=PLOT_LOCATIONS.length) return null; return Math.round((800 + i*i*70)*buyMult()); }
+// Render only the fields near the player (keeps 100+ fields smooth)
+let _plotCullT=0;
+function cullPlots(dt){
+  if(allPlots.length<=10) return;
+  _plotCullT-=dt; if(_plotCullT>0) return; _plotCullT=0.5;
+  const cx=camera.position.x, cz=camera.position.z; const R=95*95;
+  for(const plot of allPlots){
+    const dx=plot.centerX-cx, dz=plot.centerZ-cz; const near=(dx*dx+dz*dz)<R;
+    for(const row of plot.tiles) for(const t of row){ t.mesh.visible=near; if(t.plant)t.plant.visible=near; if(t.marker)t.marker.visible=near; if(t.timeLabel)t.timeLabel.visible=near; if(t.goldMark)t.goldMark.visible=near; if(t.waterTint)t.waterTint.visible=near; if(t.pestTint)t.pestTint.visible=near; if(t.fertilTint)t.fertilTint.visible=near; }
+    if(plot.deco) for(const m of plot.deco) m.visible=near;
+  }
+}
 // World marker at the next buyable area — drive/walk near it and press [V] to buy.
 const plotGhost=new THREE.Group();
 const ghostPlane=new THREE.Mesh(new THREE.PlaneGeometry(PLOT_SIZE*TILE, PLOT_SIZE*TILE), new THREE.MeshBasicMaterial({color:0x66bb6a,transparent:true,opacity:0.22,side:THREE.DoubleSide}));
@@ -959,7 +969,7 @@ function makeTree(x,z,scl=1){const g=new THREE.Group();
   const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.35*scl,0.5*scl,3.2*scl,7),new THREE.MeshLambertMaterial({color:0x5d4037}));trunk.position.y=1.6*scl;trunk.castShadow=true;g.add(trunk);
   for(let l=0;l<3;l++){const leaf=new THREE.Mesh(new THREE.SphereGeometry((1.8-l*0.35)*scl,9,8),new THREE.MeshLambertMaterial({color:[0x2e7d32,0x388e3c,0x43a047][l]}));leaf.position.y=(3.2+l*0.8)*scl;leaf.castShadow=true;g.add(leaf);groundTrees.push(leaf);}
   g.position.set(x,0,z);scene.add(g);addCol(x,z,0.9*scl);}
-for(let i=0;i<60;i++){const a=Math.random()*Math.PI*2,d=80+Math.random()*110;makeTree(Math.cos(a)*d,Math.sin(a)*d,0.8+Math.random()*0.6);}
+for(let i=0;i<70;i++){const a=Math.random()*Math.PI*2,d=250+Math.random()*90;const tx=Math.cos(a)*d,tz=Math.sin(a)*d;if(Math.abs(tx)>345||Math.abs(tz)>345)continue;makeTree(tx,tz,0.8+Math.random()*0.6);}
 // Decorative flowers + bushes (no collision) — kept OUTSIDE the farm/build area so they never block construction
 function insideAnyPlot(bx,bz){
   for(const p of allPlots){
@@ -970,7 +980,7 @@ function insideAnyPlot(bx,bz){
   return false;
 }
 // Central area reserved for farming/animals/buildings — no decorations here
-function inFarmZone(x,z){ return x>-78 && x<78 && z>-124 && z<92; }
+function inFarmZone(x,z){ return x>-235 && x<235 && z>-345 && z<92; }
 for(let i=0;i<60;i++){
   const a=Math.random()*Math.PI*2,d=100+Math.random()*55; const bx=Math.cos(a)*d,bz=Math.sin(a)*d;
   if(inFarmZone(bx,bz)) continue;
@@ -1740,7 +1750,8 @@ const ACHIEVEMENTS=[
   {id:'level_100',     icon:'💫', title:'Nível 100',          desc:'Alcançou o nível 100',         check:()=>state.level>=100},
   {id:'millionaire',   icon:'💰', title:'Milionário',         desc:'Acumulou $1.000.000',          check:()=>state.money>=1000000},
   {id:'multi_mi',      icon:'💎', title:'Multimilionário',    desc:'Acumulou $5.000.000',          check:()=>state.money>=5000000},
-  {id:'all_plots',     icon:'🗺️', title:'Conquistador',       desc:'Comprou todos os campos',      check:()=>state.plotsUnlocked>=9},
+  {id:'all_plots',     icon:'🗺️', title:'Latifundiário',      desc:'Comprou 10 campos',            check:()=>state.plotsUnlocked>=10},
+  {id:'plots_50',      icon:'🌎', title:'Império Rural',       desc:'Comprou 50 campos',            check:()=>state.plotsUnlocked>=50},
   {id:'gold_tractor',  icon:'🏆', title:'Trator Dourado',     desc:'Comprou o Mega Trator Dourado',check:()=>state.tractorIdx>=4},
   {id:'fast_car',      icon:'🏎️', title:'Velocista',          desc:'Comprou um carro veloz',       check:()=>state.tractorsOwned.some(i=>i>=7)},
   {id:'avocado',       icon:'🥑', title:'Rei do Abacate',     desc:'Colheu um abacate',            check:()=>!!state.stats.cropsSeen.avocado},
@@ -1798,7 +1809,7 @@ const MISSIONS=[
   {id:'an3',  icon:'🐄', name:'Compre 3 animais',           target:3,  xp:140, prog:()=>state.stats.animalsBought||0},
   {id:'bd3',  icon:'🏗️', name:'Construa 3 prédios',         target:3,  xp:160, prog:()=>state.stats.builtCount||0},
   {id:'tr3',  icon:'🚜', name:'Tenha 3 tratores',           target:3,  xp:300, prog:()=>state.tractorsOwned.length},
-  {id:'pl9',  icon:'🗺️', name:'Desbloqueie todos os campos',target:9,  xp:500, prog:()=>state.plotsUnlocked},
+  {id:'pl9',  icon:'🗺️', name:'Compre 10 campos',target:10,  xp:500, prog:()=>state.plotsUnlocked},
   {id:'mn',   icon:'💰', name:'Acumule $50.000',            target:50000,xp:700,prog:()=>state.money},
 ];
 function missionsClaimable(){ return MISSIONS.some(m=>!state.missionsClaimed[m.id] && m.prog()>=m.target); }
@@ -2092,7 +2103,8 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
       const have=farmAnimals.filter(f=>f.type===key).length;
       const price=animalPrice(key);
       const el=document.createElement('div'); el.className='shop-item';
-      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><div class="buy-row"><button onclick="buyAnimal('${key}',1)">x1</button><button onclick="buyAnimal('${key}',10)">x10</button><button onclick="buyAnimalMax('${key}')">MÁX</button></div>`;
+      const hb=(q,l)=>`<button onmousedown="startHold(()=>buyAnimal('${key}',${q}))" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(()=>buyAnimal('${key}',${q}))" ontouchend="stopHold()">${l}</button>`;
+      el.innerHTML=`<h4>${a.name}</h4><p>Produz ${a.productName} a cada ${a.prodTime}s</p><p>Você tem: <b>${have}</b> · Próximo: <b>$${price.toLocaleString('pt-BR')}</b></p><div class="buy-row">${hb(1,'x1')}${hb(10,'x10')}<button onclick="buyAnimalMax('${key}')">MÁX</button></div><div class="buy-hint">segure pra comprar muitos</div>`;
       grid.appendChild(el);
     });
   }
@@ -2142,7 +2154,7 @@ function renderShop(){const grid=document.getElementById('shop-grid');grid.inner
   else {
     Object.entries(CROPS).forEach(([key,c])=>{const have=state.inventory[key]||0; const tot=state.qualityTotals[key]||0; const avg = have>0 ? (tot/have).toFixed(1) : '-'; const bonus=have>0?(1+(tot/have)*0.1):1; const mm=getPriceMult(key); const price=Math.round(c.sell*bonus*mm*sellMult()); const arrow=mm>1.08?'<span style="color:#69f0ae">↑ alta</span>':mm<0.92?'<span style="color:#ff8a80">↓ baixa</span>':'<span style="opacity:0.6">→ normal</span>'; const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${c.emoji} ${c.name}</h4><p>Tem: <b>${have}</b> · ${avg}⭐ · Mercado: ${arrow}</p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
     // Animal products
-    Object.values(ANIMAL_TYPES).forEach(a=>{const key=a.product;const have=state.inventory[key]||0;const price=Math.round(a.productSell*sellMult());const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${a.productName}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
+    Object.values(ANIMAL_TYPES).forEach(a=>{const key=a.product;const have=state.inventory[key]||0;const price=Math.max(1,Math.round(a.productSell*sellMult()*ANIMAL_SELL_NERF));const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${a.productName}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
     // Processed goods (production chain)
     [['flour','🌬️ Farinha',45],['bread','🍞 Pão',90]].forEach(([key,label,base])=>{const price=Math.round(base*sellMult());const have=state.inventory[key]||0;const el=document.createElement('div');el.className='shop-item';el.innerHTML=`<h4>${label}</h4><p>Tem: <b>${have}</b></p><p>$${price} cada</p><button onclick="sellItem('${key}',1,${price})" ${have<1?'disabled':''}>Vender 1</button><button onclick="sellItem('${key}',${have},${price})" ${have<1?'disabled':''}>Vender tudo ($${have*price})</button>`;grid.appendChild(el);});
   }
@@ -2169,7 +2181,7 @@ window.buyAnimal=(type,qty)=>{const a=ANIMAL_TYPES[type];
   if(bought===0){ showMessage('❌ Dinheiro insuficiente! ('+a.name+' custa $'+animalPrice(type).toLocaleString('pt-BR')+')',2200); return; }
   state.stats.animalsBought+=bought; const xp=spendXP(spent); sndSell();
   showMessage(`${bought}× ${a.name} comprado(s) por $${spent.toLocaleString('pt-BR')}! +${xp} XP 🐄`,2200);
-  updateHUD();renderShop();saveGame();};
+  updateHUD(); refreshShopSoon(); saveSoon();};
 // MÁX — buy as many of this animal as money allows (price rises each one)
 window.buyAnimalMax=(type)=>{ buyAnimal(type, 99999); };
 window.sellAnimal=(type,price)=>{
@@ -3233,6 +3245,7 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
   updateWaterTowers(dt);
   updateProducers(dt);
   updateBuilds(dt);
+  cullPlots(dt);
   updateMarket(dt);
   updateWorkers(dt);
   updatePlanes(dt);
@@ -3471,7 +3484,7 @@ window.toggleStats=()=>{
       `🏗️ Construções: <b>${s.builtCount||0}</b><br>`+
       `🎖️ Nível: <b>${state.level}</b> · XP: <b>${state.xp}/${state.xpToNext}</b><br>`+
       `💰 Dinheiro: <b>$${state.money}</b><br>`+
-      `🌍 Campos: <b>${state.plotsUnlocked}/9</b><br>`+
+      `🌍 Campos: <b>${state.plotsUnlocked}/${PLOT_LOCATIONS.length+1}</b><br>`+
       `🚜 Tratores: <b>${state.tractorsOwned.length}</b><br>`+
       `🏆 Conquistas: <b>${Object.keys(state.achievements).length}/${ACHIEVEMENTS.length}</b>`+
       `<div style="border-top:1px solid rgba(255,255,255,0.15);margin:8px 0;"></div>`+
