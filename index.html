@@ -64,10 +64,10 @@
     #store-btn  { background:linear-gradient(135deg,#ffb300,#ef6c00); } #store-btn::after  { content:'Loja [B]'; }
     #inv-btn    { background:linear-gradient(135deg,#8d6e63,#5d4037); } #inv-btn::after    { content:'Inventário'; }
     #ai-btn     { background:linear-gradient(135deg,#42a5f5,#1976d2); } #ai-btn::after     { content:'Ajuda'; }
-    #chop-btn   { background:linear-gradient(135deg,#a1887f,#6d4c41); } #chop-btn::after   { content:'Cortar árvore'; }
-    #spray-btn  { background:linear-gradient(135deg,#9ccc65,#558b2f); } #spray-btn::after  { content:'Pulverizar campo'; }
-    #demolish-btn { background:linear-gradient(135deg,#ef5350,#b71c1c); } #demolish-btn::after { content:'Remover construção'; }
+    #actions-btn { background:linear-gradient(135deg,#ff8a65,#e64a19); } #actions-btn::after { content:'Ações'; }
     #boneco-btn { background:linear-gradient(135deg,#ab47bc,#6a1b9a); } #boneco-btn::after { content:'Boneco'; }
+    .act-b { display:block; width:100%; margin:6px 0; padding:10px; border:none; border-radius:9px; background:#37474f; color:#fff; font-weight:800; font-size:13px; cursor:pointer; text-align:left; }
+    .act-b:hover { background:#455a64; }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
@@ -270,9 +270,15 @@
 <button id="music-btn" class="rbtn" onclick="toggleMusic()" title="Música">🎵</button>
 <button id="inv-btn" class="rbtn" onclick="toggleInventory()" title="Inventário">📦</button>
 <button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
-<button id="chop-btn" class="rbtn" onclick="chopNearestTree()" title="Cortar a árvore mais próxima (maçã, laranja, coco, abacate)">🪓</button>
-<button id="spray-btn" class="rbtn" onclick="sprayAllField()" title="Pulverizar pesticida na plantação inteira (gasta 1 pesticida por planta)">🪲</button>
-<button id="demolish-btn" class="rbtn" onclick="removeBuildingNear()" title="Remover a construção mais próxima (volta 50% do valor)">🧨</button>
+<button id="actions-btn" class="rbtn" onclick="toggleActionsMenu()" title="Ações: cortar árvore, pulverizar, remover construção">🛠️</button>
+
+<!-- Ações (agrupa as ações de campo num menu só) -->
+<div id="actions-panel" style="display:none;position:fixed;right:84px;top:50%;transform:translateY(-50%);z-index:160;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);width:230px;">
+  <div style="text-align:center;color:#ffd54f;font-weight:800;margin-bottom:8px;">🛠️ AÇÕES</div>
+  <button class="act-b" onclick="chopNearestTree();toggleActionsMenu()">🪓 Cortar árvore</button>
+  <button class="act-b" onclick="sprayAllField();toggleActionsMenu()">🪲 Pulverizar campo</button>
+  <button class="act-b" onclick="removeBuildingNear();toggleActionsMenu()">🧨 Remover construção</button>
+</div>
 <button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)">🧍</button>
 
 <!-- Character (boneco) customizer -->
@@ -1359,6 +1365,7 @@ window.cheatSeeds=()=>{ for(const k in CROPS){ state.inventory[k+'_seed']=(state
 window.cheatFuel=()=>{ state.fuel=state.maxFuel; updateHUD(); showMessage('⛽ Tanque cheio!',1200); };
 window.cheatName=()=>{ const n=prompt('Novo nome (placar online):', getPlayerName()); if(n&&n.trim()){ setPlayerName(n.trim().slice(0,16)); const nm=document.getElementById('cheat-name'); if(nm)nm.textContent=n.trim().slice(0,16); showMessage('✏️ Nome: '+n.trim().slice(0,16),1600); } };
 window.toggleInventory=()=>{ const p=document.getElementById('inventory'); if(!p) return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open && typeof updateHUD==='function') updateHUD(); };
+window.toggleActionsMenu=()=>{ const p=document.getElementById('actions-panel'); if(!p) return; p.style.display = (p.style.display==='block')?'none':'block'; };
 addEventListener('keyup',e=>{keys[e.code]=false;});
 
 // Mouse camera control (cam declared above)
@@ -3428,7 +3435,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
 }
 window.startGame=startGame;
 // Evenly position the right-side circular buttons (auto-adjusts to however many exist)
-const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','chop-btn','spray-btn','demolish-btn'];
+const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','actions-btn'];
 function layoutRightButtons(){
   const els=RIGHT_BTN_ORDER.map(id=>document.getElementById(id)).filter(Boolean);
   const n=els.length; if(!n) return;
