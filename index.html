@@ -308,17 +308,21 @@
 
 <!-- Music + Stats buttons -->
 <button id="store-btn" class="rbtn" onclick="toggleShopIfNear()" title="Abrir a Loja (B)">🏪</button>
-<button id="music-btn" class="rbtn" onclick="toggleMusic()" title="Música">🎵</button>
 <button id="inv-btn" class="rbtn" onclick="toggleInventory()" title="Inventário">📦</button>
-<button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas">📊</button>
-<button id="actions-btn" class="rbtn" onclick="toggleActionsMenu()" title="Ações: cortar árvore, pulverizar, remover construção">🛠️</button>
+<button id="stats-btn" class="rbtn" onclick="toggleStats()" title="Placar e estatísticas" style="display:none">📊</button>
+<button id="actions-btn" class="rbtn" onclick="toggleActionsMenu()" title="Ações: campos, missões, conquistas, placar, boneco, ajuda e mais">🛠️<span id="missions-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#e53935;border:2px solid #fff;"></span></button>
 
 <!-- Ações (agrupa as ações de campo num menu só) -->
-<div id="actions-panel" style="display:none;position:fixed;right:84px;top:50%;transform:translateY(-50%);z-index:160;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);width:230px;">
+<div id="actions-panel" style="display:none;position:fixed;right:84px;top:50%;transform:translateY(-50%);z-index:160;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);width:230px;max-height:88vh;overflow-y:auto;">
   <div style="text-align:center;color:#ffd54f;font-weight:800;margin-bottom:8px;">🛠️ AÇÕES</div>
   <button class="act-b" onclick="toggleActionsMenu();toggleFieldsPanel()" style="background:#1b5e20;">🌾 Meus campos (1-100)</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleMissions()" style="background:#388e3c;">📜 Missões</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleTrophies()" style="background:#ff8f00;">🏆 Conquistas</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleStats()" style="background:#3949ab;">📊 Placar e estatísticas</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleBonecoPanel()" style="background:#6a1b9a;">🧍 Boneco</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleAI()" style="background:#1976d2;">🤖 Ajuda / Assistente</button>
   <button class="act-b" onclick="toggleActionsMenu();toggleEnergyPanel()" style="background:#5d4037;">⚡ Energia / Super Chuva</button>
-  <button class="act-b" onclick="toggleActionsMenu();toggleRodeoPanel()" style="background:#6a1b9a;">🤠 Rodeio (placar de vacas)</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleRodeoPanel()" style="background:#8e24aa;">🤠 Rodeio (placar de vacas)</button>
   <button class="act-b" onclick="toggleActionsMenu();toggleSettingsPanel()" style="background:#37474f;">⚙️ Configurações</button>
   <button class="act-b" onclick="chopNearestTree();toggleActionsMenu()">🪓 Cortar árvore</button>
   <button class="act-b" onclick="sprayAllField();toggleActionsMenu()">🪲 Pulverizar campo</button>
@@ -358,7 +362,7 @@
   <div id="field-body" style="display:flex;flex-direction:column;gap:8px;"></div>
   <button onclick="toggleFieldsPanel()" style="display:block;margin:14px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
-<button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)">🧍</button>
+<button id="boneco-btn" class="rbtn" onclick="toggleBonecoPanel()" title="Montar seu boneco (descer do trator: tecla C)" style="display:none">🧍</button>
 
 <!-- Character (boneco) customizer -->
 <div id="boneco-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #ffd54f;border-radius:16px;z-index:160;padding:20px;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
@@ -425,7 +429,7 @@
 </div>
 
 <!-- Trophies -->
-<button id="trophy-btn" class="rbtn" onclick="toggleTrophies()" title="Conquistas">🏆</button>
+<button id="trophy-btn" class="rbtn" onclick="toggleTrophies()" title="Conquistas" style="display:none">🏆</button>
 <div id="trophy-panel">
   <h2>🏆 CONQUISTAS</h2>
   <div id="trophy-progress"></div>
@@ -434,7 +438,7 @@
 </div>
 
 <!-- Missions -->
-<button id="missions-btn" class="rbtn" onclick="toggleMissions()" title="Missões">📜<span id="missions-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#e53935;border:2px solid #fff;"></span></button>
+<button id="missions-btn" class="rbtn" onclick="toggleMissions()" title="Missões" style="display:none">📜</button>
 <div id="missions-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-height:80vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #66bb6a;border-radius:16px;z-index:130;padding:20px;color:#fff;">
   <h2 style="text-align:center;color:#a5d6a7;margin-bottom:6px;">📜 MISSÕES</h2>
   <div style="text-align:center;color:#90caf9;font-size:13px;margin-bottom:12px;">Complete missões para ganhar XP!</div>
@@ -451,7 +455,7 @@
 </div>
 
 <!-- AI Assistant -->
-<button id="ai-btn" class="rbtn" onclick="toggleAI()" title="Assistente">🤖</button>
+<button id="ai-btn" class="rbtn" onclick="toggleAI()" title="Assistente" style="display:none">🤖</button>
 <div id="ai-panel">
   <div id="ai-head"><span>🤖 Assistente Fazenda</span><span class="ai-x" onclick="toggleAI()">✕</span></div>
   <div id="ai-msgs"></div>
@@ -3958,7 +3962,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
 }
 window.startGame=startGame;
 // Evenly position the right-side circular buttons (auto-adjusts to however many exist)
-const RIGHT_BTN_ORDER=['store-btn','music-btn','inv-btn','missions-btn','trophy-btn','boneco-btn','ai-btn','stats-btn','actions-btn'];
+const RIGHT_BTN_ORDER=['store-btn','inv-btn','actions-btn'];
 function layoutRightButtons(){
   const els=RIGHT_BTN_ORDER.map(id=>document.getElementById(id)).filter(Boolean);
   const n=els.length; if(!n) return;
