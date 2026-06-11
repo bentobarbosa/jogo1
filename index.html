@@ -330,7 +330,7 @@
 </div>
 
 <!-- ⚙️ Settings panel -->
-<div id="settings-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #90caf9;border-radius:16px;z-index:170;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
+<div id="settings-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;max-height:90vh;overflow-y:auto;background:rgba(25,30,48,0.98);border:3px solid #90caf9;border-radius:16px;z-index:170;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
   <h2 style="text-align:center;color:#90caf9;margin-bottom:12px;">⚙️ CONFIGURAÇÕES</h2>
   <div id="settings-body" style="display:flex;flex-direction:column;gap:12px;"></div>
   <button onclick="toggleSettingsPanel()" style="display:block;margin:16px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
@@ -778,7 +778,7 @@ const sc=sun.shadow.camera; sc.left=-160;sc.right=160;sc.top=160;sc.bottom=-160;
 scene.add(sun);
 // ===== ⚙️ SETTINGS (sound, FPS, graphics quality) — saved separately so they survive new games =====
 let CULL_DIST=95; // render distance (set by quality)
-const SETTINGS={ sound:true, music:true, showFps:false, quality:'high' };
+const SETTINGS={ sound:true, music:true, showFps:false, quality:'high', dayCycle:'normal', weather:true, minimap:true, speedo:true, showHelp:true, camDist:'med', invertCam:false };
 (function(){ try{ Object.assign(SETTINGS, JSON.parse(localStorage.getItem('farmsim_settings')||'{}')); }catch(e){} })();
 function saveSettings(){ try{ localStorage.setItem('farmsim_settings', JSON.stringify(SETTINGS)); }catch(e){} }
 function applyQuality(q){
@@ -1649,7 +1649,7 @@ addEventListener('keyup',e=>{keys[e.code]=false;});
 // Mouse camera control (cam declared above)
 canvas.addEventListener('mousedown',e=>{cam.dragging=true;});
 addEventListener('mouseup',()=>cam.dragging=false);
-addEventListener('mousemove',e=>{ if(!cam.dragging)return; cam.yaw-=e.movementX*0.005; cam.pitch=Math.max(0.15,Math.min(1.3,cam.pitch-e.movementY*0.004)); });
+addEventListener('mousemove',e=>{ if(!cam.dragging)return; cam.yaw-=e.movementX*0.005; const iy=SETTINGS.invertCam?-1:1; cam.pitch=Math.max(0.15,Math.min(1.3,cam.pitch-iy*e.movementY*0.004)); });
 canvas.addEventListener('wheel',e=>{ cam.dist=Math.max(7,Math.min(40,cam.dist+e.deltaY*0.02)); e.preventDefault(); },{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -2884,6 +2884,8 @@ function lightningFlash(){
   try{ const ctx=getAudio(); const o=ctx.createOscillator(),gn=ctx.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(70,ctx.currentTime); o.frequency.exponentialRampToValueAtTime(25,ctx.currentTime+0.7); gn.gain.setValueAtTime(soundOn?0.35:0,ctx.currentTime); gn.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.9); o.connect(gn); gn.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.9);}catch(e){}
 }
 function updateWeather(dt){
+  // Dynamic weather can be turned off in Settings (Super Rain event still works)
+  if(SETTINGS.weather!==false){
   state.weatherTimer-=dt;
   if(state.weatherTimer<=0){
     const prev=state.weather;
@@ -2896,6 +2898,7 @@ function updateWeather(dt){
     showMessage(state.weather==='rain'?'🌧️ Começou a chover!': state.weather==='cloudy'?'☁️ Nublado':'☀️ Sol forte!', 1500);
     // Rainbow after rain ends into sun
     if(prev==='rain' && state.weather==='sun'){ showRainbow(); showMessage('🌈 Um arco-íris apareceu!',2500); }
+  }
   }
   if(state.weather==='rain'){
     rain.position.x=tractor.position.x; rain.position.z=tractor.position.z;
@@ -3515,21 +3518,64 @@ function renderSettingsPanel(){
   const el=document.getElementById('settings-body'); if(!el) return;
   const tog=(on,label,fn)=>`<button class="set-row ${on?'on':''}" onclick="${fn}"><span>${label}</span><span>${on?'✅ Ligado':'⬜ Desligado'}</span></button>`;
   const qbtn=(q,label)=>`<button class="set-q ${SETTINGS.quality===q?'sel':''}" onclick="setQuality('${q}')">${label}</button>`;
+  const pick=(cur,val,label,fn)=>`<button class="set-q ${cur===val?'sel':''}" onclick="${fn}('${val}')">${label}</button>`;
+  const head=t=>`<div style="font-size:12px;color:#90caf9;font-weight:700;margin-top:8px;">${t}</div>`;
+  const sub=t=>`<div style="font-size:12px;color:#90caf9;margin-top:2px;">${t}</div>`;
   el.innerHTML=
-    `<div style="font-size:12px;color:#90caf9;font-weight:700;">🔊 SOM</div>`+
+    head('🔊 SOM')+
     tog(SETTINGS.sound,'🔊 Som geral','toggleSetSound()')+
     tog(SETTINGS.music,'🎵 Música','toggleSetMusic()')+
-    `<div style="font-size:12px;color:#90caf9;font-weight:700;margin-top:6px;">🖥️ DESEMPENHO</div>`+
+    head('🖥️ DESEMPENHO')+
     tog(SETTINGS.showFps,'🎞️ Mostrar FPS','toggleSetFps()')+
-    `<div style="font-size:12px;color:#90caf9;margin-top:2px;">🎮 Qualidade gráfica:</div>`+
-    `<div style="display:flex;gap:6px;">${qbtn('low','🏃 Desempenho')}${qbtn('med','⚖️ Médio')}${qbtn('high','✨ Qualidade')}</div>`+
-    `<div style="font-size:11px;color:#90a4ae;line-height:1.4;">🏃 Desempenho = roda liso em PC fraco (sem sombra, menos distância). ✨ Qualidade = mais bonito (sombras + nitidez).</div>`;
+    sub('🎮 Qualidade gráfica:')+
+    `<div style="display:flex;gap:6px;">${qbtn('low','🏃 Desemp.')}${qbtn('med','⚖️ Médio')}${qbtn('high','✨ Qualid.')}</div>`+
+    head('🖼️ TELA')+
+    tog(SETTINGS.minimap,'🗺️ Mostrar minimapa','toggleSetMinimap()')+
+    tog(SETTINGS.speedo,'🏎️ Mostrar velocímetro','toggleSetSpeedo()')+
+    tog(SETTINGS.showHelp,'⌨️ Mostrar ajuda/controles','toggleSetHelp()')+
+    head('📷 CÂMERA')+
+    sub('Distância:')+
+    `<div style="display:flex;gap:6px;">${pick(SETTINGS.camDist,'near','🔍 Perto','setCamDist')}${pick(SETTINGS.camDist,'med','⚖️ Médio','setCamDist')}${pick(SETTINGS.camDist,'far','🌄 Longe','setCamDist')}</div>`+
+    tog(SETTINGS.invertCam,'🔃 Inverter vertical','toggleSetInvert()')+
+    head('🌍 MUNDO')+
+    sub('🌗 Ciclo do dia:')+
+    `<div style="display:flex;gap:6px;flex-wrap:wrap;">${pick(SETTINGS.dayCycle,'normal','Normal','setDayCycle')}${pick(SETTINGS.dayCycle,'fast','⏩ Rápido','setDayCycle')}${pick(SETTINGS.dayCycle,'slow','🐢 Lento','setDayCycle')}${pick(SETTINGS.dayCycle,'day','☀️ Sempre dia','setDayCycle')}</div>`+
+    tog(SETTINGS.weather,'🌦️ Clima dinâmico','toggleSetWeather()')+
+    head('💾 DADOS')+
+    `<button class="set-row" onclick="saveNow()"><span>💾 Salvar agora</span><span>›</span></button>`+
+    `<div style="font-size:11px;color:#90a4ae;line-height:1.4;margin-top:4px;">🏃 Desempenho = roda liso em PC fraco. ✨ Qualidade = mais bonito. As mudanças são salvas e aplicadas na hora.</div>`;
 }
 window.toggleSettingsPanel=()=>{ const p=document.getElementById('settings-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderSettingsPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
 window.toggleSetSound=()=>{ SETTINGS.sound=!SETTINGS.sound; soundOn=SETTINGS.sound; if(soundOn&&SETTINGS.music){ try{startMusic();}catch(e){} } const b=document.getElementById('music-btn'); if(b)b.textContent=soundOn?'🎵':'🔇'; saveSettings(); renderSettingsPanel(); };
 window.toggleSetMusic=()=>{ SETTINGS.music=!SETTINGS.music; musicOn=SETTINGS.music&&SETTINGS.sound; if(musicOn){ try{startMusic();}catch(e){} } saveSettings(); renderSettingsPanel(); };
 window.toggleSetFps=()=>{ SETTINGS.showFps=!SETTINGS.showFps; const el=document.getElementById('fps-counter'); if(el) el.style.display=SETTINGS.showFps?'block':'none'; saveSettings(); renderSettingsPanel(); };
 window.setQuality=(q)=>{ applyQuality(q); showMessage('🎮 Qualidade: '+(q==='low'?'Desempenho':q==='med'?'Médio':'Qualidade'),1600); renderSettingsPanel(); };
+// Apply all the "live" (non-quality) settings to the running game
+function applySettings(){
+  try{
+    const mm=document.getElementById('minimap'); if(mm) mm.style.display=SETTINGS.minimap?'block':'none';
+    const sm=document.getElementById('speedometer'); if(sm) sm.style.display=SETTINGS.speedo?'':'none';
+    const hp=document.getElementById('help'); if(hp) hp.style.display=SETTINGS.showHelp?'':'none';
+    const dmap={near:11, med:16, far:24}; if(dmap[SETTINGS.camDist]!=null) cam.dist=dmap[SETTINGS.camDist];
+    if(SETTINGS.dayCycle==='day'){ state.daySpeed=0; state.time=0.5; }
+    else { state.daySpeed=({normal:1/600, fast:1/200, slow:1/1500})[SETTINGS.dayCycle]||1/600; }
+    const superRain=(typeof superRainActive==='function') && superRainActive();
+    if(SETTINGS.weather===false && !superRain){
+      state.weather='sun';
+      const ri=document.getElementById('weather-ico'); if(ri) ri.textContent='☀️';
+      const ro=document.getElementById('rain-overlay'); if(ro) ro.classList.remove('on');
+      if(typeof rain!=='undefined' && rain) rain.visible=false;
+    }
+  }catch(e){}
+}
+window.toggleSetMinimap=()=>{ SETTINGS.minimap=!SETTINGS.minimap; applySettings(); saveSettings(); renderSettingsPanel(); };
+window.toggleSetSpeedo=()=>{ SETTINGS.speedo=!SETTINGS.speedo; applySettings(); saveSettings(); renderSettingsPanel(); };
+window.toggleSetHelp=()=>{ SETTINGS.showHelp=!SETTINGS.showHelp; applySettings(); saveSettings(); renderSettingsPanel(); };
+window.toggleSetInvert=()=>{ SETTINGS.invertCam=!SETTINGS.invertCam; saveSettings(); renderSettingsPanel(); };
+window.toggleSetWeather=()=>{ SETTINGS.weather=!SETTINGS.weather; applySettings(); showMessage(SETTINGS.weather?'🌦️ Clima dinâmico ligado':'☀️ Tempo travado no sol',1600); saveSettings(); renderSettingsPanel(); };
+window.setCamDist=(m)=>{ SETTINGS.camDist=m; applySettings(); saveSettings(); renderSettingsPanel(); };
+window.setDayCycle=(m)=>{ SETTINGS.dayCycle=m; applySettings(); saveSettings(); renderSettingsPanel(); const nm={normal:'Normal',fast:'Rápido',slow:'Lento',day:'Sempre dia ☀️'}[m]||m; showMessage('🌗 Ciclo do dia: '+nm,1600); };
+window.saveNow=()=>{ try{ saveGame(); showMessage('💾 Jogo salvo!',1400); }catch(e){ showMessage('Não consegui salvar agora.',1400); } };
 
 // ---------- COLLISION ----------
 function collides(x,z){const R=1.2;for(const c of colliders){if(Math.abs(x-c.x)<c.hw+R && Math.abs(z-c.z)<c.hd+R)return true;}if(Math.abs(x)>342||Math.abs(z)>342)return true;return false;}
@@ -3952,7 +3998,7 @@ function startGame(fresh){document.getElementById('start').style.display='none';
   for(let i=0;i<10;i++) npcs.push(makeBird((Math.random()-0.5)*140,(Math.random()-0.5)*140));
   state.onFoot=false; if(player) player.visible=false; updateFootButton();
   { const ss=document.getElementById('secret-spot'); if(ss) ss.style.display='block'; }
-  setTool(0);updateHUD();resetTrailers();clock.start();clock.getDelta();animate();
+  setTool(0);updateHUD();resetTrailers();applySettings();clock.start();clock.getDelta();animate();
   // Visiting another farm? show banner, don't autosave/submit
   if(_visit){ state.visiting=true; document.getElementById('visit-text').textContent='🚜 Visitando a fazenda de '+_visit.name;
     document.getElementById('visit-banner').style.display='flex'; }
