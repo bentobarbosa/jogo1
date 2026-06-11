@@ -88,6 +88,10 @@
     .field-btns button.buy { background:#00695c; } .field-btns button.buy:hover { background:#00897b; }
     .field-btns button.bought { background:#2e3d2e; opacity:0.75; }
     .field-sec { color:#a5d6a7; font-weight:800; font-size:14px; margin:12px 0 4px; border-bottom:1px solid rgba(165,214,167,0.3); padding-bottom:4px; position:sticky; top:0; background:rgba(25,30,48,0.96); }
+    .set-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:11px 12px; border:none; border-radius:10px; background:#37474f; color:#fff; font-weight:700; font-size:14px; cursor:pointer; width:100%; }
+    .set-row.on { background:#1b5e20; } .set-row:hover { filter:brightness(1.12); }
+    .set-q { flex:1; padding:10px 4px; border:none; border-radius:9px; background:#37474f; color:#fff; font-weight:700; font-size:12px; cursor:pointer; }
+    .set-q.sel { background:#1565c0; } .set-q:hover { filter:brightness(1.12); }
     #plot-btn { position:fixed; left:16px; top:50%; transform:translateY(72px); z-index:50; padding:9px 15px; border-radius:24px;
       background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; border:3px solid #fff; font-weight:800; font-size:13px;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.38); white-space:nowrap; }
@@ -315,9 +319,17 @@
   <button class="act-b" onclick="toggleActionsMenu();toggleFieldsPanel()" style="background:#1b5e20;">🌾 Meus campos (1-100)</button>
   <button class="act-b" onclick="toggleActionsMenu();toggleEnergyPanel()" style="background:#5d4037;">⚡ Energia / Super Chuva</button>
   <button class="act-b" onclick="toggleActionsMenu();toggleRodeoPanel()" style="background:#6a1b9a;">🤠 Rodeio (placar de vacas)</button>
+  <button class="act-b" onclick="toggleActionsMenu();toggleSettingsPanel()" style="background:#37474f;">⚙️ Configurações</button>
   <button class="act-b" onclick="chopNearestTree();toggleActionsMenu()">🪓 Cortar árvore</button>
   <button class="act-b" onclick="sprayAllField();toggleActionsMenu()">🪲 Pulverizar campo</button>
   <button class="act-b" onclick="removeBuildingNear();toggleActionsMenu()">🧨 Remover construção</button>
+</div>
+
+<!-- ⚙️ Settings panel -->
+<div id="settings-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:330px;max-width:92vw;background:rgba(25,30,48,0.98);border:3px solid #90caf9;border-radius:16px;z-index:170;padding:18px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,0.55);">
+  <h2 style="text-align:center;color:#90caf9;margin-bottom:12px;">⚙️ CONFIGURAÇÕES</h2>
+  <div id="settings-body" style="display:flex;flex-direction:column;gap:12px;"></div>
+  <button onclick="toggleSettingsPanel()" style="display:block;margin:16px auto 0;padding:8px 30px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR</button>
 </div>
 
 <!-- ⚡ Energy panel -->
@@ -513,6 +525,8 @@
   <button onclick="toggleBuildMenu()" style="display:block;margin:12px auto 0;padding:6px 24px;background:#c62828;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">FECHAR [G]</button>
 </div>
 
+<div id="fps-counter" style="display:none;position:fixed;bottom:6px;left:6px;background:rgba(0,0,0,0.6);color:#9cff9c;font:800 12px monospace;padding:3px 9px;border-radius:10px;z-index:125;">-- FPS</div>
+
 <div id="shop">
   <h2 id="shop-title">🏪 MERCADO</h2>
   <div class="subtitle" id="shop-subtitle">Compre sementes • Venda sua colheita</div>
@@ -615,7 +629,7 @@ function adjBuy(base){ return Math.max(1, Math.round(base * buyMult())); }
 // Progressive animal price: each extra animal of a type costs more
 // Gentle LINEAR price rise per extra animal of a type (was exponential = billions at 60!)
 function animalPrice(type){ const at=ANIMAL_TYPES[type]; const owned=farmAnimals.filter(f=>f.type===type).length; const inc=(diff().animalStep-1)*0.4; return Math.round(at.price * buyMult() * (1 + owned*inc)); }
-const VISIBLE_ANIMALS = 90; // animals are UNLIMITED to own, but only the nearest ~90 render (keeps it smooth)
+let VISIBLE_ANIMALS = 90; // animals are UNLIMITED to own, but only the nearest render (set by quality)
 const ANIMAL_SELL_NERF = 0.45; // animal products give less money now (they were too OP)
 window.selectDifficulty=(d)=>{ if(!DIFFICULTIES[d]) return; state.difficulty=d;
   document.querySelectorAll('.diff-b').forEach(b=>b.classList.toggle('sel', b.dataset.d===d));
@@ -758,6 +772,23 @@ const sun=new THREE.DirectionalLight(0xffeec8,1.25);
 sun.position.set(80,120,60); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
 const sc=sun.shadow.camera; sc.left=-160;sc.right=160;sc.top=160;sc.bottom=-160;sc.near=1;sc.far=380; sun.shadow.bias=-0.0004; sun.shadow.radius=5;
 scene.add(sun);
+// ===== ⚙️ SETTINGS (sound, FPS, graphics quality) — saved separately so they survive new games =====
+let CULL_DIST=95; // render distance (set by quality)
+const SETTINGS={ sound:true, music:true, showFps:false, quality:'high' };
+(function(){ try{ Object.assign(SETTINGS, JSON.parse(localStorage.getItem('farmsim_settings')||'{}')); }catch(e){} })();
+function saveSettings(){ try{ localStorage.setItem('farmsim_settings', JSON.stringify(SETTINGS)); }catch(e){} }
+function applyQuality(q){
+  SETTINGS.quality=q;
+  if(q==='low'){ renderer.setPixelRatio(1); renderer.shadowMap.enabled=false; sun.castShadow=false; CULL_DIST=70; VISIBLE_ANIMALS=40; }
+  else if(q==='med'){ renderer.setPixelRatio(Math.min(1.5,devicePixelRatio)); renderer.shadowMap.enabled=true; sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); CULL_DIST=100; VISIBLE_ANIMALS=90; }
+  else { renderer.setPixelRatio(Math.min(2,devicePixelRatio)); renderer.shadowMap.enabled=true; sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); CULL_DIST=160; VISIBLE_ANIMALS=140; }
+  if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } // force shadow regen at the new size
+  renderer.setSize(innerWidth,innerHeight);
+  saveSettings();
+}
+soundOn=SETTINGS.sound; // apply saved sound on/off
+applyQuality(SETTINGS.quality);
+{ const fe=document.getElementById('fps-counter'); if(fe) fe.style.display=SETTINGS.showFps?'block':'none'; const mb=document.getElementById('music-btn'); if(mb) mb.textContent=soundOn?'🎵':'🔇'; }
 // Softer sky hemisphere + gentle warm fill
 scene.add(new THREE.HemisphereLight(0x9fc8ee,0x4a7a2a,0.4));
 const fill=new THREE.DirectionalLight(0xffe0b0,0.25); fill.position.set(-60,40,-50); scene.add(fill);
@@ -852,7 +883,7 @@ let _plotCullT=0;
 function cullPlots(dt){
   if(allPlots.length<=10) return;
   _plotCullT-=dt; if(_plotCullT>0) return; _plotCullT=0.5;
-  const cx=camera.position.x, cz=camera.position.z; const R=95*95;
+  const cx=camera.position.x, cz=camera.position.z; const R=CULL_DIST*CULL_DIST;
   for(const plot of allPlots){
     const dx=plot.centerX-cx, dz=plot.centerZ-cz; const near=(dx*dx+dz*dz)<R;
     for(const row of plot.tiles) for(const t of row){ t.mesh.visible=near; if(t.plant)t.plant.visible=near; if(t.marker)t.marker.visible=near; if(t.timeLabel)t.timeLabel.visible=near; if(t.goldMark)t.goldMark.visible=near; if(t.waterTint)t.waterTint.visible=near; if(t.pestTint)t.pestTint.visible=near; if(t.fertilTint)t.fertilTint.visible=near; }
@@ -3291,7 +3322,7 @@ function updateWorkers(dt){
   // render only nearby workers when there are lots (keeps it smooth with infinite workers)
   _workerCullT-=dt;
   if(_workerCullT<=0){ _workerCullT=0.5; const many=workers.length>60; const cx=camera.position.x,cz=camera.position.z;
-    for(const w of workers){ if(!many){ w.mesh.visible=true; } else { const dx=w.mesh.position.x-cx,dz=w.mesh.position.z-cz; w.mesh.visible=(dx*dx+dz*dz)<95*95; } } }
+    for(const w of workers){ if(!many){ w.mesh.visible=true; } else { const dx=w.mesh.position.x-cx,dz=w.mesh.position.z-cz; w.mesh.visible=(dx*dx+dz*dz)<CULL_DIST*CULL_DIST; } } }
   for(const w of workers){
     if(!w.tile){ const cand=[]; for(const row of w.plot.tiles) for(const t of row){ if(t.state==='grass'||t.state==='tilled'||t.state==='grown') cand.push(t); } w.tile=cand.length?cand[Math.floor(Math.random()*cand.length)]:null; if(!w.tile) continue; }
     const t=w.tile; const dx=t.x-w.mesh.position.x, dz=t.z-w.mesh.position.z, d=Math.hypot(dx,dz);
@@ -3400,11 +3431,32 @@ function renderEnergyPanel(){
     `<button class="cheat-b" onmousedown="startHold(buildSolar)" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(buildSolar)" ontouchend="stopHold()">☀️➕ Comprar Placa Solar — $${adjBuy(1200).toLocaleString('pt-BR')} (segure)</button>`;
 }
 window.toggleEnergyPanel=()=>{ const p=document.getElementById('energy-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderEnergyPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
+// ===== ⚙️ Settings panel =====
+function renderSettingsPanel(){
+  const el=document.getElementById('settings-body'); if(!el) return;
+  const tog=(on,label,fn)=>`<button class="set-row ${on?'on':''}" onclick="${fn}"><span>${label}</span><span>${on?'✅ Ligado':'⬜ Desligado'}</span></button>`;
+  const qbtn=(q,label)=>`<button class="set-q ${SETTINGS.quality===q?'sel':''}" onclick="setQuality('${q}')">${label}</button>`;
+  el.innerHTML=
+    `<div style="font-size:12px;color:#90caf9;font-weight:700;">🔊 SOM</div>`+
+    tog(SETTINGS.sound,'🔊 Som geral','toggleSetSound()')+
+    tog(SETTINGS.music,'🎵 Música','toggleSetMusic()')+
+    `<div style="font-size:12px;color:#90caf9;font-weight:700;margin-top:6px;">🖥️ DESEMPENHO</div>`+
+    tog(SETTINGS.showFps,'🎞️ Mostrar FPS','toggleSetFps()')+
+    `<div style="font-size:12px;color:#90caf9;margin-top:2px;">🎮 Qualidade gráfica:</div>`+
+    `<div style="display:flex;gap:6px;">${qbtn('low','🏃 Desempenho')}${qbtn('med','⚖️ Médio')}${qbtn('high','✨ Qualidade')}</div>`+
+    `<div style="font-size:11px;color:#90a4ae;line-height:1.4;">🏃 Desempenho = roda liso em PC fraco (sem sombra, menos distância). ✨ Qualidade = mais bonito (sombras + nitidez).</div>`;
+}
+window.toggleSettingsPanel=()=>{ const p=document.getElementById('settings-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderSettingsPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
+window.toggleSetSound=()=>{ SETTINGS.sound=!SETTINGS.sound; soundOn=SETTINGS.sound; if(soundOn&&SETTINGS.music){ try{startMusic();}catch(e){} } const b=document.getElementById('music-btn'); if(b)b.textContent=soundOn?'🎵':'🔇'; saveSettings(); renderSettingsPanel(); };
+window.toggleSetMusic=()=>{ SETTINGS.music=!SETTINGS.music; musicOn=SETTINGS.music&&SETTINGS.sound; if(musicOn){ try{startMusic();}catch(e){} } saveSettings(); renderSettingsPanel(); };
+window.toggleSetFps=()=>{ SETTINGS.showFps=!SETTINGS.showFps; const el=document.getElementById('fps-counter'); if(el) el.style.display=SETTINGS.showFps?'block':'none'; saveSettings(); renderSettingsPanel(); };
+window.setQuality=(q)=>{ applyQuality(q); showMessage('🎮 Qualidade: '+(q==='low'?'Desempenho':q==='med'?'Médio':'Qualidade'),1600); renderSettingsPanel(); };
 
 // ---------- COLLISION ----------
 function collides(x,z){const R=1.2;for(const c of colliders){if(Math.abs(x-c.x)<c.hw+R && Math.abs(z-c.z)<c.hd+R)return true;}if(Math.abs(x)>342||Math.abs(z)>342)return true;return false;}
 
 // ---------- LOOP ----------
+let _fps=60, _fpsAcc=0;
 const clock=new THREE.Clock();
 const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
 function animate(){if(!state.running)return;requestAnimationFrame(animate);
@@ -3454,6 +3506,8 @@ function animate(){if(!state.running)return;requestAnimationFrame(animate);
     if(state.fuel>=20) state._lowFuelWarned=false;
     document.getElementById('speed-val').textContent=Math.round(Math.abs(vs.speed)*3.6);
   }
+  // FPS counter
+  if(SETTINGS.showFps){ _fps += ((dt>0?1/dt:60)-_fps)*0.1; _fpsAcc+=dt; if(_fpsAcc>0.25){ _fpsAcc=0; const el=document.getElementById('fps-counter'); if(el) el.textContent=Math.round(_fps)+' FPS'; } }
   // Always-on systems
   const prevTime = state.time;
   state.time = (state.time + dt*state.daySpeed) % 1;
@@ -3521,7 +3575,7 @@ function drawMinimap(dt){
 }
 
 // ---------- MUSIC + ENGINE (Web Audio) ----------
-let musicOn=true, musicNode=null, engineOsc=null, engineGain=null;
+let musicOn=SETTINGS.music, musicNode=null, engineOsc=null, engineGain=null;
 function startMusic(){
   try{ const ctx=getAudio(); if(musicNode) return;
     musicNode={ctx, next:ctx.currentTime, step:0};
