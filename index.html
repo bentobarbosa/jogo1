@@ -2528,7 +2528,7 @@ function loadGame(){
     if(Array.isArray(d.autoFertPlots)) state.autoFertPlots = d.autoFertPlots.slice();
     if(Array.isArray(d.penFeeders)) state.penFeeders = d.penFeeders.slice();
     state.energy = d.energy || 0; state.superRainUntil = 0; // don't carry the timed event across reloads
-    if(d.solarCount>0){ for(let i=0;i<d.solarCount && i<400;i++) makeSolar(solarSlot(i).x, solarSlot(i).z); state.solarCount=d.solarCount; }
+    if(d.solarCount>0){ const sc=Math.min(d.solarCount, SOLAR_MAX); for(let i=0;i<sc;i++) makeSolar(solarSlot(i).x, solarSlot(i).z); state.solarCount=sc; }
     state.season = d.season ?? 0;
     state.dayCount = d.dayCount ?? 0;
     if(d.stats) Object.assign(state.stats, d.stats);
@@ -3468,6 +3468,9 @@ function updateProducers(dt){
 
 // ========== ⚡ ENERGY: solar farm + Super Rain event ==========
 const ENERGY_MAX=5000, SUPER_RAIN_SECONDS=3600; // 5000 energy -> 1h super rain
+const SOLAR_MAX=150; // hard cap so the solar park never runs off the map (world is 860x860)
+// Price climbs the more panels you own (quadratic, like buying new fields): 1st ~$1.2k, last ~$890k
+function solarCost(n){ return adjBuy(1200 + n*n*40); }
 // dedicated solar field (east side, away from crops) — panels auto-arrange in a grid
 function solarSlot(n){ const cols=10; return { x:240 + (n%cols)*9, z:-40 + Math.floor(n/cols)*9 }; }
 function makeSolar(x,z){
@@ -3478,10 +3481,12 @@ function makeSolar(x,z){
   g.position.set(x,0,z); scene.add(g); solarPanels.push({x,z,mesh:g}); return g;
 }
 window.buildSolar=()=>{
-  const cost=adjBuy(1200);
+  const count=state.solarCount||0;
+  if(count>=SOLAR_MAX){ stopHold(); showMessage('☀️ Limite de placas atingido ('+SOLAR_MAX+')! O parque solar está cheio.',2400); refreshEnergySoon(); return; }
+  const cost=solarCost(count);
   if(state.money<cost){ stopHold(); showMessage('❌ Falta dinheiro pra placa solar ($'+cost.toLocaleString('pt-BR')+')',2000); return; }
   state.money-=cost; if(typeof spendXP==='function') spendXP(cost);
-  const slot=solarSlot(state.solarCount||0); makeSolar(slot.x, slot.z); state.solarCount=(state.solarCount||0)+1;
+  const slot=solarSlot(count); makeSolar(slot.x, slot.z); state.solarCount=count+1;
   if(typeof sndSell==='function') sndSell(); updateHUD(); refreshEnergySoon(); saveSoon();
 };
 function superRainActive(){ return (performance.now()/1000) < (state.superRainUntil||0); }
@@ -3503,14 +3508,18 @@ function renderEnergyPanel(){
   const e=Math.floor(state.energy), pct=Math.min(100,e/ENERGY_MAX*100), rate=solarPanels.length;
   const ready=state.energy>=ENERGY_MAX, raining=superRainActive();
   const left=raining?Math.ceil((state.superRainUntil-performance.now()/1000)/60):0;
+  const count=state.solarCount||0, full=count>=SOLAR_MAX, nextCost=solarCost(count);
   host.innerHTML=
     `<div style="text-align:center;font-size:13px;margin-bottom:6px;">🏭 Armazém de Energia</div>`+
     `<div style="background:rgba(0,0,0,0.45);border-radius:10px;height:24px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ffd54f,#ffeb3b);transition:width .3s;"></div></div>`+
     `<div style="text-align:center;font-weight:800;margin-bottom:10px;">⚡ ${e.toLocaleString('pt-BR')} / ${ENERGY_MAX.toLocaleString('pt-BR')}</div>`+
-    `<div style="font-size:12px;color:#cfd8dc;text-align:center;margin-bottom:10px;">☀️ ${rate} placa(s) · gera <b>${rate}⚡/s</b></div>`+
+    `<div style="font-size:12px;color:#cfd8dc;text-align:center;margin-bottom:10px;">☀️ ${rate} / ${SOLAR_MAX} placa(s) · gera <b>${rate}⚡/s</b></div>`+
     (raining?`<div style="background:#1565c0;border-radius:10px;padding:10px;text-align:center;font-weight:800;margin-bottom:10px;">🌧️ SUPER CHUVA ATIVA! ~${left} min restantes</div>`:'')+
     `<button class="cheat-b" style="background:${ready?'#1b5e20':'#444'}" onclick="invokeSuperRain()" ${ready?'':'disabled'}>🌧️⚡ INVOCAR SUPER CHUVA ${ready?'':'(precisa 5000⚡)'}</button>`+
-    `<button class="cheat-b" onmousedown="startHold(buildSolar)" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(buildSolar)" ontouchend="stopHold()">☀️➕ Comprar Placa Solar — $${adjBuy(1200).toLocaleString('pt-BR')} (segure)</button>`;
+    (full
+      ? `<button class="cheat-b" style="background:#444" disabled>☀️ Parque solar cheio (${SOLAR_MAX}/${SOLAR_MAX})</button>`
+      : `<button class="cheat-b" onmousedown="startHold(buildSolar)" onmouseup="stopHold()" onmouseleave="stopHold()" ontouchstart="event.preventDefault();startHold(buildSolar)" ontouchend="stopHold()">☀️➕ Comprar Placa Solar — $${nextCost.toLocaleString('pt-BR')} (segure)</button>`)+
+    `<div style="font-size:11px;color:#90a4ae;text-align:center;margin-top:8px;">O preço sobe a cada placa. Limite: ${SOLAR_MAX} placas.</div>`;
 }
 window.toggleEnergyPanel=()=>{ const p=document.getElementById('energy-panel'); if(!p)return; const open=p.style.display!=='block'; p.style.display=open?'block':'none'; if(open){ renderEnergyPanel(); const am=document.getElementById('actions-panel'); if(am)am.style.display='none'; } };
 // ===== ⚙️ Settings panel =====
