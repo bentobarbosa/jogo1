@@ -1727,7 +1727,7 @@ window.addFieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const cost=worke
   if(state.money<cost){ stopHold(); showMessage('❌ Sem dinheiro pra contratar! ($'+cost.toLocaleString('pt-BR')+')',1800); return; }
   state.money-=cost; if(typeof spendXP==='function') spendXP(cost);
   const wx=p.centerX+(Math.random()-0.5)*8, wz=p.centerZ+(Math.random()-0.5)*8;
-  workers.push({mesh:makeWorkerNPC(wx,wz),plot:p,tile:null});
+  workers.push({mesh:makeWorkerNPC(wx,wz),plot:p,tile:null,hired:true});
   if(typeof sndSell==='function') sndSell();
   updateHUD(); refreshFieldsSoon(); saveSoon(); };
 window.removeFieldWorker=(i)=>{ const p=allPlots[i]; if(!p)return; const ex=workers.find(w=>w.plot===p); if(!ex)return; scene.remove(ex.mesh); workers.splice(workers.indexOf(ex),1); showMessage('👨‍🌾 Trabalhador dispensado do campo '+(i+1),1400); updateHUD(); renderFieldsPanel(); saveGame(); };
@@ -2506,7 +2506,8 @@ function saveGame(){
       season:state.season, dayCount:state.dayCount, qualityTotals:state.qualityTotals,
       stats:state.stats, achievements:state.achievements, missionsClaimed:state.missionsClaimed,
       buildings:state.buildings, animals: farmAnimals.map(a=>a.type), tiles: tilesData,
-      boneco: state.boneco, plotCrops: allPlots.map(p=>p.workerCrop||null), savedAt: Date.now()
+      boneco: state.boneco, plotCrops: allPlots.map(p=>p.workerCrop||null),
+      workerPlots: workers.filter(w=>w.hired).map(w=>allPlots.indexOf(w.plot)).filter(i=>i>=0), savedAt: Date.now()
     }));
   }catch(e){}
 }
@@ -2551,6 +2552,8 @@ function loadGame(){
     // Recreate buildings (tracked so they can be removed later)
     state.buildings=[]; placedObjs.length=0;
     if(Array.isArray(d.buildings)){ for(const b of d.buildings){ try{ state.buildings.push({id:b.id,x:b.x,z:b.z}); placedObjs.push(trackedConstruct(b.id,b.x,b.z)); }catch(e){} } }
+    // Re-hire field workers added from the "Meus campos" panel (house workers already came back with their building)
+    if(Array.isArray(d.workerPlots)){ for(const idx of d.workerPlots){ const p=allPlots[idx]; if(!p) continue; const wx=p.centerX+(Math.random()-0.5)*8, wz=p.centerZ+(Math.random()-0.5)*8; try{ workers.push({mesh:makeWorkerNPC(wx,wz),plot:p,tile:null,hired:true}); }catch(e){} } }
     // Respawn animals
     if(Array.isArray(d.animals)){ for(const t of d.animals){ if(ANIMAL_TYPES[t]) try{ spawnAnimal(t); }catch(e){} } }
     // Restore plantation tiles
